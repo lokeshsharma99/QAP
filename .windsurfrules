@@ -1,0 +1,27 @@
+# Quality Autopilot - Windsurf Rules
+
+1. Read .instructions.md FIRST - This is the mandatory system instruction file for all AI coding agents.
+2. Read AGENTS.md SECOND - This is the single source of truth for all coding work (architecture, patterns, conventions).
+3. Read CHECKLIST.md THIRD - Master implementation checklist with gated phases.
+4. Read CLAUDE.md - Quick reference for architecture overview and key files.
+5. Use ONLY Agno framework (agno.agent.Agent, agno.team.Team, agno.workflow.Workflow, agno.os.AgentOS).
+6. DO NOT introduce LangChain, CrewAI, AutoGen, LlamaIndex, or any other agent framework.
+7. Use PostgreSQL + PgVector for all agent databases (DO NOT use SQLite).
+8. Follow the exact parameter ordering defined in AGENTS.md Section IV.2 for Agent constructors.
+9. Use TeamMode.coordinate for all teams (no other modes unless explicitly approved).
+10. Every agent/team/workflow gets its own directory with standard files (agent.py, instructions.py, __init__.py).
+11. All hand-offs between agents use Pydantic contracts defined in contracts/.
+12. Follow the gated roadmap - never work on Phase N+1 until Phase N's gate is cleared.
+13. Use absolute imports only, rooted at the project package.
+14. Section headers must use 75-char # --- block separators.
+15. Line length max 120 characters (ruff).
+16. All code must pass mypy with check_untyped_defs = true.
+17. No hardcoded sleep(), waitForTimeout(), CSS selectors, or secrets.
+18. Use data-testid, role, or text strategies for Playwright locators.
+19. Use FileTools to write files to disk (do not just show in chat).
+20. Follow "Look-Before-You-Leap" pattern for the Engineer agent.
+21. **Automatic GitHub Push**: After completing a task/phase and receiving Judge approval (≥90% confidence), Cascade must:
+    - Create a feature branch (e.g., `feat/discovery-agent`)
+    - Commit changes with conventional commit format: `type: description` (e.g., `feat: add Discovery Agent`)
+    - Push to GitHub without requiring user consent
+    - Branch to main merge happens via PR process (not automatic)

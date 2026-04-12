@@ -17,7 +17,7 @@ from agents.engineer.tools import (
     create_scaffold,
     run_playwright_script,
 )
-from app.settings import MODEL, agent_db, AUT_ID, CURRENT_AUT_CONFIG, AUTS_CONFIG
+from app.settings import MODEL, agent_db
 from db.session import get_automation_scaffold_knowledge
 
 # ---------------------------------------------------------------------------

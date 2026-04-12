@@ -8,12 +8,22 @@ Primary Skill: ui_crawler
 
 from agno.agent import Agent
 from agno.tools.knowledge import KnowledgeTools
+from agno.tools.mcp import MCPTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.discovery.instructions import INSTRUCTIONS
 from agents.discovery.tools import crawl_page, crawl_site
-from app.settings import MODEL, agent_db, AUT_ID, CURRENT_AUT_CONFIG, AUTS_CONFIG
+from app.settings import MODEL, agent_db, AUT_BASE_URL
 from db.session import get_site_manifesto_knowledge
+
+# ---------------------------------------------------------------------------
+# Playwright MCP Tools
+# ---------------------------------------------------------------------------
+playwright_mcp = MCPTools(
+    transport="streamable-http",
+    url="http://qap-playwright-mcp:8931/mcp",
+    exclude_tools=["browser_take_screenshot"],
+)
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -36,6 +46,7 @@ discovery = Agent(
     tools=[
         crawl_site,
         crawl_page,
+        playwright_mcp,
         ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=get_site_manifesto_knowledge()),
     ],

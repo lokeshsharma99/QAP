@@ -66,6 +66,6 @@ RUNTIME_ENV = getenv("RUNTIME_ENV", "dev")
 # ---------------------------------------------------------------------------
 # AUT Configuration
 # ---------------------------------------------------------------------------
-AUT_BASE_URL = getenv("AUT_BASE_URL", "https://demo.nopcommerce.com/")
+AUT_BASE_URL = getenv("AUT_BASE_URL", "https://gds-demo-app.vercel.app/")
 AUT_AUTH_USER = getenv("AUT_AUTH_USER", "")
 AUT_AUTH_PASS = getenv("AUT_AUTH_PASS", "")

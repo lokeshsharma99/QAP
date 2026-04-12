@@ -9,7 +9,7 @@ from os import getenv
 
 from agno.db.postgres import PostgresDb
 from agno.knowledge import Knowledge
-from agno.knowledge.embedder.openai import OpenAIEmbedder
+from agno.knowledge.embedder.ollama import OllamaEmbedder
 from agno.vectordb.pgvector import PgVector, SearchType
 
 from db.url import db_url
@@ -53,10 +53,9 @@ def create_knowledge(name: str, table_name: str) -> Knowledge:
             db_url=db_url,
             table_name=table_name,
             search_type=SearchType.hybrid,
-            embedder=OpenAIEmbedder(
-                id="text-embedding-3-small",
-                api_key=OLLAMA_API_KEY,
-                base_url=f"{OLLAMA_BASE_URL}/v1",
+            embedder=OllamaEmbedder(
+                id="nomic-embed-text",
+                dimensions=768,
             ),
         ),
         contents_db=get_postgres_db(contents_table=f"{table_name}_contents"),
@@ -81,12 +80,22 @@ def create_automation_scaffold_knowledge() -> Knowledge:
     return create_knowledge("Automation Scaffold KB", "automation_scaffold_vectors")
 
 
+def create_codebase_knowledge() -> Knowledge:
+    """Create the Codebase knowledge base for Page Objects and Step Definitions.
+
+    Returns:
+        Configured Knowledge instance for storing test codebase vectors.
+    """
+    return create_knowledge("Codebase KB", "codebase_vectors")
+
+
 # ---------------------------------------------------------------------------
 # Shared Knowledge Base Instances
 # ---------------------------------------------------------------------------
 # Create single shared instances to avoid duplicates when multiple agents use the same KB
 _site_manifesto_knowledge: Knowledge | None = None
 _automation_scaffold_knowledge: Knowledge | None = None
+_codebase_knowledge: Knowledge | None = None
 
 
 def get_site_manifesto_knowledge() -> Knowledge:
@@ -111,3 +120,15 @@ def get_automation_scaffold_knowledge() -> Knowledge:
     if _automation_scaffold_knowledge is None:
         _automation_scaffold_knowledge = create_automation_scaffold_knowledge()
     return _automation_scaffold_knowledge
+
+
+def get_codebase_knowledge() -> Knowledge:
+    """Get or create the shared Codebase knowledge base instance.
+
+    Returns:
+        Shared Knowledge instance for storing test codebase vectors.
+    """
+    global _codebase_knowledge
+    if _codebase_knowledge is None:
+        _codebase_knowledge = create_codebase_knowledge()
+    return _codebase_knowledge

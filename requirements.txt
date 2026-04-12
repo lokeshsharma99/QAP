@@ -27,3 +27,6 @@ requests
 chonkie[semantic]
 unstructured
 wikipedia
+
+# Ollama Embedder
+ollama

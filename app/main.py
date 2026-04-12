@@ -16,6 +16,7 @@ from agno.os import AgentOS
 from agents.architect import architect
 from agents.discovery import discovery
 from agents.engineer import engineer
+from agents.librarian import librarian
 from app.registry import registry
 from app.settings import OLLAMA_MODELS, OLLAMA_MODEL_ID, RUNTIME_ENV, agent_db
 from workflows.automation_scaffold import automation_scaffold
@@ -41,6 +42,7 @@ agent_os = AgentOS(
         architect,
         discovery,
         engineer,
+        librarian,
     ],
     teams=[],
     workflows=[automation_scaffold],

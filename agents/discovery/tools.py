@@ -5,7 +5,7 @@ Discovery Agent Tools
 The ui_crawler tool navigates the AUT, extracts page structure,
 and builds a Site Manifesto with interactive elements and locators.
 
-Uses curl_cffi to bypass Cloudflare bot protection on the AUT.
+Uses curl_cffi for static sites. For SPAs, the agent should use Playwright MCP tools directly.
 """
 
 import hashlib
@@ -240,7 +240,7 @@ def crawl_page(url: str) -> str:
 
 @tool(
     name="crawl_site",
-    description="Crawl the AUT starting from the base URL. Discovers pages, extracts UI components, and generates a Site Manifesto.",
+    description="Crawl the AUT starting from the base URL. Discovers pages, extracts UI components, and generates a Site Manifesto. For SPAs, use Playwright MCP tools directly.",
 )
 def crawl_site(base_url: str, max_pages: int = 10) -> str:
     """Crawl the Application Under Test and generate a Site Manifesto.
