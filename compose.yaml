@@ -67,6 +67,10 @@ services:
       - AUT_AUTH_PASS=${AUT_AUTH_PASS:-}
       # GitHub
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      # Jira
+      - JIRA_URL=${JIRA_URL:-https://lokeshsharma2.atlassian.net}
+      - JIRA_USERNAME=${JIRA_USERNAME:-kirtisharma0691@gmail.com}
+      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
     depends_on:
       - qap-db
       - qap-playwright-mcp
