@@ -13,6 +13,7 @@ from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.mcp import MCPTools
+from agno.tools.reasoning import ReasoningTools
 
 from agents.engineer.instructions import INSTRUCTIONS
 from agents.engineer.tools import (
@@ -52,6 +53,12 @@ except Exception:
 engineer_tools = [
     CodingTools(),
     FileTools(Path("automation")),
+    ReasoningTools(
+        enable_think=True,
+        enable_analyze=True,
+        add_instructions=True,
+        add_few_shot=True,
+    ),
     create_scaffold,
     run_playwright_script,
     run_linting,

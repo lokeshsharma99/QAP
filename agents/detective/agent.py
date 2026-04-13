@@ -10,6 +10,7 @@ from pathlib import Path
 from agno.agent import Agent
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
+from agno.tools.reasoning import ReasoningTools
 
 from agents.detective.instructions import INSTRUCTIONS
 from agents.detective.tools import analyze_trace_file
@@ -22,6 +23,12 @@ from db.session import get_learnings_knowledge
 detective_tools = [
     CodingTools(),
     FileTools(Path("automation")),
+    ReasoningTools(
+        enable_think=True,
+        enable_analyze=True,
+        add_instructions=True,
+        add_few_shot=True,
+    ),
     analyze_trace_file,
 ]
 

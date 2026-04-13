@@ -26,7 +26,12 @@ librarian = Agent(
     knowledge=get_codebase_knowledge(),
     search_knowledge=True,
     tools=[
-        ReasoningTools(add_instructions=True),
+        ReasoningTools(
+            enable_think=True,
+            enable_analyze=True,
+            add_instructions=True,
+            add_few_shot=True,
+        ),
         KnowledgeTools(knowledge=get_codebase_knowledge()),
     ],
     instructions=INSTRUCTIONS,

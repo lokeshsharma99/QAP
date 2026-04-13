@@ -32,7 +32,12 @@ scribe = Agent(
 
     # Capabilities
     tools=[
-        ReasoningTools(add_instructions=True),
+        ReasoningTools(
+            enable_think=True,
+            enable_analyze=True,
+            add_instructions=True,
+            add_few_shot=True,
+        ),
         FileTools(Path("automation")),
     ],
 

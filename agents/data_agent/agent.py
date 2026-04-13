@@ -12,6 +12,7 @@ from pathlib import Path
 from agno.agent import Agent
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
+from agno.tools.reasoning import ReasoningTools
 
 from agents.data_agent.instructions import INSTRUCTIONS
 from agents.data_agent.tools import (
@@ -36,6 +37,12 @@ data_agent = Agent(
     tools=[
         CodingTools(),
         FileTools(Path("automation")),
+        ReasoningTools(
+            enable_think=True,
+            enable_analyze=True,
+            add_instructions=True,
+            add_few_shot=True,
+        ),
         generate_dynamic_test_user,
         get_test_data_on_demand,
         generate_run_context,

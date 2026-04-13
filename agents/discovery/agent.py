@@ -47,7 +47,12 @@ discovery = Agent(
         crawl_site,
         crawl_page,
         playwright_mcp,
-        ReasoningTools(add_instructions=True),
+        ReasoningTools(
+            enable_think=True,
+            enable_analyze=True,
+            add_instructions=True,
+            add_few_shot=True,
+        ),
         KnowledgeTools(knowledge=get_site_manifesto_knowledge()),
     ],
 

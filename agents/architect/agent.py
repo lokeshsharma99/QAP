@@ -40,7 +40,12 @@ else:
 # ---------------------------------------------------------------------------
 # Build Tools List
 # ---------------------------------------------------------------------------
-tools = [ReasoningTools(add_instructions=True)]
+tools = [ReasoningTools(
+    enable_think=True,
+    enable_analyze=True,
+    add_instructions=True,
+    add_few_shot=True,
+)]
 
 # Knowledge Tools
 if site_manifesto_knowledge is not None:

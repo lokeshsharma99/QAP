@@ -10,6 +10,7 @@ from pathlib import Path
 from agno.agent import Agent
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
+from agno.tools.reasoning import ReasoningTools
 
 from agents.medic.instructions import INSTRUCTIONS
 from agents.medic.tools import (
@@ -28,11 +29,17 @@ from db.session import get_learnings_knowledge
 medic_tools = [
     CodingTools(),
     FileTools(Path("automation")),
+    ReasoningTools(
+        enable_think=True,
+        enable_analyze=True,
+        add_instructions=True,
+        add_few_shot=True,
+    ),
     apply_surgical_edit,
-    verify_edit_safety,
-    rollback_edit,
     generate_healing_patch,
+    rollback_edit,
     run_verification_3x,
+    verify_edit_safety,
 ]
 
 medic = Agent(
