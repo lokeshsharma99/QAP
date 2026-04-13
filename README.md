@@ -45,8 +45,9 @@ Quality Autopilot
 ├── 10 Agents — Architect, Scribe, Discovery, Librarian, Engineer,
 │                Data Agent, Detective, Medic, Judge, Healing Judge
 ├── 5 Squads  — Strategy, Context, Engineering, Operations, Grooming
-├── 5 Flows   — Spec-to-Code, Discovery Onboard, Triage-Heal, Grooming, Full Regression
-└── 8 Contracts — Pydantic hand-off models
+├── 6 Flows   — Spec-to-Code, Discovery Onboard, Triage-Heal, Grooming,
+│                Full Regression, Full Lifecycle
+└── 11 Contracts — Pydantic hand-off models
 ```
 
 ## Agents
@@ -177,9 +178,31 @@ Quality Autopilot organizes agents into 5 cross-functional squads, each using Te
 - **Workflow Integration:** Grooming workflow
 - **Output:** GroomingAssessment, Jira comment
 
+## Contracts
+
+Quality Autopilot uses 11 Pydantic contracts for structured hand-offs between agents and teams.
+
+### Core Contracts
+- **RequirementContext** - Structured analysis of business requirements (Architect output)
+- **GherkinSpec** - BDD specification with scenarios and data requirements (Scribe output)
+- **RunContext** - Test data provisioning and execution context (Data Agent output)
+- **SiteManifesto** - Complete map of Application Under Test (Discovery output)
+
+### Quality & Healing Contracts
+- **JudgeVerdict** - Adversarial review results with confidence score (Judge output)
+- **RCAReport** - Root Cause Analysis for test failures (Detective output)
+- **HealingPatch** - Surgical edit to fix broken locators (Medic output)
+- **GroomingAssessment** - 3 Amigos review assessment (Grooming output)
+
+### New Contracts
+- **ExecutionResult** - Test execution results with detailed pass/fail information
+- **WorkflowStatus** - Workflow orchestration status tracking
+- **SquadHandoff** - Inter-squad communication with contract-based data passing
+- **AutomationScaffold** - Automation framework scaffolding structure
+
 ## Workflows
 
-Quality Autopilot provides 5 end-to-end workflows for common STLC scenarios.
+Quality Autopilot provides 6 end-to-end workflows for common STLC scenarios.
 
 ### Spec-to-Code Workflow
 - **Purpose:** Convert requirements to automated Playwright tests
@@ -244,6 +267,20 @@ Quality Autopilot provides 5 end-to-end workflows for common STLC scenarios.
 - **Input:** Requirements
 - **Output:** Regression results + healed tests
 - **When to Use:** Full regression with self-healing
+
+### Full Lifecycle Workflow
+- **Purpose:** End-to-end workflow from requirement to execution/report using teams
+- **Steps:**
+  1. Requirement Analysis (Strategy Team) - RequirementContext → GherkinSpec
+  2. Context Discovery (Context Team) - SiteManifesto
+  3. Automation Generation (Engineering Team) - RunContext + AutomationCode
+  4. Test Execution (Engineering Team) - ExecutionResult
+  5. Failure Analysis (Operations Team) - RCAReport + HealingPatch
+  6. Quality Gate (Strategy Team + Judge) - JudgeVerdict
+  7. Report Generation (Strategy Team) - FinalReport
+- **Input:** Jira ticket ID or requirement description
+- **Output:** Final report with all phases summarized
+- **When to Use:** Complete STLC orchestration from requirement to report
 
 ## How to Use
 

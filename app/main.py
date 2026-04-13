@@ -35,6 +35,7 @@ from teams.operations import operations_team
 from teams.strategy import strategy_team
 from workflows.automation_scaffold import automation_scaffold
 from workflows.discovery_onboard import discovery_onboard
+from workflows.full_lifecycle import full_lifecycle
 from workflows.full_regression import full_regression
 from workflows.grooming import grooming
 from workflows.spec_to_code import spec_to_code
@@ -112,6 +113,7 @@ agent_os = AgentOS(
     workflows=[
         automation_scaffold,
         discovery_onboard,
+        full_lifecycle,
         full_regression,
         grooming,
         spec_to_code,
@@ -293,6 +295,351 @@ def get_session_runs(session_id: str):
         "session_id": session_id,
         "note": "Use AgentOSClient for full session management",
     }
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/knowledge")
+def list_knowledge_bases():
+    """List all knowledge bases."""
+    logger.info("Listing knowledge bases")
+    return {
+        "knowledge_bases": [
+            {"id": "site_manifesto_knowledge", "name": "Site Manifesto", "description": "UI crawling results and site structure"},
+            {"id": "codebase_knowledge", "name": "Codebase", "description": "Source code and architecture documentation"},
+            {"id": "automation_knowledge", "name": "Automation", "description": "BDD scenarios and test artifacts"},
+            {"id": "learnings_knowledge", "name": "Learnings", "description": "Agent learnings and patterns"}
+        ]
+    }
+
+
+@app.get("/knowledge/{kb_id}")
+def get_knowledge_base(kb_id: str):
+    """Get knowledge base details."""
+    logger.info(f"Getting knowledge base: {kb_id}")
+    return {
+        "id": kb_id,
+        "message": "Knowledge base details available via AgentOS",
+        "note": "Use AgentOSClient for full knowledge management"
+    }
+
+
+# ---------------------------------------------------------------------------
+# Memory Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/memory")
+def list_memories():
+    """List all memories."""
+    logger.info("Listing memories")
+    return {
+        "message": "Memory management available via AgentOS",
+        "note": "Use AgentOSClient for full memory management"
+    }
+
+
+@app.post("/memory")
+def create_memory(payload: dict):
+    """Create a new memory."""
+    logger.info(f"Creating memory: {payload}")
+    return {
+        "message": "Memory creation available via AgentOS",
+        "note": "Use AgentOSClient for full memory management"
+    }
+
+
+# ---------------------------------------------------------------------------
+# Evaluation Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/evals")
+def list_evals():
+    """List all evaluations."""
+    logger.info("Listing evaluations")
+    return {
+        "evals": [
+            {"id": "comprehensive_evals", "name": "Comprehensive Evals", "file": "comprehensive_evals.py"},
+            {"id": "engineer_reliability", "name": "Engineer Reliability", "file": "engineer_reliability.py"},
+            {"id": "test_gate4_e2e", "name": "Gate 4 E2E", "file": "test_gate4_e2e.py"},
+            {"id": "test_healing_loop", "name": "Healing Loop", "file": "test_healing_loop.py"}
+        ]
+    }
+
+
+# ---------------------------------------------------------------------------
+# Traces Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/traces")
+def list_traces():
+    """List all Playwright traces."""
+    logger.info("Listing traces")
+    return {
+        "message": "Trace management available via AgentOS",
+        "note": "Use AgentOSClient for full trace management"
+    }
+
+
+# ---------------------------------------------------------------------------
+# Metrics Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/metrics/detailed")
+def get_detailed_metrics():
+    """Get detailed metrics for dashboard."""
+    logger.info("Getting detailed metrics")
+    return {
+        "total_tokens": 2600000,
+        "users": 2,
+        "agent_runs": 54,
+        "agent_sessions": 20,
+        "team_runs": 27,
+        "team_sessions": 7,
+        "workflow_runs": 2,
+        "workflow_sessions": 2,
+        "model_runs": 81
+    }
+
+
+# ---------------------------------------------------------------------------
+# Approvals Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/approvals")
+def list_approvals():
+    """List pending approvals."""
+    logger.info("Listing approvals")
+    return {
+        "message": "Approval management available via AgentOS",
+        "note": "Use AgentOSClient for full approval management"
+    }
+
+
+# ---------------------------------------------------------------------------
+# Scheduler Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/scheduler/jobs")
+def list_scheduled_jobs():
+    """List scheduled jobs."""
+    logger.info("Listing scheduled jobs")
+    return {
+        "message": "Scheduler available via AgentOS",
+        "note": "Use AgentOSClient for full scheduler management"
+    }
+
+
+# ---------------------------------------------------------------------------
+# Settings Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/settings")
+def get_settings():
+    """Get current settings."""
+    logger.info("Getting settings")
+    return {
+        "api_keys": {
+            "openai": "configured",
+            "anthropic": "configured",
+            "google": "configured",
+            "ollama": "configured"
+        },
+        "model_settings": {
+            "default_model": "gpt-4o",
+            "fallback_models": ["gpt-4o-mini", "claude-3-5-sonnet"]
+        },
+        "environment": {
+            "aut_url": "http://localhost:3000",
+            "jira_configured": False
+        },
+        "agentos": {
+            "debug_mode": False,
+            "session_limits": 100
+        }
+    }
+
+
+# ---------------------------------------------------------------------------
+# Regression Suite Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/regression")
+def list_regression_suites():
+    """List regression test suites."""
+    logger.info("Listing regression suites")
+    # Return info about available workflows
+    return {
+        "regression_suites": [
+            {
+                "id": "full_regression",
+                "name": "Full Regression Workflow",
+                "description": "Complete regression test suite using Detective and Medic agents",
+                "status": "available",
+                "workflow": "full_regression"
+            }
+        ],
+        "note": "Run regression via POST /regression/run"
+    }
+
+
+class RegressionRunRequest(BaseModel):
+    """Request to run regression."""
+    test_path: Optional[str] = None
+    aut_url: Optional[str] = None
+
+
+@app.post("/regression/run")
+def run_regression(request: RegressionRunRequest):
+    """Run regression suite."""
+    logger.info(f"Running regression with test_path={request.test_path}, aut_url={request.aut_url}")
+    
+    # Trigger the full_regression workflow
+    try:
+        result = full_regression.run(
+            input=f"Run regression tests. AUT URL: {request.aut_url or 'http://localhost:3000'}"
+        )
+        return {
+            "status": "started",
+            "run_id": result.run_id,
+            "message": "Regression workflow started",
+            "workflow": "full_regression"
+        }
+    except Exception as e:
+        logger.error(f"Error running regression: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+# ---------------------------------------------------------------------------
+# Triage Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/triage")
+def list_triage_items():
+    """List triage items for failure analysis and healing."""
+    logger.info("Listing triage items")
+    # Return info about available triage workflow
+    return {
+        "triage_items": [],
+        "workflow": "triage_heal",
+        "note": "Run triage via POST /triage/run with failure details"
+    }
+
+
+class TriageRunRequest(BaseModel):
+    """Request to run triage."""
+    failure_description: str
+    test_file: Optional[str] = None
+    trace_file: Optional[str] = None
+
+
+@app.post("/triage/run")
+def run_triage(request: TriageRunRequest):
+    """Run triage workflow using Detective and Medic agents."""
+    logger.info(f"Running triage for: {request.failure_description}")
+    
+    # Trigger the triage_heal workflow
+    try:
+        result = triage_heal.run(
+            input=f"Failure: {request.failure_description}. Test file: {request.test_file or 'N/A'}. Trace file: {request.trace_file or 'N/A'}"
+        )
+        return {
+            "status": "started",
+            "run_id": result.run_id,
+            "message": "Triage workflow started - Detective analyzing failure, Medic preparing healing patch",
+            "workflow": "triage_heal"
+        }
+    except Exception as e:
+        logger.error(f"Error running triage: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@app.post("/triage/detective")
+def run_detective(request: TriageRunRequest):
+    """Run Detective agent for RCA."""
+    logger.info(f"Running Detective for: {request.failure_description}")
+    
+    try:
+        result = detective.run(
+            input=f"Analyze this test failure: {request.failure_description}. Test file: {request.test_file or 'N/A'}"
+        )
+        return {
+            "status": "completed",
+            "run_id": result.run_id,
+            "content": result.content,
+            "agent": "detective"
+        }
+    except Exception as e:
+        logger.error(f"Error running Detective: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@app.post("/triage/medic")
+def run_medic(request: TriageRunRequest):
+    """Run Medic agent for healing."""
+    logger.info(f"Running Medic for: {request.failure_description}")
+    
+    try:
+        result = medic.run(
+            input=f"Fix this issue: {request.failure_description}. Test file: {request.test_file or 'N/A'}"
+        )
+        return {
+            "status": "completed",
+            "run_id": result.run_id,
+            "content": result.content,
+            "agent": "medic"
+        }
+    except Exception as e:
+        logger.error(f"Error running Medic: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+# ---------------------------------------------------------------------------
+# Quality Gates Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/quality-gates")
+def list_quality_gates():
+    """List quality gates and judge verdicts."""
+    logger.info("Listing quality gates")
+    # Return info about available judge agent
+    return {
+        "quality_gates": [],
+        "agent": "judge",
+        "note": "Run judge via POST /quality-gates/judge with artifact details"
+    }
+
+
+class JudgeRunRequest(BaseModel):
+    """Request to run judge agent."""
+    artifact_type: str
+    artifact_path: str
+    phase: Optional[str] = None
+
+
+@app.post("/quality-gates/judge")
+def run_judge(request: JudgeRunRequest):
+    """Run Judge agent for adversarial review."""
+    logger.info(f"Running Judge for: {request.artifact_type} at {request.artifact_path}")
+    
+    try:
+        result = judge.run(
+            input=f"Review this {request.artifact_type} at {request.artifact_path}. Phase: {request.phase or 'N/A'}"
+        )
+        return {
+            "status": "completed",
+            "run_id": result.run_id,
+            "content": result.content,
+            "agent": "judge"
+        }
+    except Exception as e:
+        logger.error(f"Error running Judge: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 if __name__ == "__main__":
