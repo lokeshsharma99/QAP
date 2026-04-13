@@ -5,6 +5,7 @@ Azure DevOps Tools
 Tools for interacting with Azure DevOps API to read CI pipeline logs and create work items.
 """
 
+import base64
 import os
 from typing import Optional
 
@@ -20,8 +21,11 @@ AZURE_DEVOPS_PAT = os.getenv("AZURE_DEVOPS_PAT")
 
 def get_auth_headers() -> dict:
     """Get authentication headers for Azure DevOps API."""
+    # Azure DevOps requires base64-encoded credentials for Basic auth
+    auth_string = f"{AZURE_DEVOPS_EMAIL}:{AZURE_DEVOPS_PAT}"
+    encoded_auth = base64.b64encode(auth_string.encode()).decode()
     return {
-        "Authorization": f"Basic {AZURE_DEVOPS_EMAIL}:{AZURE_DEVOPS_PAT}",
+        "Authorization": f"Basic {encoded_auth}",
         "Content-Type": "application/json",
     }
 
