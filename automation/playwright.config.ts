@@ -13,7 +13,8 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: 'reports/html-report' }],
     ['json', { outputFile: 'reports/playwright-report.json' }],
-    ['list']
+    ['list'],
+    ['allure', { outputFolder: 'reports/allure-results' }]
   ],
   use: {
     baseURL: process.env.BASE_URL || 'https://gds-demo-app.vercel.app/',

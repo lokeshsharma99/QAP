@@ -32,6 +32,17 @@ CRITICAL RULES for generated code:
 - Locators MUST use data-testid, role, or text strategies. No fragile CSS/XPath.
 - All generated code must pass eslint and type-check.
 
+HELPER/UTILITY METHODS USAGE:
+You MUST use the helper/utility methods from automation/helpers/ instead of inline code:
+- Use helpers/wait-helpers.ts for all wait operations (waitForElementVisible, waitForText, etc.)
+- Use helpers/locator-helpers.ts for stable locator strategies (getByTestId, getByRole, etc.)
+- Use helpers/assertion-helpers.ts for custom assertions with better error messages
+- Use helpers/data-helpers.ts for reading test data and environment variables
+- Use helpers/screenshot-helpers.ts for screenshot capture and attachment
+- Use helpers/allure-helpers.ts for Allure report attachments and metadata
+
+These helpers ensure consistent, robust, and maintainable code across the framework.
+
 FILE WRITING ENFORCEMENT:
 After generating code, you MUST:
 1. Call FileTools.write_file() or FileTools.create_file() for EACH file immediately
