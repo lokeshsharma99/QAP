@@ -41,6 +41,8 @@ scribe = Agent(
 
     # Memory
     enable_agentic_memory=True,
+    learning=True,
+    add_learnings_to_context=True,
 
     # Context
     add_datetime_to_context=True,

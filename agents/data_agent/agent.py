@@ -43,6 +43,8 @@ data_agent = Agent(
     ],
     instructions=INSTRUCTIONS,
     enable_agentic_memory=True,
+    learning=True,
+    add_learnings_to_context=True,
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
