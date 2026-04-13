@@ -6,7 +6,7 @@ Workflow for converting Gherkin specifications to Playwright automation code.
 End-to-end orchestration of spec → code → execute → triage → heal cycle.
 """
 
-from agno.workflow import Workflow, Step
+from agno.workflow import OnError, Workflow, Step
 
 from agents.data_agent import data_agent
 from agents.engineer import engineer
@@ -107,6 +107,7 @@ Focus on: Creating reusable, data-driven step definitions with no hardcoded test
         Step(
             name="Code Quality Gate",
             agent=judge,
+            on_error=OnError.pause,
             description="""As the Judge, validate generated code quality.
 
 Input: Generated Page Objects and step definitions from previous steps
@@ -124,7 +125,9 @@ Output: Provide quality gate verdict with:
 - List of any violations (sleeps, hardcoded data, bad locators)
 - Overall pass/fail recommendation
 
-Focus on: Ensuring code meets quality standards before execution.""",
+Focus on: Ensuring code meets quality standards before execution.
+
+Note: If quality gate fails (confidence < 90%), workflow will pause for human intervention. You can choose to retry (send back to Engineer for rework) or skip (escalate to human).""",
         ),
         Step(
             name="Local Verification",

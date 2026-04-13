@@ -48,6 +48,18 @@ Critical Constraints:
 - Judge performs final quality gate with overall confidence
 - Scribe generates final report with all phases summarized
 
+QUALITY GATE PAUSE MECHANISM:
+- Quality gates will pause if they fail (confidence < 90%):
+  - Quality Gate - Spec: Pauses for GherkinSpec validation failures
+  - Code Quality Gate: Pauses for code quality validation failures
+  - Healing Patch Validation: Pauses for patch validation failures
+  - Final Quality Gate: Pauses for final review failures
+- When paused, human can choose to:
+  - Retry: Send work back to previous agent for rework
+  - Skip: Escalate to human with current output
+- Retry count is tracked to prevent infinite loops
+- This enables flexible intervention without forcing automatic rework
+
 Definition of Done:
 - RequirementContext generated with acceptance criteria
 - GherkinSpec generated and approved by Judge (confidence ≥90%)

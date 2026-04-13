@@ -6,7 +6,7 @@ Workflow for end-to-end regression testing orchestration.
 Full pipeline: spec → code → execute → triage → heal cycle.
 """
 
-from agno.workflow import Workflow, Step
+from agno.workflow import OnError, Workflow, Step
 
 from agents.detective import detective
 from agents.engineer import engineer
@@ -114,6 +114,7 @@ Focus on: Surgical selector-only changes, no logic modifications.""",
         Step(
             name="Validate Healing Patch",
             agent=healing_judge,
+            on_error=OnError.pause,
             description="""As the Healing Judge, validate patch is surgical.
 
 Input: HealingPatch from previous step
@@ -130,7 +131,9 @@ Output: Provide validation verdict with:
 - issues (list if invalid)
 - approval (boolean)
 
-Focus on: Ensuring patch is truly surgical and safe to apply.""",
+Focus on: Ensuring patch is truly surgical and safe to apply.
+
+Note: If validation fails (confidence < 90%), workflow will pause for human intervention. You can choose to retry (send back to Medic for rework) or skip (escalate to human).""",
         ),
         Step(
             name="Verify Healing",

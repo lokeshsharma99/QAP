@@ -6,7 +6,7 @@ End-to-end workflow from requirement to execution/report using individual agents
 Coordinates all agents: Architect, Scribe, Discovery, Librarian, Engineer, Data Agent, Detective, Medic, Judge.
 """
 
-from agno.workflow import Workflow, Step
+from agno.workflow import OnError, Workflow, Step
 
 from agents.architect import architect
 from agents.data_agent import data_agent
@@ -73,6 +73,7 @@ Focus on: Producing high-quality Gherkin spec with clear scenarios and proper da
         Step(
             name="Quality Gate - Spec",
             agent=judge,
+            on_error=OnError.pause,
             description="""As the Judge, validate GherkinSpec against DoD checklist.
 
 Input: GherkinSpec from previous step
@@ -90,7 +91,9 @@ Output: Provide JudgeVerdict with:
 - checklist_results (list)
 - feedback (if rejected)
 
-Focus on: Ensuring spec quality before proceeding to automation generation.""",
+Focus on: Ensuring spec quality before proceeding to automation generation.
+
+Note: If quality gate fails (confidence < 90%), workflow will pause for human intervention. You can choose to retry (send back to Scribe for rework) or skip (escalate to human).""",
         ),
         Step(
             name="Context Discovery",
@@ -200,6 +203,7 @@ Focus on: Creating reusable, data-driven step definitions with no hardcoded test
         Step(
             name="Code Quality Gate",
             agent=judge,
+            on_error=OnError.pause,
             description="""As the Judge, validate generated code quality.
 
 Input: Generated Page Objects and step definitions from previous steps
@@ -217,7 +221,9 @@ Output: Provide quality gate verdict with:
 - List of any violations (sleeps, hardcoded data, bad locators)
 - Overall pass/fail recommendation
 
-Focus on: Ensuring code meets quality standards before execution.""",
+Focus on: Ensuring code meets quality standards before execution.
+
+Note: If quality gate fails (confidence < 90%), workflow will pause for human intervention. You can choose to retry (send back to Engineer for rework) or skip (escalate to human).""",
         ),
         Step(
             name="Test Execution",
@@ -287,6 +293,7 @@ Focus on: Surgical selector-only changes, no logic modifications.""",
         Step(
             name="Healing Patch Validation",
             agent=healing_judge,
+            on_error=OnError.pause,
             description="""As the Healing Judge, validate patch is surgical and safe.
 
 Input: HealingPatch from previous step
@@ -304,7 +311,9 @@ Output: Provide validation verdict with:
 - issues (list if invalid)
 - approval (boolean)
 
-Focus on: Ensuring patch is truly surgical and safe to apply.""",
+Focus on: Ensuring patch is truly surgical and safe to apply.
+
+Note: If validation fails (confidence < 90%), workflow will pause for human intervention. You can choose to retry (send back to Medic for rework) or skip (escalate to human).""",
         ),
         Step(
             name="Apply and Verify Healing",
@@ -350,6 +359,7 @@ Focus on: Building knowledge for future healing and impact analysis.""",
         Step(
             name="Final Quality Gate",
             agent=judge,
+            on_error=OnError.pause,
             description="""As the Judge, perform final quality gate review.
 
 Input: All previous outputs and results
@@ -366,7 +376,9 @@ Output: Provide JudgeVerdict with:
 - checklist_results (list)
 - feedback (if rejected)
 
-Focus on: Ensuring end-to-end quality before marking workflow complete.""",
+Focus on: Ensuring end-to-end quality before marking workflow complete.
+
+Note: If quality gate fails (confidence < 90%), workflow will pause for human intervention. You can choose to retry (review again) or skip (escalate to human).""",
         ),
         Step(
             name="Report Generation",

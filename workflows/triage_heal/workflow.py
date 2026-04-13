@@ -6,7 +6,7 @@ Workflow for converting test failures into automated healing.
 End-to-end orchestration of failure → RCA → healing → verification cycle.
 """
 
-from agno.workflow import Workflow, Step
+from agno.workflow import OnError, Workflow, Step
 
 from agents.detective import detective
 from agents.engineer import engineer
@@ -93,6 +93,7 @@ Focus on: Surgical selector-only changes, no logic modifications.""",
         Step(
             name="Validate Healing Patch",
             agent=healing_judge,
+            on_error=OnError.pause,
             description="""As the Healing Judge, validate patch is surgical (confidence ≥90%, no logic changes, proper locator strategy).
 
 Input: HealingPatch from previous step
@@ -110,7 +111,9 @@ Output: Provide validation verdict with:
 - issues (list if invalid)
 - approval (boolean)
 
-Focus on: Ensuring patch is truly surgical and safe to apply.""",
+Focus on: Ensuring patch is truly surgical and safe to apply.
+
+Note: If validation fails (confidence < 90%), workflow will pause for human intervention. You can choose to retry (send back to Medic for rework) or skip (escalate to human).""",
         ),
         Step(
             name="Apply Healing Patch",
