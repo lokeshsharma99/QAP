@@ -103,6 +103,21 @@ def create_learnings_knowledge() -> Knowledge:
     return create_knowledge("Agent Learnings KB", "qap_learnings_vectors")
 
 
+def create_rca_knowledge() -> Knowledge:
+    """Create the RCA knowledge base for CI Log Analyzer agent.
+
+    Stores:
+    - Historical RCA findings from CI pipeline failures
+    - Root cause patterns and classifications
+    - Successful resolution strategies
+    - Common failure signatures
+
+    Returns:
+        Configured Knowledge instance for storing RCA learnings.
+    """
+    return create_knowledge("RCA KB", "rca_vectors")
+
+
 # ---------------------------------------------------------------------------
 # Shared Knowledge Base Instances
 # ---------------------------------------------------------------------------
@@ -111,6 +126,7 @@ _site_manifesto_knowledge: Knowledge | None = None
 _automation_scaffold_knowledge: Knowledge | None = None
 _codebase_knowledge: Knowledge | None = None
 _learnings_knowledge: Knowledge | None = None
+_rca_knowledge: Knowledge | None = None
 
 
 def get_site_manifesto_knowledge() -> Knowledge:
@@ -159,6 +175,18 @@ def get_learnings_knowledge() -> Knowledge:
     if _learnings_knowledge is None:
         _learnings_knowledge = create_learnings_knowledge()
     return _learnings_knowledge
+
+
+def get_rca_knowledge() -> Knowledge:
+    """Get or create the shared RCA knowledge base instance.
+
+    Returns:
+        Shared Knowledge instance for storing RCA learnings.
+    """
+    global _rca_knowledge
+    if _rca_knowledge is None:
+        _rca_knowledge = create_rca_knowledge()
+    return _rca_knowledge
 
 
 def create_used_data_table():

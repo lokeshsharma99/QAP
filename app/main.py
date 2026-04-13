@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from agno.os import AgentOS
 
 from agents.architect import architect
+from agents.ci_log_analyzer import ci_log_analyzer
 from agents.data_agent import data_agent
 from agents.detective import detective
 from agents.discovery import discovery
@@ -93,6 +94,7 @@ agent_os = AgentOS(
     db=agent_db,
     agents=[
         architect,
+        ci_log_analyzer,
         data_agent,
         detective,
         discovery,
@@ -309,7 +311,8 @@ def list_knowledge_bases():
             {"id": "site_manifesto_knowledge", "name": "Site Manifesto", "description": "UI crawling results and site structure"},
             {"id": "codebase_knowledge", "name": "Codebase", "description": "Source code and architecture documentation"},
             {"id": "automation_knowledge", "name": "Automation", "description": "BDD scenarios and test artifacts"},
-            {"id": "learnings_knowledge", "name": "Learnings", "description": "Agent learnings and patterns"}
+            {"id": "learnings_knowledge", "name": "Learnings", "description": "Agent learnings and patterns"},
+            {"id": "rca_knowledge", "name": "RCA", "description": "CI pipeline failure analysis and root cause patterns"}
         ]
     }
 

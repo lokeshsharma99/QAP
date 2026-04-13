@@ -42,8 +42,9 @@ curl http://localhost:8000/health
 
 ```
 Quality Autopilot
-├── 10 Agents — Architect, Scribe, Discovery, Librarian, Engineer,
-│                Data Agent, Detective, Medic, Judge, Healing Judge
+├── 11 Agents — Architect, Scribe, Discovery, Librarian, Engineer,
+│                Data Agent, Detective, Medic, Judge, Healing Judge,
+│                CI Log Analyzer
 ├── 5 Squads  — Strategy, Context, Engineering, Operations, Grooming
 ├── 6 Flows   — Spec-to-Code, Discovery Onboard, Triage-Heal, Grooming,
 │                Full Regression, Full Lifecycle
@@ -52,7 +53,7 @@ Quality Autopilot
 
 ## Agents
 
-Quality Autopilot uses 10 specialized AI agents, each with a specific Primary Skill and tool set.
+Quality Autopilot uses 11 specialized AI agents, each with a specific Primary Skill and tool set.
 
 ### Architect
 - **Primary Skill:** `semantic_search`
@@ -133,6 +134,15 @@ Quality Autopilot uses 10 specialized AI agents, each with a specific Primary Sk
 - **When to Use:** Validating healing patches for safety and compliance
 - **Input:** HealingPatch
 - **Output:** Validation results (confidence, surgical edit check)
+
+### CI Log Analyzer
+- **Primary Skill:** `rca_analysis`
+- **Role:** Analyzes Azure DevOps CI pipeline logs, performs RCA with historical knowledge, creates work items after HITL approval
+- **Tools:** Azure DevOps API tools (pipeline logs, failed test filtering, work item creation), ReasoningTools
+- **When to Use:** Analyzing CI pipeline failures and creating Azure DevOps work items with RCA findings
+- **Input:** Azure DevOps project, pipeline ID, run ID
+- **Output:** RCA findings, Azure DevOps work item (after HITL approval)
+- **Knowledge Base:** RCA knowledge base for storing historical RCA learnings and patterns
 
 ## Teams
 

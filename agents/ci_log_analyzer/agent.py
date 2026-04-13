@@ -1,0 +1,104 @@
+"""
+CI Log Analyzer Agent
+=====================
+
+Analyzes Azure DevOps CI pipeline logs, performs RCA with learning/memory,
+and creates Azure DevOps tickets after HITL approval.
+Primary Skill: rca_analysis
+"""
+
+import logging
+
+from agno.agent import Agent
+from agno.approval import approval
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
+from agno.tools.reasoning import ReasoningTools
+
+from agents.ci_log_analyzer.instructions import INSTRUCTIONS
+from agents.ci_log_analyzer.tools import (
+    create_work_item,
+    get_build_logs,
+    get_deployment_logs,
+    get_failed_test_logs,
+    get_pipeline_logs,
+    get_pipeline_runs,
+)
+from app.settings import MODEL, agent_db
+from db.session import get_rca_knowledge
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Create Knowledge Base
+# ---------------------------------------------------------------------------
+# RCA-specific knowledge base for storing historical RCA learnings
+rca_knowledge = get_rca_knowledge()
+
+if rca_knowledge is not None:
+    logger.info("CI Log Analyzer: RCA knowledge base loaded")
+else:
+    logger.warning("CI Log Analyzer: RCA knowledge base is None - historical RCA unavailable")
+
+# ---------------------------------------------------------------------------
+# Build Tools List
+# ---------------------------------------------------------------------------
+tools = [
+    ReasoningTools(
+        enable_think=True,
+        enable_analyze=True,
+        add_instructions=True,
+        add_few_shot=True,
+    ),
+    get_pipeline_runs,
+    get_pipeline_logs,
+    get_failed_test_logs,
+    get_build_logs,
+    get_deployment_logs,
+    create_work_item,
+]
+
+# ---------------------------------------------------------------------------
+# Create Agent
+# ---------------------------------------------------------------------------
+ci_log_analyzer = Agent(
+    # Identity
+    id="ci_log_analyzer",
+    name="CI Log Analyzer",
+    role="Analyze Azure DevOps CI pipeline logs, perform RCA with historical knowledge, create work items after HITL approval",
+
+    # Model
+    model=MODEL,
+
+    # Data
+    db=agent_db,
+    knowledge=rca_knowledge if rca_knowledge else None,
+    search_knowledge=rca_knowledge is not None,
+
+    # Capabilities
+    tools=tools,
+
+    # Instructions
+    instructions=INSTRUCTIONS,
+
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
+
+    # Memory
+    enable_agentic_memory=True,
+    learning=True,
+    add_learnings_to_context=True,
+    update_memory_on_run=True,
+    enable_session_summaries=True,
+
+    # Context
+    add_datetime_to_context=True,
+    add_history_to_context=True,
+    read_chat_history=True,
+    num_history_runs=5,
+
+    # Output
+    markdown=True,
+)
