@@ -18,7 +18,6 @@ from workflows.regression_maintenance.instructions import INSTRUCTIONS
 regression_maintenance = Workflow(
     id="regression_maintenance",
     name="Regression Suite Maintenance",
-    instructions=INSTRUCTIONS,
     steps=[
         # Step 1: Detect AUT Changes (Discovery Agent)
         {
