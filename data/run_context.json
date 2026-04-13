@@ -1,0 +1,62 @@
+{
+  "$schema": "./support/schemas/run_context.schema.json",
+  "test_data": {
+    "personal_details": {
+      "valid": {
+        "first_name": "John",
+        "last_name": "Smith",
+        "date_of_birth": {
+          "day": "15",
+          "month": "06",
+          "year": "1990"
+        },
+        "national_insurance_number": "QQ123456C",
+        "description": "Valid personal details for successful form submission"
+      },
+      "minor": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "date_of_birth": {
+          "day": "15",
+          "month": "06",
+          "year": "2010"
+        },
+        "national_insurance_number": "AB123456C",
+        "description": "User under 18 years of age"
+      },
+      "future_dob": {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "date_of_birth": {
+          "day": "15",
+          "month": "06",
+          "year": "2099"
+        },
+        "national_insurance_number": "WX123456Z",
+        "description": "Future date of birth"
+      },
+      "valid_ni_variations": [
+        "AB123456C",
+        "WX123456Z",
+        "TY789012A"
+      ],
+      "invalid_ni": {
+        "too_short": "QQ1234",
+        "all_digits": "123456789",
+        "all_letters": "QQQQQQQQQ",
+        "invalid_prefix": "DQ123456C"
+      }
+    },
+    "step_navigation": {
+      "personal_details": "Personal Details",
+      "contact_details": "Contact Details",
+      "additional_info": "Additional Information",
+      "review": "Check Your Answers"
+    }
+  },
+  "feature_tags": {
+    "GDS-4": {
+      "personal_details": "@GDS-4 @personal-details @universal-credit @wizard-step-1"
+    }
+  }
+}

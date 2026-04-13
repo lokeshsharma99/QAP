@@ -1,0 +1,91 @@
+name: Jira Integration Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticket_key:
+        description: 'Jira ticket key (e.g., GDS-4)'
+        required: true
+        type: string
+  repository_dispatch:
+    types: [jira-webhook]
+
+jobs:
+  generate-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Fetch Jira ticket
+        env:
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_USERNAME: ${{ secrets.JIRA_USERNAME }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          TICKET_KEY="${{ github.event.inputs.ticket_key }}"
+          if [ -z "$TICKET_KEY" ]; then
+            TICKET_KEY="${{ github.event.client_payload.issue_key }}"
+          fi
+          echo "Processing Jira ticket: $TICKET_KEY"
+          
+          python -c "
+          import os
+          import requests
+          from requests.auth import HTTPBasicAuth
+          
+          jira_url = os.getenv('JIRA_URL')
+          jira_username = os.getenv('JIRA_USERNAME')
+          jira_api_token = os.getenv('JIRA_API_TOKEN')
+          ticket_key = os.getenv('TICKET_KEY', '$TICKET_KEY')
+          
+          api_url = f'{jira_url}/rest/api/3/issue/{ticket_key}'
+          response = requests.get(
+              api_url,
+              auth=HTTPBasicAuth(jira_username, jira_api_token),
+              headers={'Accept': 'application/json'}
+          )
+          
+          if response.status_code == 200:
+              data = response.json()
+              print(f'Ticket: {data.get(\"key\")}')
+              print(f'Summary: {data.get(\"fields\", {}).get(\"summary\")}')
+              print(f'Status: {data.get(\"fields\", {}).get(\"status\", {}).get(\"name\")}')
+          else:
+              print(f'Failed to fetch ticket: {response.status_code}')
+              exit(1)
+          "
+
+      - name: Build and start Docker services
+        run: |
+          docker compose build
+          docker compose up -d
+
+      - name: Wait for API to be ready
+        run: |
+          timeout 120 bash -c 'until curl -s http://localhost:8000/health > /dev/null; do sleep 5; done'
+
+      - name: Trigger Strategy Team via API
+        env:
+          TICKET_KEY: ${{ github.event.inputs.ticket_key }}
+        run: |
+          TICKET_KEY="${TICKET_KEY:-${{ github.event.client_payload.issue_key }}}"
+          curl -X POST http://localhost:8000/api/teams/strategy/run \
+            -H "Content-Type: application/json" \
+            -d "{\"message\": \"Process Jira ticket: $TICKET_KEY\"}"
+
+      - name: Stop services
+        if: always()
+        run: |
+          docker compose down

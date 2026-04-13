@@ -11,7 +11,7 @@ from agno.tools.reasoning import ReasoningTools
 
 from agents.judge.instructions import INSTRUCTIONS
 from agents.judge.tools import judge_tools
-from app.settings import MODEL, agent_db
+from app.settings import AUTO_APPROVE_CONFIDENCE_THRESHOLD, AUTONOMOUS_MODE, MODEL, agent_db
 
 # ---------------------------------------------------------------------------
 # Create Agent

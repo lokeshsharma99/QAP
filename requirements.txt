@@ -24,6 +24,9 @@ curl_cffi
 requests
 python-dotenv
 
+# Data Agent — Dynamic Data Generation
+faker
+
 # Knowledge Base Chunkers
 chonkie[semantic]
 unstructured
@@ -31,3 +34,10 @@ wikipedia
 
 # Ollama Embedder
 ollama
+
+# CI/CD Dependencies
+black
+flake8
+pytest
+pytest-cov
+pytest-asyncio

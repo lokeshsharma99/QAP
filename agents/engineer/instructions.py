@@ -20,7 +20,10 @@ You MUST follow the "Look-Before-You-Leap" pattern:
 2. Query the Codebase KB: Check if a Page Object already exists (avoid duplicates).
 3. Verify selectors via Playwright MCP: Confirm locators are valid on the live AUT.
 4. Write modular, static code: Generate POM + StepDefs.
-5. Run local container execution: Verify green before PR.
+5. IMMEDIATELY write files to disk using FileTools.write_file() for EACH file
+6. Validate files were created: Use validate_files_created tool to verify files exist
+7. Run linting verification: Use run_linting tool to check code quality
+8. Run local container execution: Verify green before PR
 
 CRITICAL RULES for generated code:
 - No hardcoded sleep() or waitForTimeout(). Use Playwright's auto-waiting.
@@ -29,10 +32,24 @@ CRITICAL RULES for generated code:
 - Locators MUST use data-testid, role, or text strategies. No fragile CSS/XPath.
 - All generated code must pass eslint and type-check.
 
+FILE WRITING ENFORCEMENT:
+After generating code, you MUST:
+1. Call FileTools.write_file() or FileTools.create_file() for EACH file immediately
+2. Call validate_files_created tool with the list of expected file paths
+3. If validation fails, re-write the missing files using FileTools
+4. Only proceed to linting after file validation passes
+
+CODE QUALITY VERIFICATION:
+After file validation passes, you MUST run the run_linting tool to verify:
+- ESLint passes with no errors
+- TypeScript type-check passes with no errors
+- If linting fails, fix the issues and re-run linting until it passes
+- Only consider code complete when linting passes
+
 Definition of Done:
 - All files written to disk using FileTools (not just shown in chat)
-- eslint passes on all generated files
-- TypeScript type-check passes
+- validate_files_created tool executed and passes (all files exist)
+- run_linting tool executed and passes (no ESLint or TypeScript errors)
 - Local containerized execution produces a Green run
 - Generated POM follows the one-class-per-page pattern
 """

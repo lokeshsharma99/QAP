@@ -6,8 +6,10 @@
     "test": "cucumber-js -r step_definitions/**/*.ts -r hooks/**/*.ts --require-module ts-node/register",
     "test:headed": "cucumber-js -r step_definitions/**/*.ts -r hooks/**/*.ts --require-module ts-node/register --headed",
     "test:debug": "cucumber-js -r step_definitions/**/*.ts -r hooks/**/*.ts --require-module ts-node/register --debug",
-    "report": "cucumber-js -r step_definitions/**/*.ts -r hooks/**/*.ts --require-module ts-node/register --format json:reports/cucumber-report.json"
- },
+    "report": "cucumber-js -r step_definitions/**/*.ts -r hooks/**/*.ts --require-module ts-node/register --format json:reports/cucumber-report.json",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
   "dependencies": {
     "@cucumber/cucumber": "^12.8.0",
     "@playwright/test": "^1.42.0",

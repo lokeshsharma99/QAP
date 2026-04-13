@@ -6,6 +6,8 @@ Converts RequirementContext to Gherkin specifications (.feature files).
 Primary Skill: gherkin_formatter
 """
 
+from pathlib import Path
+
 from agno.agent import Agent
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
@@ -31,7 +33,7 @@ scribe = Agent(
     # Capabilities
     tools=[
         ReasoningTools(add_instructions=True),
-        FileTools(),
+        FileTools(Path("automation")),
     ],
 
     # Instructions

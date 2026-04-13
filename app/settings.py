@@ -15,7 +15,10 @@ from db import get_postgres_db
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
-agent_db = get_postgres_db()
+try:
+    agent_db = get_postgres_db()
+except Exception:
+    agent_db = None
 
 # ---------------------------------------------------------------------------
 # Models
@@ -64,8 +67,22 @@ def get_model(model_id: str | None = None) -> OpenAILike:
 RUNTIME_ENV = getenv("RUNTIME_ENV", "dev")
 
 # ---------------------------------------------------------------------------
+# Autonomous Mode Configuration
+# ---------------------------------------------------------------------------
+AUTONOMOUS_MODE = getenv("AUTONOMOUS_MODE", "false").lower() in ["true", "1", "yes"]
+AUTO_APPROVE_CONFIDENCE_THRESHOLD = float(getenv("AUTO_APPROVE_CONFIDENCE_THRESHOLD", "90.0"))
+
+# ---------------------------------------------------------------------------
 # AUT Configuration
 # ---------------------------------------------------------------------------
 AUT_BASE_URL = getenv("AUT_BASE_URL", "https://gds-demo-app.vercel.app/")
 AUT_AUTH_USER = getenv("AUT_AUTH_USER", "")
 AUT_AUTH_PASS = getenv("AUT_AUTH_PASS", "")
+
+# ---------------------------------------------------------------------------
+# GitHub Configuration
+# ---------------------------------------------------------------------------
+GITHUB_TOKEN = getenv("GITHUB_TOKEN", "")
+GITHUB_REPO = getenv("GITHUB_REPO", "")
+GITHUB_OWNER = getenv("GITHUB_OWNER", "")
+GITHUB_DEFAULT_BRANCH = getenv("GITHUB_DEFAULT_BRANCH", "main")

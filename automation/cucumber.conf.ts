@@ -24,6 +24,6 @@ export default defineConfig({
     browser: 'chromium',
     headless: true,
     timeout: 30000,
-    baseURL: process.env.BASE_URL || 'https://demo.nopcommerce.com/'
+    baseURL: process.env.BASE_URL || 'https://gds-demo-app.vercel.app/'
   }
 });

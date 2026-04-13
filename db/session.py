@@ -89,6 +89,20 @@ def create_codebase_knowledge() -> Knowledge:
     return create_knowledge("Codebase KB", "codebase_vectors")
 
 
+def create_learnings_knowledge() -> Knowledge:
+    """Create the Learnings knowledge base for persistent agent insights.
+
+    Stores:
+    - Stable Selector insights from successful healing
+    - Common failure patterns from Detective analysis
+    - Framework conventions from codebase analysis
+
+    Returns:
+        Configured Knowledge instance for storing agent learnings.
+    """
+    return create_knowledge("Agent Learnings KB", "qap_learnings_vectors")
+
+
 # ---------------------------------------------------------------------------
 # Shared Knowledge Base Instances
 # ---------------------------------------------------------------------------
@@ -96,6 +110,7 @@ def create_codebase_knowledge() -> Knowledge:
 _site_manifesto_knowledge: Knowledge | None = None
 _automation_scaffold_knowledge: Knowledge | None = None
 _codebase_knowledge: Knowledge | None = None
+_learnings_knowledge: Knowledge | None = None
 
 
 def get_site_manifesto_knowledge() -> Knowledge:
@@ -132,3 +147,117 @@ def get_codebase_knowledge() -> Knowledge:
     if _codebase_knowledge is None:
         _codebase_knowledge = create_codebase_knowledge()
     return _codebase_knowledge
+
+
+def get_learnings_knowledge() -> Knowledge:
+    """Get or create the shared Learnings knowledge base instance.
+
+    Returns:
+        Shared Knowledge instance for storing agent learnings.
+    """
+    global _learnings_knowledge
+    if _learnings_knowledge is None:
+        _learnings_knowledge = create_learnings_knowledge()
+    return _learnings_knowledge
+
+
+def create_used_data_table():
+    """Create the used_data tracking table for shared state tracking.
+
+    This table tracks generated test data to prevent duplicates across test runs.
+    """
+    postgres_db = get_postgres_db()
+    
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS used_data (
+        id SERIAL PRIMARY KEY,
+        unique_id VARCHAR(255) UNIQUE NOT NULL,
+        field_name VARCHAR(100) NOT NULL,
+        field_value TEXT NOT NULL,
+        test_run_id VARCHAR(255),
+        generated_at TIMESTAMP DEFAULT NOW(),
+        used_at TIMESTAMP,
+        status VARCHAR(50) DEFAULT 'available'
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_used_data_unique_id ON used_data(unique_id);
+    CREATE INDEX IF NOT EXISTS idx_used_data_field_value ON used_data(field_name, field_value);
+    CREATE INDEX IF NOT EXISTS idx_used_data_status ON used_data(status);
+    """
+    
+    postgres_db.run_sql(create_table_sql)
+    return postgres_db
+
+
+def check_data_exists(field_name: str, field_value: str) -> bool:
+    """Check if data already exists in used_data tracking table.
+
+    Args:
+        field_name: Name of the field to check
+        field_value: Value to check for existence
+
+    Returns:
+        True if data exists, False otherwise
+    """
+    postgres_db = get_postgres_db()
+    
+    check_sql = """
+    SELECT COUNT(*) as count FROM used_data 
+    WHERE field_name = %s AND field_value = %s AND status = 'available'
+    """
+    
+    result = postgres_db.run_sql(check_sql, params=(field_name, field_value))
+    return result[0]['count'] > 0 if result else False
+
+
+def insert_used_data(unique_id: str, field_name: str, field_value: str, test_run_id: str = None):
+    """Insert generated data into used_data tracking table.
+
+    Args:
+        unique_id: Unique identifier for the test user
+        field_name: Name of the field
+        field_value: Value of the field
+        test_run_id: Optional test run identifier
+    """
+    postgres_db = get_postgres_db()
+    
+    insert_sql = """
+    INSERT INTO used_data (unique_id, field_name, field_value, test_run_id, generated_at)
+    VALUES (%s, %s, %s, %s, NOW())
+    ON CONFLICT (unique_id) DO NOTHING
+    """
+    
+    postgres_db.run_sql(insert_sql, params=(unique_id, field_name, field_value, test_run_id))
+
+
+def mark_data_used(unique_id: str):
+    """Mark data as used in the tracking table.
+
+    Args:
+        unique_id: Unique identifier for the test user
+    """
+    postgres_db = get_postgres_db()
+    
+    update_sql = """
+    UPDATE used_data 
+    SET status = 'used', used_at = NOW() 
+    WHERE unique_id = %s
+    """
+    
+    postgres_db.run_sql(update_sql, params=(unique_id))
+
+
+def cleanup_old_data(days_old: int = 7):
+    """Clean up old data from the tracking table.
+
+    Args:
+        days_old: Number of days to keep data (default: 7)
+    """
+    postgres_db = get_postgres_db()
+    
+    cleanup_sql = """
+    DELETE FROM used_data 
+    WHERE generated_at < NOW() - INTERVAL '%s days'
+    """
+    
+    postgres_db.run_sql(cleanup_sql, params=(days_old,))

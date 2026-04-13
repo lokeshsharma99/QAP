@@ -14,7 +14,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.architect.instructions import INSTRUCTIONS
-from agents.architect.tools import fetch_jira_ticket
+from agents.architect.tools import add_jira_comment, fetch_jira_ticket
 from app.settings import MODEL, agent_db
 from db.session import get_site_manifesto_knowledge, get_codebase_knowledge
 
@@ -56,9 +56,10 @@ else:
 # Jira API Tool (if configured)
 if os.getenv("JIRA_URL") and os.getenv("JIRA_API_TOKEN"):
     tools.append(fetch_jira_ticket)
-    logger.info("Architect: Jira API tool loaded")
+    tools.append(add_jira_comment)
+    logger.info("Architect: Jira API tools loaded")
 else:
-    logger.info("Architect: Jira API tool not configured (missing JIRA_URL or JIRA_API_TOKEN)")
+    logger.info("Architect: Jira API tools not configured (missing JIRA_URL or JIRA_API_TOKEN)")
 
 # ---------------------------------------------------------------------------
 # Create Agent

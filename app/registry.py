@@ -7,6 +7,8 @@ Models and tools are gated on their provider's API key so
 the registry stays importable regardless of which keys are configured.
 """
 
+from pathlib import Path
+
 from agno.registry import Registry
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
@@ -30,7 +32,7 @@ def _get_tools() -> list:
     """Build the tool list for Quality Autopilot."""
     tools: list = [
         CodingTools(),
-        FileTools(),
+        FileTools(Path("automation")),
         ReasoningTools(add_instructions=True),
     ]
     return tools
