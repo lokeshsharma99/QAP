@@ -12,6 +12,10 @@ from typing import Optional
 import httpx
 from agno.approval import approval
 from agno.tools import tool
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Azure DevOps configuration
 AZURE_DEVOPS_URL = os.getenv("AZURE_DEVOPS_URL")

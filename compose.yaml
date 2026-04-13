@@ -71,6 +71,10 @@ services:
       - JIRA_URL=${JIRA_URL:-https://lokeshsharma2.atlassian.net}
       - JIRA_USERNAME=${JIRA_USERNAME:-kirtisharma0691@gmail.com}
       - JIRA_API_TOKEN=${JIRA_API_TOKEN}
+      # Azure DevOps
+      - AZURE_DEVOPS_URL=${AZURE_DEVOPS_URL}
+      - AZURE_DEVOPS_EMAIL=${AZURE_DEVOPS_EMAIL}
+      - AZURE_DEVOPS_PAT=${AZURE_DEVOPS_PAT}
     depends_on:
       - qap-db
       - qap-playwright-mcp
