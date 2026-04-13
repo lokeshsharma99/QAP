@@ -6,6 +6,7 @@ Agent for regression suite curation and maintenance.
 """
 
 import logging
+from pathlib import Path
 
 from agno.agent import Agent
 from agno.tools.file import FileTools
