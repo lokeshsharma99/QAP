@@ -10,6 +10,7 @@ import logging
 import os
 
 from agno.agent import Agent
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
@@ -88,6 +89,12 @@ architect = Agent(
 
     # Instructions
     instructions=INSTRUCTIONS,
+
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
 
     # Memory
     enable_agentic_memory=True,

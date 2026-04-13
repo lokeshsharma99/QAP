@@ -539,6 +539,44 @@ AUT_AUTH_PASS=your_password
 | [CLAUDE.md](./CLAUDE.md) | Quick reference overview |
 | [.instructions.md](./.instructions.md) | AI agent system instructions |
 
+## Security
+
+Quality Autopilot implements multiple layers of security through Agno guardrails to protect against common threats:
+
+### Guardrails
+
+**PII Detection Guardrail**
+- Applied to: Architect, Scribe
+- Purpose: Prevents personally identifiable information from entering the system
+- Detects: Email addresses, phone numbers, SSNs, credit card numbers, addresses
+- Action: Blocks input containing PII and requests sanitized input
+
+**Prompt Injection Guardrail**
+- Applied to: Architect, Scribe, Engineer
+- Purpose: Prevents malicious prompt injection attacks
+- Detects: Attempts to bypass agent instructions, jailbreak attempts, system prompt overrides
+- Action: Blocks suspicious input and maintains agent instruction integrity
+
+**OpenAI Moderation Guardrail**
+- Applied to: Scribe, Engineer
+- Purpose: Ensures generated content complies with OpenAI content policies
+- Detects: NSFW content, hate speech, violence, self-harm, sexual content
+- Action: Blocks policy-violating content generation
+
+### Quality Gate Pause Mechanism
+
+Critical quality gates use `OnError.pause` for human-in-the-loop intervention:
+- Quality Gate - Spec (Judge)
+- Code Quality Gate (Judge)
+- Healing Patch Validation (Healing Judge)
+- Final Quality Gate (Judge)
+
+When a quality gate fails (confidence < 90%):
+- Workflow pauses at the quality gate step
+- User can choose to retry (send back for rework) or skip (escalate to human)
+- Retry count is tracked to prevent infinite loops
+- Enables flexible intervention without forcing automatic rework
+
 ## Development
 
 ```bash

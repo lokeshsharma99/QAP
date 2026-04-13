@@ -9,6 +9,7 @@ Primary Skill: gherkin_formatter
 from pathlib import Path
 
 from agno.agent import Agent
+from agno.guardrails import OpenAIModerationGuardrail, PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
 
@@ -43,6 +44,13 @@ scribe = Agent(
 
     # Instructions
     instructions=INSTRUCTIONS,
+
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+        OpenAIModerationGuardrail(),
+    ],
 
     # Memory
     enable_agentic_memory=True,

@@ -9,6 +9,7 @@ Primary Skill: file_writer
 from pathlib import Path
 
 from agno.agent import Agent
+from agno.guardrails import OpenAIModerationGuardrail, PromptInjectionGuardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
@@ -85,6 +86,13 @@ engineer = Agent(
     search_knowledge=automation_knowledge is not None,
     tools=engineer_tools,
     instructions=INSTRUCTIONS,
+
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PromptInjectionGuardrail(),
+        OpenAIModerationGuardrail(),
+    ],
+
     enable_agentic_memory=True,
     learning=True,
     add_learnings_to_context=True,
