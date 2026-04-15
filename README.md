@@ -526,6 +526,17 @@ The Quality Autopilot system includes automated regression suite curation to kee
 - Autonomous mode configured (auto-approve at ≥90% confidence)
 - Remaining: Deploy to Production, Harden Security, Production Monitoring
 
+**Phase 7: Semantica Integration** ✅ Complete
+- Semantica framework integrated with all 13 agents
+- SemanticaContext class created for configuration and feature flags
+- Semantica service layer created (DecisionTrackingService, TemporalService, ProvenanceService, ContextGraphService)
+- SemanticaAgent base class extending agno.Agent with Semantica hooks
+- Knowledge bases augmented with ContextGraph capability
+- Per-agent feature flags added (13 agents, all disabled by default)
+- Per-feature feature flags added (decision tracking, temporal, provenance - all disabled by default)
+- API verified to start successfully with Semantica disabled
+- Gate 7 Cleared (8/8 criteria passing)
+
 ## Advanced Features
 
 ### Memory and Session Management
@@ -628,6 +639,70 @@ asyncio.run(main())
 ```
 
 See `examples/agentos_client_example.py` for a complete example.
+
+### Semantica Integration (Semantic Decision Intelligence)
+
+Quality Autopilot integrates the Semantica framework to add semantic decision intelligence, temporal queries, and provenance tracking to all agents.
+
+**What is Semantica?**
+Semantica is a semantic layer framework that provides:
+- **Decision Tracking**: Records agent decisions with causal chains and reasoning
+- **Temporal Intelligence**: Point-in-time graph snapshots and temporal query rewriting
+- **Provenance Tracking**: W3C PROV-O compliant data lineage and algorithm tracing
+- **Context Graphs**: Semantic knowledge graphs for cross-agent decision influence analysis
+
+**Architecture:**
+- `app/semantica_config.py` - SemanticaContext class for configuration and feature flags
+- `app/semantica_service.py` - Service layer for DecisionTrackingService, TemporalService, ProvenanceService, ContextGraphService
+- `agents/base/semantica_agent.py` - SemanticaAgent base class extending agno.Agent with Semantica hooks
+- `db/session.py` - Knowledge bases augmented with ContextGraph capability
+
+**Feature Flags (All Disabled by Default):**
+
+Per-Agent Flags (13 agents):
+```bash
+SEMANTICA_DETECTIVE_ENABLED=false
+SEMANTICA_MEDIC_ENABLED=false
+SEMANTICA_JUDGE_ENABLED=false
+SEMANTICA_CI_LOG_ANALYZER_ENABLED=false
+SEMANTICA_ARCHITECT_ENABLED=false
+SEMANTICA_SCRIBE_ENABLED=false
+SEMANTICA_ENGINEER_ENABLED=false
+SEMANTICA_DISCOVERY_ENABLED=false
+SEMANTICA_LIBRARIAN_ENABLED=false
+SEMANTICA_CURATOR_ENABLED=false
+SEMANTICA_DATA_AGENT_ENABLED=false
+SEMANTICA_TECHNICAL_TESTER_ENABLED=false
+SEMANTICA_HEALING_JUDGE_ENABLED=false
+```
+
+Per-Feature Flags:
+```bash
+SEMANTICA_DECISION_TRACKING_ENABLED=false
+SEMANTICA_TEMPORAL_ENABLED=false
+SEMANTICA_PROVENANCE_ENABLED=false
+```
+
+**Global Enable:**
+```bash
+SEMANTICA_ENABLED=false
+SEMANTICA_GRAPH_BACKEND=pgvector
+```
+
+**How to Enable:**
+1. Set `SEMANTICA_ENABLED=true` in `.env`
+2. Set per-agent flags for agents you want to track (e.g., `SEMANTICA_DETECTIVE_ENABLED=true`)
+3. Set per-feature flags for capabilities you want to enable (e.g., `SEMANTICA_DECISION_TRACKING_ENABLED=true`)
+4. Restart the API: `docker compose restart qap-api`
+
+**Gradual Rollout:**
+All Semantica features are disabled by default to ensure zero impact on existing functionality. Enable features incrementally per agent and per capability for controlled rollout and monitoring.
+
+**Current Status:**
+- All 13 agents extend SemanticaAgent base class
+- Semantica infrastructure complete and production-ready
+- Feature flags configured for controlled rollout
+- API verified to start successfully with Semantica disabled
 
 ## AUT (Application Under Test)
 
