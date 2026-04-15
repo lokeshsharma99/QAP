@@ -7,11 +7,11 @@ Performs surgical edits to fix broken locators.
 
 from pathlib import Path
 
-from agno.agent import Agent
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.medic.instructions import INSTRUCTIONS
 from agents.medic.tools import (
     apply_surgical_edit,
@@ -42,7 +42,7 @@ medic_tools = [
     verify_edit_safety,
 ]
 
-medic = Agent(
+medic = SemanticaAgent(
     id="medic",
     name="Medic",
     role="Perform surgical edits to fix broken locators (selector changes only, no logic changes)",

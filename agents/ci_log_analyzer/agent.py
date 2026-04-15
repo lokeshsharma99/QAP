@@ -9,14 +9,16 @@ Primary Skill: rca_analysis
 
 import logging
 
-from agno.agent import Agent
 from agno.approval import approval
 from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.ci_log_analyzer.instructions import INSTRUCTIONS
 from agents.ci_log_analyzer.tools import (
     create_work_item,
+    get_log_file,
+    get_pipeline_logs,
     get_pipeline_runs,
 )
 from app.settings import MODEL, agent_db
@@ -46,13 +48,15 @@ tools = [
         add_few_shot=True,
     ),
     get_pipeline_runs,
+    get_pipeline_logs,
+    get_log_file,
     create_work_item,
 ]
 
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-ci_log_analyzer = Agent(
+ci_log_analyzer = SemanticaAgent(
     # Identity
     id="ci_log_analyzer",
     name="CI Log Analyzer",
@@ -83,13 +87,13 @@ ci_log_analyzer = Agent(
     learning=True,
     add_learnings_to_context=True,
     update_memory_on_run=True,
-    enable_session_summaries=True,
+    enable_session_summaries=False,  # Disabled to reduce context window
 
     # Context
     add_datetime_to_context=True,
-    add_history_to_context=True,
-    read_chat_history=True,
-    num_history_runs=5,
+    add_history_to_context=False,  # Disabled to prevent context overflow
+    read_chat_history=False,  # Disabled to prevent context overflow
+    num_history_runs=0,
 
     # Output
     markdown=True,

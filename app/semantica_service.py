@@ -10,12 +10,7 @@ and context graph services with feature flag support.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from app.semantica_config import (
-    SemanticaContext,
-    is_decision_tracking_enabled,
-    is_provenance_enabled,
-    is_temporal_enabled,
-)
+from app.semantica_config import SemanticaContext
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +43,7 @@ class DecisionTrackingService:
         Returns:
             Decision ID if successful, None if Semantica is disabled or fails
         """
-        if not is_decision_tracking_enabled():
+        if not SemanticaContext.is_decision_tracking_enabled():
             return None
 
         context_graph = SemanticaContext.get_context_graph()
@@ -87,7 +82,7 @@ class DecisionTrackingService:
         Returns:
             True if successful, False otherwise
         """
-        if not is_decision_tracking_enabled():
+        if not SemanticaContext.is_decision_tracking_enabled():
             return False
 
         context_graph = SemanticaContext.get_context_graph()
@@ -114,7 +109,7 @@ class DecisionTrackingService:
         Returns:
             List of decisions in the causal chain, or None if Semantica is disabled
         """
-        if not is_decision_tracking_enabled():
+        if not SemanticaContext.is_decision_tracking_enabled():
             return None
 
         context_graph = SemanticaContext.get_context_graph()
@@ -143,7 +138,7 @@ class DecisionTrackingService:
         Returns:
             List of similar decisions, or None if Semantica is disabled
         """
-        if not is_decision_tracking_enabled():
+        if not SemanticaContext.is_decision_tracking_enabled():
             return None
 
         context_graph = SemanticaContext.get_context_graph()
@@ -166,7 +161,7 @@ class DecisionTrackingService:
         Returns:
             Impact analysis results, or None if Semantica is disabled
         """
-        if not is_decision_tracking_enabled():
+        if not SemanticaContext.is_decision_tracking_enabled():
             return None
 
         context_graph = SemanticaContext.get_context_graph()
@@ -193,7 +188,7 @@ class DecisionTrackingService:
         Returns:
             Compliance check results, or None if Semantica is disabled
         """
-        if not is_decision_tracking_enabled():
+        if not SemanticaContext.is_decision_tracking_enabled():
             return None
 
         context_graph = SemanticaContext.get_context_graph()
@@ -223,7 +218,7 @@ class TemporalService:
         Returns:
             Graph snapshot at the specified time, or None if Semantica is disabled
         """
-        if not is_temporal_enabled():
+        if not SemanticaContext.is_temporal_enabled():
             return None
 
         context_graph = SemanticaContext.get_context_graph()
@@ -246,7 +241,7 @@ class TemporalService:
         Returns:
             Parsed temporal intent with rewritten query, or None if Semantica is disabled
         """
-        if not is_temporal_enabled():
+        if not SemanticaContext.is_temporal_enabled():
             return None
 
         try:
@@ -272,7 +267,7 @@ class TemporalService:
         Returns:
             Tuple of (start_date, end_date) in UTC, or None if Semantica is disabled
         """
-        if not is_temporal_enabled():
+        if not SemanticaContext.is_temporal_enabled():
             return None
 
         try:
@@ -307,7 +302,7 @@ class ProvenanceService:
         Returns:
             True if successful, False otherwise
         """
-        if not is_provenance_enabled():
+        if not SemanticaContext.is_provenance_enabled():
             return False
 
         try:
@@ -340,7 +335,7 @@ class ProvenanceService:
         Returns:
             True if successful, False otherwise
         """
-        if not is_provenance_enabled():
+        if not SemanticaContext.is_provenance_enabled():
             return False
 
         try:
@@ -367,7 +362,7 @@ class ProvenanceService:
         Returns:
             Lineage information, or None if Semantica is disabled
         """
-        if not is_provenance_enabled():
+        if not SemanticaContext.is_provenance_enabled():
             return None
 
         try:
@@ -419,7 +414,7 @@ class ContextGraphService:
         Returns:
             Influence analysis results, or None if Semantica is disabled
         """
-        if not is_decision_tracking_enabled():
+        if not SemanticaContext.is_decision_tracking_enabled():
             return None
 
         context_graph = SemanticaContext.get_context_graph()

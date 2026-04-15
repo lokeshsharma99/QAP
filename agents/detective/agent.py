@@ -7,11 +7,11 @@ Analyzes test failures to identify root causes.
 
 from pathlib import Path
 
-from agno.agent import Agent
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.detective.instructions import INSTRUCTIONS
 from agents.detective.tools import analyze_trace_file
 from app.settings import MODEL
@@ -32,7 +32,7 @@ detective_tools = [
     analyze_trace_file,
 ]
 
-detective = Agent(
+detective = SemanticaAgent(
     id="detective",
     name="Detective",
     role="Analyze test failures to identify root causes and determine healability",
