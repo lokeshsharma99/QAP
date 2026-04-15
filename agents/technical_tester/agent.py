@@ -10,12 +10,12 @@ Primary Skill: test_generation
 import logging
 from pathlib import Path
 
-from agno.agent import Agent
 from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.technical_tester.instructions import INSTRUCTIONS
 from agents.technical_tester.tools import (
     create_seed_test,
@@ -66,7 +66,7 @@ tools = [
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-technical_tester = Agent(
+technical_tester = SemanticaAgent(
     # Identity
     id="technical_tester",
     name="Technical Tester",

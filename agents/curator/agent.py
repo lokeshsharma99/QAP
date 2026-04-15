@@ -8,11 +8,11 @@ Agent for regression suite curation and maintenance.
 import logging
 from pathlib import Path
 
-from agno.agent import Agent
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.curator.instructions import INSTRUCTIONS
 from agents.curator.tools import (
     approve_deletion,
@@ -76,7 +76,7 @@ tools.extend([
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-curator = Agent(
+curator = SemanticaAgent(
     id="curator",
     name="Curator",
     role="Maintains regression suite by detecting obsolete tests and recommending deletions with HITL approval",

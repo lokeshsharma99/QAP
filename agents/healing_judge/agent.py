@@ -6,9 +6,9 @@ Performs adversarial review of healing patches before application.
 Primary Skill: healing_validation
 """
 
-from agno.agent import Agent
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.healing_judge.instructions import INSTRUCTIONS
 from agents.healing_judge.tools import healing_judge_tools
 from app.settings import MODEL, agent_db
@@ -16,7 +16,7 @@ from app.settings import MODEL, agent_db
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-healing_judge = Agent(
+healing_judge = SemanticaAgent(
     # Identity
     id="healing_judge",
     name="Healing Judge",

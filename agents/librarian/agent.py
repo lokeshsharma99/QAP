@@ -6,10 +6,10 @@ The Librarian manages the vector knowledge base for the test codebase.
 It scans and vectorizes Page Objects and Step Definitions for semantic search.
 """
 
-from agno.agent import Agent
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.librarian.instructions import INSTRUCTIONS
 from agents.librarian.tools import (
     check_and_re_index_changes,
@@ -26,7 +26,7 @@ from db.session import get_automation_knowledge
 # ---------------------------------------------------------------------------
 # Create Librarian Agent
 # ---------------------------------------------------------------------------
-librarian = Agent(
+librarian = SemanticaAgent(
     id="librarian",
     name="Librarian",
     role="Manages vector knowledge base for test codebase",

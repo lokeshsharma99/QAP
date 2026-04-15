@@ -6,11 +6,11 @@ Crawls the AUT, extracts UI structure, and produces a Site Manifesto.
 Primary Skill: ui_crawler
 """
 
-from agno.agent import Agent
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.mcp import MCPTools
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.discovery.instructions import INSTRUCTIONS
 from agents.discovery.tools import crawl_page, crawl_site
 from app.settings import MODEL, agent_db, AUT_BASE_URL
@@ -28,7 +28,7 @@ playwright_mcp = MCPTools(
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-discovery = Agent(
+discovery = SemanticaAgent(
     # Identity
     id="discovery",
     name="Discovery",

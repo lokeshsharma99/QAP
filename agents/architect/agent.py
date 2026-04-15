@@ -9,13 +9,13 @@ Primary Skill: semantic_search
 import logging
 import os
 
-from agno.agent import Agent
 from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.architect.instructions import INSTRUCTIONS
 from agents.architect.tools import add_jira_comment, fetch_jira_ticket
+from agents.base.semantica_agent import SemanticaAgent
 from app.settings import MODEL, agent_db
 from db.session import get_site_manifesto_knowledge, get_automation_knowledge
 
@@ -70,7 +70,7 @@ else:
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-architect = Agent(
+architect = SemanticaAgent(
     # Identity
     id="architect",
     name="Architect",

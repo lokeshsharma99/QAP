@@ -8,7 +8,6 @@ Primary Skill: file_writer
 
 from pathlib import Path
 
-from agno.agent import Agent
 from agno.guardrails import OpenAIModerationGuardrail, PromptInjectionGuardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
@@ -16,6 +15,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agno.tools.mcp import MCPTools
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.engineer.instructions import INSTRUCTIONS
 from agents.engineer.tools import (
     create_github_pr,
@@ -76,7 +76,7 @@ if automation_knowledge:
 if playwright_mcp:
     engineer_tools.append(playwright_mcp)
 
-engineer = Agent(
+engineer = SemanticaAgent(
     id="engineer",
     name="Engineer",
     role="Write modular Playwright POMs and Step Definitions (Look-Before-You-Leap)",

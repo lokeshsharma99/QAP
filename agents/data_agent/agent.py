@@ -9,12 +9,12 @@ Primary Skill: data_factory
 import logging
 from pathlib import Path
 
-from agno.agent import Agent
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.data_agent.instructions import INSTRUCTIONS
 from agents.data_agent.tools import (
     clear_data_cache,
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-data_agent = Agent(
+data_agent = SemanticaAgent(
     id="data_agent",
     name="Data Agent",
     role="Provision test data with PII masking for automation tests",
