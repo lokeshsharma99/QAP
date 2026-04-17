@@ -8,12 +8,14 @@ Primary Skill: file_writer
 
 from pathlib import Path
 
-from agno.agent import Agent
+from agno.guardrails import OpenAIModerationGuardrail, PromptInjectionGuardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.mcp import MCPTools
+from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.engineer.instructions import INSTRUCTIONS
 from agents.engineer.tools import (
     create_github_pr,
@@ -24,13 +26,13 @@ from agents.engineer.tools import (
     validate_files_created,
 )
 from app.settings import MODEL, agent_db
-from db.session import get_automation_scaffold_knowledge
+from db.session import get_automation_knowledge
 
 # ---------------------------------------------------------------------------
 # Knowledge Base
 # ---------------------------------------------------------------------------
 try:
-    automation_knowledge = get_automation_scaffold_knowledge()
+    automation_knowledge = get_automation_knowledge()
 except Exception:
     automation_knowledge = None
 
@@ -52,6 +54,12 @@ except Exception:
 engineer_tools = [
     CodingTools(),
     FileTools(Path("automation")),
+    ReasoningTools(
+        enable_think=True,
+        enable_analyze=True,
+        add_instructions=True,
+        add_few_shot=True,
+    ),
     create_scaffold,
     run_playwright_script,
     run_linting,
@@ -68,7 +76,7 @@ if automation_knowledge:
 if playwright_mcp:
     engineer_tools.append(playwright_mcp)
 
-engineer = Agent(
+engineer = SemanticaAgent(
     id="engineer",
     name="Engineer",
     role="Write modular Playwright POMs and Step Definitions (Look-Before-You-Leap)",
@@ -78,7 +86,18 @@ engineer = Agent(
     search_knowledge=automation_knowledge is not None,
     tools=engineer_tools,
     instructions=INSTRUCTIONS,
+
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PromptInjectionGuardrail(),
+        OpenAIModerationGuardrail(),
+    ],
+
     enable_agentic_memory=True,
+    learning=True,
+    add_learnings_to_context=True,
+    update_memory_on_run=True,
+    enable_session_summaries=True,
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,

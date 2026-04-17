@@ -27,6 +27,9 @@ python-dotenv
 # Data Agent — Dynamic Data Generation
 faker
 
+# Librarian Agent — File Watching
+watchdog
+
 # Knowledge Base Chunkers
 chonkie[semantic]
 unstructured
@@ -34,6 +37,9 @@ wikipedia
 
 # Ollama Embedder
 ollama
+
+# Semantica — Semantic Layer, Decision Intelligence, Provenance
+semantica[agno]
 
 # CI/CD Dependencies
 black

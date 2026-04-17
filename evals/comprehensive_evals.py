@@ -152,12 +152,12 @@ class TestKnowledgeBaseAvailability:
         assert kb is not None
         assert kb.name == "Site Manifesto KB"
 
-    def test_codebase_knowledge_exists(self):
-        """Verify Codebase knowledge base can be created."""
-        from db.session import get_codebase_knowledge
-        kb = get_codebase_knowledge()
+    def test_automation_knowledge_exists(self):
+        """Test that automation knowledge base exists and is accessible."""
+        from db.session import get_automation_knowledge
+        kb = get_automation_knowledge()
         assert kb is not None
-        assert kb.name == "Codebase KB"
+        assert kb.name == "Automation KB"
 
     def test_learnings_knowledge_exists(self):
         """Verify Learnings knowledge base can be created."""

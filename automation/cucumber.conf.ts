@@ -1,7 +1,6 @@
-import { defineConfig } from '@cucumber/cucumber';
 import { devices } from '@playwright/test';
 
-export default defineConfig({
+export default {
   paths: ['features/**/*.feature'],
   require: [
     'step_definitions/**/*.ts',
@@ -11,7 +10,7 @@ export default defineConfig({
   requireModule: ['ts-node/register'],
   format: [
     'progress',
-    'html:reports/cucumber-report.html',
+    '@allure-report/cucumber',
     'json:reports/cucumber-report.json'
   ],
   publishQuiet: true,

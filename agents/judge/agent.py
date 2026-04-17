@@ -6,9 +6,9 @@ Performs adversarial review of generated specifications.
 Primary Skill: adversarial_review
 """
 
-from agno.agent import Agent
 from agno.tools.reasoning import ReasoningTools
 
+from agents.base.semantica_agent import SemanticaAgent
 from agents.judge.instructions import INSTRUCTIONS
 from agents.judge.tools import judge_tools
 from app.settings import AUTO_APPROVE_CONFIDENCE_THRESHOLD, AUTONOMOUS_MODE, MODEL, agent_db
@@ -16,7 +16,7 @@ from app.settings import AUTO_APPROVE_CONFIDENCE_THRESHOLD, AUTONOMOUS_MODE, MOD
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-judge = Agent(
+judge = SemanticaAgent(
     # Identity
     id="judge",
     name="Judge",
@@ -30,7 +30,12 @@ judge = Agent(
 
     # Capabilities
     tools=[
-        ReasoningTools(add_instructions=True),
+        ReasoningTools(
+            enable_think=True,
+            enable_analyze=True,
+            add_instructions=True,
+            add_few_shot=True,
+        ),
         judge_tools,
     ],
 
@@ -39,6 +44,10 @@ judge = Agent(
 
     # Memory
     enable_agentic_memory=True,
+    learning=True,
+    add_learnings_to_context=True,
+    update_memory_on_run=True,
+    enable_session_summaries=True,
 
     # Context
     add_datetime_to_context=True,

@@ -501,12 +501,12 @@ from agno.tools.coding import CodingTools
 
 from agents.librarian.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
-from db import create_knowledge
+from db.session import get_automation_knowledge
 
 # ---------------------------------------------------------------------------
 # Knowledge Base
 # ---------------------------------------------------------------------------
-codebase_knowledge = create_knowledge("Codebase KB", "codebase_vectors")
+automation_knowledge = get_automation_knowledge()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -517,7 +517,7 @@ librarian = Agent(
     role="Index and retrieve Page Objects and Step Definitions",
     model=MODEL,
     db=agent_db,
-    knowledge=codebase_knowledge,
+    knowledge=automation_knowledge,
     search_knowledge=True,
     tools=[CodingTools()],
     instructions=INSTRUCTIONS,

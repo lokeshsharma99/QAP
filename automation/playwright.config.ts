@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './features',
+  testMatch: [
+    '**/features/**/*.feature',
+    '**/technical-tests/tests/**/*.spec.ts'
+  ],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -9,7 +13,8 @@ export default defineConfig({
   reporter: [
     ['html', { outputFolder: 'reports/html-report' }],
     ['json', { outputFile: 'reports/playwright-report.json' }],
-    ['list']
+    ['list'],
+    ['allure', { outputFolder: 'reports/allure-results' }]
   ],
   use: {
     baseURL: process.env.BASE_URL || 'https://gds-demo-app.vercel.app/',

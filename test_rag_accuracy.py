@@ -6,7 +6,7 @@ This script tests the semantic search accuracy of the codebase knowledge base
 by querying for specific code patterns and verifying correct file/line retrieval.
 """
 
-from db.session import get_codebase_knowledge
+from db.session import get_automation_knowledge
 
 
 def test_rag_accuracy():
@@ -15,7 +15,7 @@ def test_rag_accuracy():
     print("RAG ACCURACY TEST")
     print("=" * 70)
     
-    kb = get_codebase_knowledge()
+    kb = get_automation_knowledge()
     
     # Test queries covering different aspects of the codebase
     test_queries = [

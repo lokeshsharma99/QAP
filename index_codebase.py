@@ -10,7 +10,7 @@ from pathlib import Path
 
 from agno.knowledge import Knowledge
 
-from db.session import get_codebase_knowledge
+from db.session import get_automation_knowledge
 
 
 def scan_page_objects() -> list[dict]:
@@ -59,7 +59,7 @@ def scan_step_definitions() -> list[dict]:
 
 def index_codebase():
     """Index the test codebase into PgVector."""
-    knowledge: Knowledge = get_codebase_knowledge()
+    knowledge: Knowledge = get_automation_knowledge()
     
     # Scan all codebase files
     documents = []

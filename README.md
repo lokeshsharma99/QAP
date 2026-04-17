@@ -42,16 +42,19 @@ curl http://localhost:8000/health
 
 ```
 Quality Autopilot
-├── 10 Agents — Architect, Scribe, Discovery, Librarian, Engineer,
-│                Data Agent, Detective, Medic, Judge, Healing Judge
+├── 13 Agents — Architect, Scribe, Discovery, Librarian, Curator, Engineer,
+│                Data Agent, Detective, Medic, Judge, Healing Judge,
+│                CI Log Analyzer, Technical Tester
 ├── 5 Squads  — Strategy, Context, Engineering, Operations, Grooming
-├── 5 Flows   — Spec-to-Code, Discovery Onboard, Triage-Heal, Grooming, Full Regression
-└── 8 Contracts — Pydantic hand-off models
+├── 8 Flows   — Spec-to-Code, Discovery Onboard, Triage-Heal, Grooming,
+│                Full Regression, Full Lifecycle, Technical Testing,
+│                Regression Maintenance
+└── 12 Contracts — Pydantic hand-off models
 ```
 
 ## Agents
 
-Quality Autopilot uses 10 specialized AI agents, each with a specific Primary Skill and tool set.
+Quality Autopilot uses 13 specialized AI agents, each with a specific Primary Skill and tool set.
 
 ### Architect
 - **Primary Skill:** `semantic_search`
@@ -79,11 +82,11 @@ Quality Autopilot uses 10 specialized AI agents, each with a specific Primary Sk
 
 ### Librarian
 - **Primary Skill:** `vector_indexing`
-- **Role:** Manages vector knowledge base for test codebase
-- **Tools:** KnowledgeTools, ReasoningTools
-- **When to Use:** Indexing Page Objects and Step Definitions for semantic search
-- **Input:** Codebase changes
-- **Output:** Updated vector index in PostgreSQL/PgVector
+- **Role:** Manages vector knowledge base for test codebase with obsolescence detection capabilities
+- **Tools:** KnowledgeTools, ReasoningTools, custom obsolescence detection tools (detect_obsolete_scenarios, detect_unused_steps, detect_orphaned_pages, generate_obsolescence_report)
+- **When to Use:** Indexing Page Objects and Step Definitions for semantic search, detecting obsolete tests
+- **Input:** Codebase changes, obsolescence detection requests
+- **Output:** Updated vector index in PostgreSQL/PgVector, ObsolescenceReport
 
 ### Engineer
 - **Primary Skill:** `file_writer`
@@ -133,6 +136,34 @@ Quality Autopilot uses 10 specialized AI agents, each with a specific Primary Sk
 - **Input:** HealingPatch
 - **Output:** Validation results (confidence, surgical edit check)
 
+### CI Log Analyzer
+- **Primary Skill:** `rca_analysis`
+- **Role:** Analyzes Azure DevOps CI pipeline logs, performs RCA with historical knowledge, creates work items after HITL approval
+- **Tools:** Azure DevOps API tools (pipeline logs, failed test filtering, work item creation), ReasoningTools
+- **When to Use:** Analyzing CI pipeline failures and creating Azure DevOps work items with RCA findings
+- **Input:** Azure DevOps project, pipeline ID, run ID
+- **Output:** RCA findings, Azure DevOps work item (after HITL approval)
+- **Knowledge Base:** RCA knowledge base for storing historical RCA learnings and patterns
+
+### Curator
+- **Primary Skill:** `suite_curation`
+- **Role:** Maintains regression suite by detecting obsolete tests and recommending deletions with HITL approval
+- **Tools:** FileTools, KnowledgeTools, ReasoningTools, custom curation tools (request_deletion_approval, execute_test_deletion, log_deletion_to_audit)
+- **When to Use:** Regression suite maintenance, obsolescence detection, test scenario deletion
+- **Input:** AUT changes, obsolescence detection results
+- **Output:** ObsolescenceReport, deleted test files (after HITL approval), audit trail entries
+- **Knowledge Base:** Automation knowledge base for comparing Site Manifesto versions
+- **HITL Approval:** Uses Agno's native approval mechanism (OnError.pause) for test deletions
+
+### Technical Tester
+- **Primary Skill:** `test_generation`
+- **Role:** Uses Playwright Test Agents (planner, generator, healer) for rapid test generation, smoke tests, and exploratory testing (complements BDD+POM)
+- **Tools:** Playwright CLI tools (init-agents, planner, generator, healer), FileTools, ReasoningTools
+- **When to Use:** AUT onboarding validation, smoke tests, exploratory testing, rapid prototyping before formal BDD
+- **Input:** AUT URL, test requirements
+- **Output:** Playwright tests in automation/technical-tests/, Markdown test plans
+- **Relationship:** Complementary to Engineer agent (technical_tester for rapid testing, Engineer for production BDD+POM)
+
 ## Teams
 
 Quality Autopilot organizes agents into 5 cross-functional squads, each using TeamMode.coordinate for collaboration.
@@ -177,9 +208,32 @@ Quality Autopilot organizes agents into 5 cross-functional squads, each using Te
 - **Workflow Integration:** Grooming workflow
 - **Output:** GroomingAssessment, Jira comment
 
+## Contracts
+
+Quality Autopilot uses 12 Pydantic contracts for structured hand-offs between agents and teams.
+
+### Core Contracts
+- **RequirementContext** - Structured analysis of business requirements (Architect output)
+- **GherkinSpec** - BDD specification with scenarios and data requirements (Scribe output)
+- **RunContext** - Test data provisioning and execution context (Data Agent output)
+- **SiteManifesto** - Complete map of Application Under Test (Discovery output)
+
+### Quality & Healing Contracts
+- **JudgeVerdict** - Adversarial review results with confidence score (Judge output)
+- **RCAReport** - Root Cause Analysis for test failures (Detective output)
+- **HealingPatch** - Surgical edit to fix broken locators (Medic output)
+- **GroomingAssessment** - 3 Amigos review assessment (Grooming output)
+
+### New Contracts
+- **ExecutionResult** - Test execution results with detailed pass/fail information
+- **WorkflowStatus** - Workflow orchestration status tracking
+- **SquadHandoff** - Inter-squad communication with contract-based data passing
+- **AutomationScaffold** - Automation framework scaffolding structure
+- **TestDeletionApproval** - Test deletion request with HITL approval workflow (Curator output)
+
 ## Workflows
 
-Quality Autopilot provides 5 end-to-end workflows for common STLC scenarios.
+Quality Autopilot provides 8 end-to-end workflows for common STLC scenarios.
 
 ### Spec-to-Code Workflow
 - **Purpose:** Convert requirements to automated Playwright tests
@@ -244,6 +298,60 @@ Quality Autopilot provides 5 end-to-end workflows for common STLC scenarios.
 - **Input:** Requirements
 - **Output:** Regression results + healed tests
 - **When to Use:** Full regression with self-healing
+
+### Full Lifecycle Workflow
+- **Purpose:** End-to-end workflow from requirement to execution/report using individual agents
+- **Steps:**
+  1. Requirement Analysis (Architect) - RequirementContext
+  2. Gherkin Generation (Scribe) - GherkinSpec
+  3. Quality Gate - Spec (Judge) - JudgeVerdict
+  4. Context Discovery (Discovery) - SiteManifesto
+  5. Index Knowledge Base (Librarian) - Indexed KB
+  6. Test Data Provisioning (Data Agent) - RunContext
+  7. Page Object Generation (Engineer) - Page Objects
+  8. Step Definition Generation (Engineer) - Step Definitions
+  9. Code Quality Gate (Judge) - Quality verdict
+  10. Test Execution (Engineer) - ExecutionResult
+  11. Failure Analysis (Detective) - RCAReport
+  12. Healing Patch Generation (Medic) - HealingPatch
+  13. Healing Patch Validation (Healing Judge) - Validation
+  14. Apply and Verify Healing (Medic) - Verified fix
+  15. Update Knowledge Base (Librarian) - Learnings
+  16. Final Quality Gate (Judge) - JudgeVerdict
+  17. Report Generation (Scribe) - FinalReport
+- **Input:** Jira ticket ID or requirement description
+- **Output:** Final report with all phases summarized
+- **When to Use:** Complete STLC orchestration from requirement to report
+
+### Technical Testing Workflow
+- **Purpose:** Generate rapid test suites using Playwright Test Agents for smoke testing, exploratory testing, and AUT validation
+- **Steps:**
+  1. Initialize Playwright Agents (Technical Tester) - Agent definitions
+  2. Create Seed Test (Technical Tester) - Seed test file
+  3. Generate Test Plan (Technical Tester) - Markdown test plan
+  4. Generate Playwright Tests (Technical Tester) - Playwright test files
+  5. Execute Tests (Technical Tester) - Test execution results
+  6. Heal Failures (Technical Tester) - Repaired tests
+- **Input:** AUT URL, test requirements
+- **Output:** Playwright tests in automation/technical-tests/, Markdown test plans
+- **When to Use:** AUT onboarding validation, smoke tests, exploratory testing, rapid prototyping
+- **Note:** Complements BDD+POM workflow (technical_tester for rapid testing, Engineer for production BDD+POM)
+
+### Regression Maintenance Workflow
+- **Purpose:** End-to-end regression suite curation to keep tests up to date as the AUT evolves
+- **Steps:**
+  1. Detect AUT Changes (Discovery Agent) - Current Site Manifesto
+  2. Compare Site Manifesto (Curator Agent) - Version comparison
+  3. Identify Obsolete Tests (Curator Agent) - Use Librarian's obsolescence detection tools
+  4. Generate Deletion Recommendations (Curator Agent) - TestDeletionRequest with justifications
+  5. HITL Approval (Curator Agent) - Agno's native approval mechanism (OnError.pause)
+  6. Execute Approved Deletions (Curator Agent) - Delete tests with backups
+  7. Update Knowledge Base (Librarian Agent) - Re-index automation codebase
+  8. Generate Maintenance Report (Curator Agent) - ObsolescenceReport
+- **Input:** AUT changes, obsolescence detection requests
+- **Output:** ObsolescenceReport, deleted test files (after HITL approval), updated knowledge base, audit trail
+- **When to Use:** Regression suite maintenance, obsolescence detection, test scenario deletion
+- **HITL Approval:** Test deletions require human approval unless confidence ≥ AUTO_APPROVE_CONFIDENCE_THRESHOLD (default 0.9)
 
 ## How to Use
 
@@ -318,6 +426,55 @@ Quality Autopilot provides 5 end-to-end workflows for common STLC scenarios.
    Red tests: Healed automatically
    ```
 
+### Regression Suite Curation
+
+The Quality Autopilot system includes automated regression suite curation to keep tests up to date as the AUT evolves.
+
+**How it works:**
+1. **Obsolescence Detection** - Librarian agent detects obsolete tests by comparing Site Manifesto versions
+2. **Deletion Recommendations** - Curator agent generates TestDeletionRequest objects with justifications
+3. **HITL Approval** - Test deletions require human approval via Agno's native approval mechanism (OnError.pause)
+4. **Auto-Approval** - High-confidence recommendations (≥0.9) can be auto-approved (configurable threshold)
+5. **Audit Trail** - All deletions are logged to an audit trail for compliance
+
+**Running Regression Maintenance:**
+
+1. **Execute Regression Maintenance workflow** via Agent UI
+   ```
+   Input: AUT changes or obsolescence detection request
+   Output: ObsolescenceReport + deleted tests (after approval) + audit trail
+   ```
+
+2. **Review Deletion Recommendations:**
+   ```
+   Curator will generate deletion requests with:
+   - Test type (feature_scenario, step_definition, page_object, fixture)
+   - File path and scenario name
+   - Reason for deletion (feature_removed, duplicate_test, etc.)
+   - Confidence score (0.0-1.0)
+   - Justification and affected AUT features
+   ```
+
+3. **Approve or Reject Deletions:**
+   ```
+   - Batch approval: All deletions grouped into a single approval request
+   - Batch summary shows: "15 test case(s): 12 high-confidence, 3 require review"
+   - If all items have confidence ≥0.9: Auto-approved
+   - If any item has confidence <0.9: Requires human approval
+   - Reviewer sees total count and confidence breakdown before approving
+   - Reviewer can add comments before approval/rejection
+   ```
+
+**HITL Approval Flow:**
+- Curator collects all deletion recommendations into a batch
+- System calculates batch statistics (total count, high-confidence count, low-confidence count)
+- If all items have confidence ≥ AUTO_APPROVE_CONFIDENCE_THRESHOLD: Auto-approve entire batch
+- If any item has confidence < threshold: Triggers OnError.pause for human review with batch summary
+- Human reviews batch summary showing total count and approves/rejects the entire batch
+- If approved: Curator deletes all tests with optional backup
+- Each deletion logged to audit trail
+- Knowledge base re-indexed by Librarian
+
 ## Current Status
 
 **Phase 0: Infrastructure Bootstrap** ✅ Complete
@@ -369,6 +526,184 @@ Quality Autopilot provides 5 end-to-end workflows for common STLC scenarios.
 - Autonomous mode configured (auto-approve at ≥90% confidence)
 - Remaining: Deploy to Production, Harden Security, Production Monitoring
 
+**Phase 7: Semantica Integration** ✅ Complete
+- Semantica framework integrated with all 13 agents
+- SemanticaContext class created for configuration and feature flags
+- Semantica service layer created (DecisionTrackingService, TemporalService, ProvenanceService, ContextGraphService)
+- SemanticaAgent base class extending agno.Agent with Semantica hooks
+- Knowledge bases augmented with ContextGraph capability
+- Per-agent feature flags added (13 agents, all disabled by default)
+- Per-feature feature flags added (decision tracking, temporal, provenance - all disabled by default)
+- API verified to start successfully with Semantica disabled
+- Gate 7 Cleared (8/8 criteria passing)
+
+## Advanced Features
+
+### Memory and Session Management
+
+All agents are configured with:
+- **update_memory_on_run=True**: Automatically updates user memories on each run
+- **enable_session_summaries=True**: Generates session summaries for better context
+- **learning=True**: Enables learned knowledge storage and retrieval
+- **add_learnings_to_context=True**: Adds learnings to agent context
+
+These features enable agents to learn from interactions and maintain context across sessions.
+
+### Metrics and Monitoring
+
+AgentOS provides built-in metrics at `/metrics` endpoint:
+- Token usage metrics (input, output, total, cached, reasoning)
+- Agent/team/workflow run counts
+- User counts and model metrics
+- Daily aggregated analytics
+
+Query metrics:
+```bash
+curl http://localhost:8000/metrics
+```
+
+### Session Management API
+
+Quality Autopilot exposes session management endpoints:
+- `GET /sessions?user_id={user_id}` - List sessions for a user
+- `GET /sessions/{session_id}` - Get session details
+- `GET /sessions/{session_id}/runs` - Get session runs history
+
+For full session management capabilities, use the AgentOSClient:
+```python
+from agno.client import AgentOSClient
+
+client = AgentOSClient(base_url="http://localhost:8000")
+sessions = await client.get_sessions(user_id="user123")
+```
+
+### Event Streaming
+
+AgentOS supports real-time event streaming for monitoring agent/team/workflow runs:
+
+**Event Types:**
+- `RunStarted`: Triggered when a run starts
+- `RunCompleted`: Triggered when a run completes
+- `ToolCallStarted`: Triggered when a tool call begins
+- `ToolCallCompleted`: Triggered when a tool call completes
+- `ToolCallError`: Triggered when a tool call fails
+- `MemoryUpdateStarted`: Triggered when memory update begins
+- `MemoryUpdateCompleted`: Triggered when memory update completes
+
+**Enable Event Streaming:**
+```python
+result = await agent.arun(
+    "Analyze this requirement",
+    stream_events=True
+)
+```
+
+**Team Event Streaming:**
+```python
+async for event in team.arun(
+    prompt,
+    stream=True,
+    stream_events=True
+):
+    print(f"Event: {event.event}")
+```
+
+### AgentOSClient Integration
+
+For remote execution and session management, use the AgentOSClient:
+
+```python
+import asyncio
+from agno.client import AgentOSClient
+
+async def main():
+    client = AgentOSClient(base_url="http://localhost:8000")
+
+    # Get configuration
+    config = await client.aget_config()
+
+    # Run an agent
+    result = await client.run_agent(
+        agent_id="architect",
+        message="Analyze this requirement"
+    )
+
+    # Manage sessions
+    session = await client.create_session(
+        agent_id="architect",
+        user_id="user123",
+        session_name="My Session"
+    )
+
+asyncio.run(main())
+```
+
+See `examples/agentos_client_example.py` for a complete example.
+
+### Semantica Integration (Semantic Decision Intelligence)
+
+Quality Autopilot integrates the Semantica framework to add semantic decision intelligence, temporal queries, and provenance tracking to all agents.
+
+**What is Semantica?**
+Semantica is a semantic layer framework that provides:
+- **Decision Tracking**: Records agent decisions with causal chains and reasoning
+- **Temporal Intelligence**: Point-in-time graph snapshots and temporal query rewriting
+- **Provenance Tracking**: W3C PROV-O compliant data lineage and algorithm tracing
+- **Context Graphs**: Semantic knowledge graphs for cross-agent decision influence analysis
+
+**Architecture:**
+- `app/semantica_config.py` - SemanticaContext class for configuration and feature flags
+- `app/semantica_service.py` - Service layer for DecisionTrackingService, TemporalService, ProvenanceService, ContextGraphService
+- `agents/base/semantica_agent.py` - SemanticaAgent base class extending agno.Agent with Semantica hooks
+- `db/session.py` - Knowledge bases augmented with ContextGraph capability
+
+**Feature Flags (All Disabled by Default):**
+
+Per-Agent Flags (13 agents):
+```bash
+SEMANTICA_DETECTIVE_ENABLED=false
+SEMANTICA_MEDIC_ENABLED=false
+SEMANTICA_JUDGE_ENABLED=false
+SEMANTICA_CI_LOG_ANALYZER_ENABLED=false
+SEMANTICA_ARCHITECT_ENABLED=false
+SEMANTICA_SCRIBE_ENABLED=false
+SEMANTICA_ENGINEER_ENABLED=false
+SEMANTICA_DISCOVERY_ENABLED=false
+SEMANTICA_LIBRARIAN_ENABLED=false
+SEMANTICA_CURATOR_ENABLED=false
+SEMANTICA_DATA_AGENT_ENABLED=false
+SEMANTICA_TECHNICAL_TESTER_ENABLED=false
+SEMANTICA_HEALING_JUDGE_ENABLED=false
+```
+
+Per-Feature Flags:
+```bash
+SEMANTICA_DECISION_TRACKING_ENABLED=false
+SEMANTICA_TEMPORAL_ENABLED=false
+SEMANTICA_PROVENANCE_ENABLED=false
+```
+
+**Global Enable:**
+```bash
+SEMANTICA_ENABLED=false
+SEMANTICA_GRAPH_BACKEND=pgvector
+```
+
+**How to Enable:**
+1. Set `SEMANTICA_ENABLED=true` in `.env`
+2. Set per-agent flags for agents you want to track (e.g., `SEMANTICA_DETECTIVE_ENABLED=true`)
+3. Set per-feature flags for capabilities you want to enable (e.g., `SEMANTICA_DECISION_TRACKING_ENABLED=true`)
+4. Restart the API: `docker compose restart qap-api`
+
+**Gradual Rollout:**
+All Semantica features are disabled by default to ensure zero impact on existing functionality. Enable features incrementally per agent and per capability for controlled rollout and monitoring.
+
+**Current Status:**
+- All 13 agents extend SemanticaAgent base class
+- Semantica infrastructure complete and production-ready
+- Feature flags configured for controlled rollout
+- API verified to start successfully with Semantica disabled
+
 ## AUT (Application Under Test)
 
 Default target: [nopCommerce Demo](https://demo.nopcommerce.com/)
@@ -388,6 +723,44 @@ AUT_AUTH_PASS=your_password
 | [CHECKLIST.md](./CHECKLIST.md) | Implementation progress tracker |
 | [CLAUDE.md](./CLAUDE.md) | Quick reference overview |
 | [.instructions.md](./.instructions.md) | AI agent system instructions |
+
+## Security
+
+Quality Autopilot implements multiple layers of security through Agno guardrails to protect against common threats:
+
+### Guardrails
+
+**PII Detection Guardrail**
+- Applied to: Architect, Scribe
+- Purpose: Prevents personally identifiable information from entering the system
+- Detects: Email addresses, phone numbers, SSNs, credit card numbers, addresses
+- Action: Blocks input containing PII and requests sanitized input
+
+**Prompt Injection Guardrail**
+- Applied to: Architect, Scribe, Engineer
+- Purpose: Prevents malicious prompt injection attacks
+- Detects: Attempts to bypass agent instructions, jailbreak attempts, system prompt overrides
+- Action: Blocks suspicious input and maintains agent instruction integrity
+
+**OpenAI Moderation Guardrail**
+- Applied to: Scribe, Engineer
+- Purpose: Ensures generated content complies with OpenAI content policies
+- Detects: NSFW content, hate speech, violence, self-harm, sexual content
+- Action: Blocks policy-violating content generation
+
+### Quality Gate Pause Mechanism
+
+Critical quality gates use `OnError.pause` for human-in-the-loop intervention:
+- Quality Gate - Spec (Judge)
+- Code Quality Gate (Judge)
+- Healing Patch Validation (Healing Judge)
+- Final Quality Gate (Judge)
+
+When a quality gate fails (confidence < 90%):
+- Workflow pauses at the quality gate step
+- User can choose to retry (send back for rework) or skip (escalate to human)
+- Retry count is tracked to prevent infinite loops
+- Enables flexible intervention without forcing automatic rework
 
 ## Development
 

@@ -7,6 +7,7 @@
 #   qap-ui   — Agent UI (Next.js on port 3000)
 #   qap-playwright — Sandboxed Playwright runner (on-demand)
 #   qap-playwright-mcp — Playwright MCP server for browser automation
+#   qap-azure-mcp — Azure DevOps MCP server for CI/CD operations
 # ---------------------------------------------------------------------------
 
 services:
@@ -31,7 +32,7 @@ services:
       dockerfile: Dockerfile
     image: ${IMAGE_NAME:-quality-autopilot}:${IMAGE_TAG:-latest}
     container_name: qap-api
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -62,7 +63,7 @@ services:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gpt-oss:120b-cloud}
       # AUT (Application Under Test)
-      - AUT_BASE_URL=${AUT_BASE_URL:-https://demo.nopcommerce.com/}
+      - AUT_BASE_URL=${AUT_BASE_URL:-https://gds-demo-app.vercel.app/}
       - AUT_AUTH_USER=${AUT_AUTH_USER:-}
       - AUT_AUTH_PASS=${AUT_AUTH_PASS:-}
       # GitHub
@@ -71,9 +72,17 @@ services:
       - JIRA_URL=${JIRA_URL:-https://lokeshsharma2.atlassian.net}
       - JIRA_USERNAME=${JIRA_USERNAME:-kirtisharma0691@gmail.com}
       - JIRA_API_TOKEN=${JIRA_API_TOKEN}
+      # Azure DevOps
+      - AZURE_DEVOPS_URL=${AZURE_DEVOPS_URL}
+      - AZURE_DEVOPS_EMAIL=${AZURE_DEVOPS_EMAIL}
+      - AZURE_DEVOPS_PAT=${AZURE_DEVOPS_PAT}
+      # Semantica — Semantic Layer, Decision Intelligence
+      - SEMANTICA_ENABLED=${SEMANTICA_ENABLED:-false}
+      - SEMANTICA_GRAPH_BACKEND=${SEMANTICA_GRAPH_BACKEND:-pgvector}
     depends_on:
       - qap-db
       - qap-playwright-mcp
+      - qap-azure-mcp
     networks:
       - qap-net
     extra_hosts:
@@ -111,6 +120,19 @@ services:
     restart: unless-stopped
     ports:
       - "8931:8931"
+    networks:
+      - qap-net
+
+  qap-azure-mcp:
+    image: guang1/azure-devops-mcp:latest
+    container_name: qap-azure-mcp
+    restart: unless-stopped
+    environment:
+      - org.name=defradev
+      - project.name=${AZURE_DEVOPS_PROJECT:-DEFRA-TRADE}
+      - pat=${AZURE_DEVOPS_PAT}
+    ports:
+      - "8080:8080"
     networks:
       - qap-net
 

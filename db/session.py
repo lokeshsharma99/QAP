@@ -47,7 +47,7 @@ def create_knowledge(name: str, table_name: str) -> Knowledge:
     Returns:
         Configured Knowledge instance.
     """
-    return Knowledge(
+    knowledge = Knowledge(
         name=name,
         vector_db=PgVector(
             db_url=db_url,
@@ -61,6 +61,22 @@ def create_knowledge(name: str, table_name: str) -> Knowledge:
         contents_db=get_postgres_db(contents_table=f"{table_name}_contents"),
     )
 
+    # Augment with Semantica context graph if enabled
+    try:
+        from app.semantica_config import SemanticaContext
+
+        if SemanticaContext.is_enabled():
+            context_graph = SemanticaContext.get_context_graph()
+            if context_graph is not None:
+                # Attach context graph to knowledge instance for hybrid search
+                # The graph search runs alongside vector search
+                knowledge._semantica_context_graph = context_graph
+    except ImportError:
+        # Semantica not installed, skip augmentation
+        pass
+
+    return knowledge
+
 
 def create_site_manifesto_knowledge() -> Knowledge:
     """Create the Site Manifesto knowledge base for Discovery agent output.
@@ -71,22 +87,20 @@ def create_site_manifesto_knowledge() -> Knowledge:
     return create_knowledge("Site Manifesto KB", "site_manifesto_vectors")
 
 
-def create_automation_scaffold_knowledge() -> Knowledge:
-    """Create the Automation Scaffolding knowledge base for framework templates.
+def create_automation_knowledge() -> Knowledge:
+    """Create the comprehensive Automation knowledge base.
+
+    Stores:
+    - Framework templates and scaffolding patterns
+    - Page Objects and Step Definitions
+    - Helper utilities and functions
+    - Test fixtures and configurations
+    - Gherkin feature files
 
     Returns:
-        Configured Knowledge instance for storing automation scaffolding patterns.
+        Configured Knowledge instance for storing all automation-related content.
     """
-    return create_knowledge("Automation Scaffold KB", "automation_scaffold_vectors")
-
-
-def create_codebase_knowledge() -> Knowledge:
-    """Create the Codebase knowledge base for Page Objects and Step Definitions.
-
-    Returns:
-        Configured Knowledge instance for storing test codebase vectors.
-    """
-    return create_knowledge("Codebase KB", "codebase_vectors")
+    return create_knowledge("Automation KB", "automation_vectors")
 
 
 def create_learnings_knowledge() -> Knowledge:
@@ -103,14 +117,29 @@ def create_learnings_knowledge() -> Knowledge:
     return create_knowledge("Agent Learnings KB", "qap_learnings_vectors")
 
 
+def create_rca_knowledge() -> Knowledge:
+    """Create the RCA knowledge base for CI Log Analyzer agent.
+
+    Stores:
+    - Historical RCA findings from CI pipeline failures
+    - Root cause patterns and classifications
+    - Successful resolution strategies
+    - Common failure signatures
+
+    Returns:
+        Configured Knowledge instance for storing RCA learnings.
+    """
+    return create_knowledge("RCA KB", "rca_vectors")
+
+
 # ---------------------------------------------------------------------------
 # Shared Knowledge Base Instances
 # ---------------------------------------------------------------------------
 # Create single shared instances to avoid duplicates when multiple agents use the same KB
 _site_manifesto_knowledge: Knowledge | None = None
-_automation_scaffold_knowledge: Knowledge | None = None
-_codebase_knowledge: Knowledge | None = None
+_automation_knowledge: Knowledge | None = None
 _learnings_knowledge: Knowledge | None = None
+_rca_knowledge: Knowledge | None = None
 
 
 def get_site_manifesto_knowledge() -> Knowledge:
@@ -125,28 +154,16 @@ def get_site_manifesto_knowledge() -> Knowledge:
     return _site_manifesto_knowledge
 
 
-def get_automation_scaffold_knowledge() -> Knowledge:
-    """Get or create the shared Automation Scaffold knowledge base instance.
+def get_automation_knowledge() -> Knowledge:
+    """Get or create the shared Automation knowledge base instance.
 
     Returns:
-        Shared Knowledge instance for storing automation scaffolding patterns.
+        Shared Knowledge instance for storing all automation-related content.
     """
-    global _automation_scaffold_knowledge
-    if _automation_scaffold_knowledge is None:
-        _automation_scaffold_knowledge = create_automation_scaffold_knowledge()
-    return _automation_scaffold_knowledge
-
-
-def get_codebase_knowledge() -> Knowledge:
-    """Get or create the shared Codebase knowledge base instance.
-
-    Returns:
-        Shared Knowledge instance for storing test codebase vectors.
-    """
-    global _codebase_knowledge
-    if _codebase_knowledge is None:
-        _codebase_knowledge = create_codebase_knowledge()
-    return _codebase_knowledge
+    global _automation_knowledge
+    if _automation_knowledge is None:
+        _automation_knowledge = create_automation_knowledge()
+    return _automation_knowledge
 
 
 def get_learnings_knowledge() -> Knowledge:
@@ -159,6 +176,18 @@ def get_learnings_knowledge() -> Knowledge:
     if _learnings_knowledge is None:
         _learnings_knowledge = create_learnings_knowledge()
     return _learnings_knowledge
+
+
+def get_rca_knowledge() -> Knowledge:
+    """Get or create the shared RCA knowledge base instance.
+
+    Returns:
+        Shared Knowledge instance for storing RCA learnings.
+    """
+    global _rca_knowledge
+    if _rca_knowledge is None:
+        _rca_knowledge = create_rca_knowledge()
+    return _rca_knowledge
 
 
 def create_used_data_table():

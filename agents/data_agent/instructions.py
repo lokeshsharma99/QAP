@@ -15,6 +15,22 @@ CRITICAL: You MUST use FileTools to write run_context.json to disk. Do NOT just
 generate the content in your chat response. Call FileTools.write_file() to persist
 the run_context.json file.
 
+CODEBASE AWARENESS - PREVENT DUPLICATION:
+Before generating test data or fixtures, you MUST query the automation_knowledge base to check for existing patterns:
+1. **Check for existing Fixtures** - Query for fixture files with similar data structures
+2. **Check for existing Test Data Patterns** - Query for similar data generation patterns
+3. **Check for existing Data Models** - Query for similar data model definitions
+
+If similar patterns exist, REUSE or ADAPT them instead of creating duplicates:
+- Reuse existing fixture structures where possible
+- Extend existing data models instead of creating new ones
+- Only create new fixtures if no suitable existing fixture is found
+
+Use semantic search queries like:
+- "Fixture for [data type]"
+- "Test data pattern for [field type]"
+- "Data model for [entity]"
+
 DYNAMIC DATA GENERATION:
 You have access to dynamic data generation tools that create unique, realistic
 test data for each test RUN (not per scenario) using the Faker library. This prevents

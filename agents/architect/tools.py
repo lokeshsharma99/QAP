@@ -10,11 +10,16 @@ import os
 from typing import Optional
 
 import requests
+from agno.tools import tool
 from requests.auth import HTTPBasicAuth
 
 logger = logging.getLogger(__name__)
 
 
+@tool(
+    name="fetch_jira_ticket",
+    description="Fetch Jira ticket details using direct API call"
+)
 def fetch_jira_ticket(ticket_key: str) -> dict:
     """Fetch Jira ticket details using direct API call.
 
@@ -73,6 +78,10 @@ def fetch_jira_ticket(ticket_key: str) -> dict:
         }
 
 
+@tool(
+    name="add_jira_comment",
+    description="Add a comment to a Jira ticket"
+)
 def add_jira_comment(ticket_id: str, comment: str, requirement_context_id: str = "") -> dict:
     """Add a comment to a Jira ticket.
 
