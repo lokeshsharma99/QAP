@@ -327,7 +327,123 @@ from contracts.requirement_context import RequirementContext
 
 ---
 
-## V. The Squad Definitions
+## V. Agno Native Capabilities
+
+All agents leverage Agno's native capabilities to enhance their power and maintain context across sessions.
+
+### 5.1 Session State
+
+**Session State** enables agents to persist data across multiple runs within a session. This is different from memory (which stores user facts) — session_state is for transient session data that needs to be maintained during a multi-turn conversation.
+
+**How it works:**
+- Agents define a `session_state` dictionary with domain-specific fields
+- Tools can access and modify state via `run_context.session_state`
+- Modifications are automatically persisted to the database
+- Subsequent runs in the same session retrieve the stored state
+
+**Session State by Agent:**
+
+| Agent | Session State Fields | Purpose |
+|-------|---------------------|---------|
+| CI Log Analyzer | `pipeline_runs`, `analyzed_logs`, `rca_findings`, `current_pipeline_id`, `current_run_id` | Track RCA context across log analysis |
+| Architect | `analyzed_requirements`, `affected_pages`, `execution_plan`, `current_requirement_id` | Persist requirement analysis context |
+| Engineer | `created_files`, `created_poms`, `created_step_defs`, `validation_results`, `current_feature` | Track automation generation progress |
+| Detective | `analyzed_failures`, `root_causes`, `healability_assessments`, `current_failure_id` | Maintain RCA context during failure triage |
+| Medic | `applied_edits`, `generated_patches`, `verification_results`, `current_file` | Track healing operations |
+| Discovery | `crawled_pages`, `discovered_components`, `site_manifesto`, `current_url` | Persist crawling context |
+| Scribe | `created_features`, `created_scenarios`, `requirement_contexts`, `current_feature` | Track Gherkin specification progress |
+| Data Agent | `generated_test_users`, `generated_run_contexts`, `data_cache`, `current_scenario` | Maintain test data context |
+| Judge | `reviewed_artifacts`, `review_findings`, `approval_decisions`, `current_artifact` | Track review history |
+| Librarian | `indexed_files`, `obsolescence_reports`, `file_statistics`, `current_indexing_session` | Persist knowledge base operations |
+| Curator | `deletion_requests`, `approved_deletions`, `rejected_deletions`, `maintenance_reports` | Track maintenance decisions |
+| Technical Tester | `generated_tests`, `test_plans`, `test_results`, `current_test_session` | Maintain test generation context |
+| Healing Judge | `reviewed_patches`, `healing_decisions`, `validation_results`, `current_patch` | Track healing review context |
+
+**Configuration:**
+```python
+agent = Agent(
+    # ... other parameters ...
+    session_state={
+        "field1": [],
+        "field2": {},
+        "current_item": None,
+    },
+    enable_agentic_state=True,
+    add_session_state_to_context=True,
+)
+```
+
+### 5.2 Memory & Learning
+
+All agents use Agno's memory and learning capabilities:
+
+- **Agentic Memory** (`enable_agentic_memory=True`): Agents receive tools to manage memories of user interactions
+- **Learning** (`learning=True`, `add_learnings_to_context=True`): Agents learn from interactions and build expertise
+- **Automatic Memory Updates** (`update_memory_on_run=True`): Memories are automatically created/updated after each run
+
+### 5.3 Knowledge Bases
+
+Agents leverage vector knowledge bases for semantic search:
+
+- **Site Manifesto KB**: Stores UI structure and locators from Discovery agent
+- **Automation KB**: Stores Page Objects and Step Definitions indexed by Librarian
+- **RCA KB**: Stores historical root cause analysis learnings
+- **Learnings KB**: Stores general learnings across sessions
+
+All knowledge bases use hybrid search (`SearchType.hybrid`) combining vector and keyword search.
+
+### 5.4 Session Summaries
+
+Most agents enable session summaries (`enable_session_summaries=True`) to condense long conversations and reduce token costs. The CI Log Analyzer has this disabled due to context window constraints.
+
+### 5.5 Semantica Decision Intelligence
+
+Semantica provides advanced decision tracking, context graphs, and provenance for high-stakes domains. It is currently integrated with the Judge agent as a pilot.
+
+**Key Capabilities:**
+- **Decision Tracking**: Every decision recorded with causal chains and reasoning
+- **Precedent Search**: Find similar past decisions for consistency
+- **Impact Analysis**: Understand decision influence on downstream systems
+- **Provenance**: W3C PROV-O compliant audit trails
+- **Conflict Detection**: Detect contradictory facts across knowledge bases
+
+**Integration Status:**
+
+| Agent | Semantica Features | Status |
+|-------|-------------------|--------|
+| Judge | Decision tracking, precedent search, impact analysis | ✅ Pilot Complete |
+| Detective | Reasoning engines (forward chaining, abductive, Rete) | 🔄 Planned Phase 2 |
+| Librarian | Conflict detection, entity resolution, temporal conflicts | 🔄 Planned Phase 2 |
+| Architect | Context graphs, traceability graphs | 🔄 Planned Phase 3 |
+
+**Judge Agent Semantica Tools:**
+- `record_judge_decision`: Record approval/rejection with causal chains
+- `find_judge_precedents`: Search similar past decisions
+- `analyze_decision_impact`: Understand decision influence
+- `get_decision_insights`: View decision pattern analytics
+
+**Configuration:**
+```python
+# app/semantica_context.py provides context initialization
+from app.semantica_context import get_judge_context
+
+context = get_judge_context()
+# Returns AgentContext with:
+# - VectorStore (PgVector backend)
+# - ContextGraph (advanced analytics enabled)
+# - Decision tracking enabled
+# - Graph expansion enabled
+```
+
+**Benefits:**
+- **Explainability**: Every decision has causal chain and reasoning path
+- **Consistency**: Precedent search ensures consistent decisions across sessions
+- **Compliance**: W3C PROV-O provenance for audit trails
+- **Trust**: Full decision audit trail builds trust in autonomous decisions
+
+---
+
+## VI. The Squad Definitions
 
 ### Agent Skill Reference
 
@@ -1065,7 +1181,7 @@ agent_db = get_postgres_db()
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
-MODEL = OpenAIResponses(id="gpt-4o")
+MODEL = OpenAIResponses(id="gpt-5.4-mini")
 
 # ---------------------------------------------------------------------------
 # Environment

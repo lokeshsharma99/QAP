@@ -14,6 +14,7 @@ psycopg[binary]
 sqlalchemy
 PyGithub
 pydantic>=2.0
+semantica[agno]
 
 # Discovery Agent — UI Crawler
 httpx
@@ -37,9 +38,6 @@ wikipedia
 
 # Ollama Embedder
 ollama
-
-# Semantica — Semantic Layer, Decision Intelligence, Provenance
-semantica[agno]
 
 # CI/CD Dependencies
 black

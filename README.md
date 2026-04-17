@@ -49,7 +49,8 @@ Quality Autopilot
 ├── 8 Flows   — Spec-to-Code, Discovery Onboard, Triage-Heal, Grooming,
 │                Full Regression, Full Lifecycle, Technical Testing,
 │                Regression Maintenance
-└── 12 Contracts — Pydantic hand-off models
+├── 12 Contracts — Pydantic hand-off models
+└── Semantica — Decision intelligence, context graphs, provenance tracking
 ```
 
 ## Agents
@@ -230,6 +231,41 @@ Quality Autopilot uses 12 Pydantic contracts for structured hand-offs between ag
 - **SquadHandoff** - Inter-squad communication with contract-based data passing
 - **AutomationScaffold** - Automation framework scaffolding structure
 - **TestDeletionApproval** - Test deletion request with HITL approval workflow (Curator output)
+
+## Semantica Decision Intelligence
+
+Quality Autopilot integrates Semantica for advanced decision tracking, context graphs, and provenance in high-stakes domains.
+
+### Key Capabilities
+
+- **Decision Tracking**: Every decision recorded with causal chains and reasoning
+- **Precedent Search**: Find similar past decisions for consistency
+- **Impact Analysis**: Understand decision influence on downstream systems
+- **Provenance**: W3C PROV-O compliant audit trails
+- **Conflict Detection**: Detect contradictory facts across knowledge bases
+
+### Integration Status
+
+| Agent | Semantica Features | Status |
+|-------|-------------------|--------|
+| Judge | Decision tracking, precedent search, impact analysis | ✅ Pilot Complete |
+| Detective | Reasoning engines (forward chaining, abductive, Rete) | 🔄 Planned Phase 2 |
+| Librarian | Conflict detection, entity resolution, temporal conflicts | 🔄 Planned Phase 2 |
+| Architect | Context graphs, traceability graphs | 🔄 Planned Phase 3 |
+
+### Judge Agent Semantica Tools
+
+- `record_judge_decision`: Record approval/rejection with causal chains
+- `find_judge_precedents`: Search similar past decisions
+- `analyze_decision_impact`: Understand decision influence
+- `get_decision_insights`: View decision pattern analytics
+
+### Benefits
+
+- **Explainability**: Every decision has causal chain and reasoning path
+- **Consistency**: Precedent search ensures consistent decisions across sessions
+- **Compliance**: W3C PROV-O provenance for audit trails
+- **Trust**: Full decision audit trail builds trust in autonomous decisions
 
 ## Workflows
 
@@ -526,17 +562,6 @@ The Quality Autopilot system includes automated regression suite curation to kee
 - Autonomous mode configured (auto-approve at ≥90% confidence)
 - Remaining: Deploy to Production, Harden Security, Production Monitoring
 
-**Phase 7: Semantica Integration** ✅ Complete
-- Semantica framework integrated with all 13 agents
-- SemanticaContext class created for configuration and feature flags
-- Semantica service layer created (DecisionTrackingService, TemporalService, ProvenanceService, ContextGraphService)
-- SemanticaAgent base class extending agno.Agent with Semantica hooks
-- Knowledge bases augmented with ContextGraph capability
-- Per-agent feature flags added (13 agents, all disabled by default)
-- Per-feature feature flags added (decision tracking, temporal, provenance - all disabled by default)
-- API verified to start successfully with Semantica disabled
-- Gate 7 Cleared (8/8 criteria passing)
-
 ## Advanced Features
 
 ### Memory and Session Management
@@ -639,70 +664,6 @@ asyncio.run(main())
 ```
 
 See `examples/agentos_client_example.py` for a complete example.
-
-### Semantica Integration (Semantic Decision Intelligence)
-
-Quality Autopilot integrates the Semantica framework to add semantic decision intelligence, temporal queries, and provenance tracking to all agents.
-
-**What is Semantica?**
-Semantica is a semantic layer framework that provides:
-- **Decision Tracking**: Records agent decisions with causal chains and reasoning
-- **Temporal Intelligence**: Point-in-time graph snapshots and temporal query rewriting
-- **Provenance Tracking**: W3C PROV-O compliant data lineage and algorithm tracing
-- **Context Graphs**: Semantic knowledge graphs for cross-agent decision influence analysis
-
-**Architecture:**
-- `app/semantica_config.py` - SemanticaContext class for configuration and feature flags
-- `app/semantica_service.py` - Service layer for DecisionTrackingService, TemporalService, ProvenanceService, ContextGraphService
-- `agents/base/semantica_agent.py` - SemanticaAgent base class extending agno.Agent with Semantica hooks
-- `db/session.py` - Knowledge bases augmented with ContextGraph capability
-
-**Feature Flags (All Disabled by Default):**
-
-Per-Agent Flags (13 agents):
-```bash
-SEMANTICA_DETECTIVE_ENABLED=false
-SEMANTICA_MEDIC_ENABLED=false
-SEMANTICA_JUDGE_ENABLED=false
-SEMANTICA_CI_LOG_ANALYZER_ENABLED=false
-SEMANTICA_ARCHITECT_ENABLED=false
-SEMANTICA_SCRIBE_ENABLED=false
-SEMANTICA_ENGINEER_ENABLED=false
-SEMANTICA_DISCOVERY_ENABLED=false
-SEMANTICA_LIBRARIAN_ENABLED=false
-SEMANTICA_CURATOR_ENABLED=false
-SEMANTICA_DATA_AGENT_ENABLED=false
-SEMANTICA_TECHNICAL_TESTER_ENABLED=false
-SEMANTICA_HEALING_JUDGE_ENABLED=false
-```
-
-Per-Feature Flags:
-```bash
-SEMANTICA_DECISION_TRACKING_ENABLED=false
-SEMANTICA_TEMPORAL_ENABLED=false
-SEMANTICA_PROVENANCE_ENABLED=false
-```
-
-**Global Enable:**
-```bash
-SEMANTICA_ENABLED=false
-SEMANTICA_GRAPH_BACKEND=pgvector
-```
-
-**How to Enable:**
-1. Set `SEMANTICA_ENABLED=true` in `.env`
-2. Set per-agent flags for agents you want to track (e.g., `SEMANTICA_DETECTIVE_ENABLED=true`)
-3. Set per-feature flags for capabilities you want to enable (e.g., `SEMANTICA_DECISION_TRACKING_ENABLED=true`)
-4. Restart the API: `docker compose restart qap-api`
-
-**Gradual Rollout:**
-All Semantica features are disabled by default to ensure zero impact on existing functionality. Enable features incrementally per agent and per capability for controlled rollout and monitoring.
-
-**Current Status:**
-- All 13 agents extend SemanticaAgent base class
-- Semantica infrastructure complete and production-ready
-- Feature flags configured for controlled rollout
-- API verified to start successfully with Semantica disabled
 
 ## AUT (Application Under Test)
 
