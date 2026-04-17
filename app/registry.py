@@ -14,15 +14,15 @@ from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
 
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, MODEL_MINI, agent_db
 
 
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
 def _get_models() -> list:
-    """Build the model list."""
-    return [MODEL]
+    """Build the model list with Ollama as the default."""
+    return [MODEL, MODEL_MINI]
 
 
 # ---------------------------------------------------------------------------

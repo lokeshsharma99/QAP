@@ -13,6 +13,7 @@ from agno.agent import Agent
 
 from app.semantica_config import is_agent_semantica_enabled
 from app.semantica_service import DecisionTrackingService, ProvenanceService
+from app.settings import MODEL
 
 
 class SemanticaAgent(Agent):
@@ -28,6 +29,9 @@ class SemanticaAgent(Agent):
         All agno.Agent parameters are supported. Semantica features are
         automatically enabled/disabled based on feature flags.
         """
+        # Set default model if not provided
+        if "model" not in kwargs:
+            kwargs["model"] = MODEL
         super().__init__(*args, **kwargs)
 
         # Store agent ID for Semantica tracking

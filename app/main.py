@@ -449,8 +449,8 @@ def get_settings():
             "ollama": "configured"
         },
         "model_settings": {
-            "default_model": "gpt-4o",
-            "fallback_models": ["gpt-4o-mini", "claude-3-5-sonnet"]
+            "default_model": OLLAMA_MODEL_ID,
+            "fallback_models": OLLAMA_MODELS
         },
         "environment": {
             "aut_url": "http://localhost:3000",
