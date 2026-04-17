@@ -17,8 +17,6 @@ from agents.base.semantica_agent import SemanticaAgent
 from agents.ci_log_analyzer.instructions import INSTRUCTIONS
 from agents.ci_log_analyzer.tools import (
     create_work_item,
-    get_log_file,
-    get_pipeline_logs,
     get_pipeline_runs,
 )
 from app.settings import MODEL, agent_db
@@ -48,8 +46,6 @@ tools = [
         add_few_shot=True,
     ),
     get_pipeline_runs,
-    get_pipeline_logs,
-    get_log_file,
     create_work_item,
 ]
 
