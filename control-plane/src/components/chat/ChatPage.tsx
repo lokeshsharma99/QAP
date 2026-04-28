@@ -23,8 +23,8 @@ import { ChatMessage } from '@/types/os'
 import {
   ChevronDown, ChevronUp, Wrench, Brain, Plus, PanelRightOpen, PanelRightClose,
   Bot, Cpu, Database, Hash, Clock, CheckCircle, XCircle, Zap, GitBranch, Activity,
-  Users, Settings, BookOpen, MemoryStick, Layers, MessageSquare, Play, CornerDownRight,
-  Paperclip, X as XIcon, FileText, Image as ImageIcon
+  Users, Settings, BookOpen, MemoryStick, Layers, MessageSquare, MessagesSquare,
+  Play, CornerDownRight, ArrowUp, Paperclip, X as XIcon, FileText, Image as ImageIcon
 } from 'lucide-react'
 
 import { getAgentDetailAPI, getTeamDetailAPI, getWorkflowDetailAPI } from '@/api/os'
@@ -1178,33 +1178,38 @@ export default function ChatPage() {
             {messages.length === 0 ? (
               <motion.div
                 key="empty-state"
-                className="flex h-full flex-col items-center justify-center py-16 text-center"
+                className="flex size-full flex-grow flex-col items-center justify-center gap-6 px-4"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
               >
                 <motion.div
-                  initial={{ scale: 0.85, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.1, duration: 0.3, type: 'spring', stiffness: 260, damping: 22 }}
+                  className="flex max-w-[800px] flex-col items-center gap-2"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.08 }}
                 >
-                  <Icon type="agno" size="md" />
+                  <motion.div
+                    initial={{ scale: 0.85, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.3, type: 'spring', stiffness: 260, damping: 22 }}
+                  >
+                    <MessagesSquare className="size-5 text-primary" />
+                  </motion.div>
+                  <motion.p
+                    className="text-[1.125rem] font-medium leading-[1.35rem] tracking-[-0.01em] text-primary"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.16 }}
+                  >
+                    {(agentId || teamId || workflowId) ? 'New Session' : 'Quality Autopilot'}
+                  </motion.p>
+                  <motion.p
+                    className="text-center text-[0.875rem] font-normal leading-[21px] tracking-[-0.02em] text-muted"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.22 }}
+                  >
+                    {!isEndpointActive ? 'Connect to your AgentOS endpoint to start chatting.'
+                      : !hasEntity ? 'Select an agent, team, or workflow from the sidebar to begin.'
+                        : 'Enter your input to get started with your agent.'}
+                  </motion.p>
                 </motion.div>
-                <motion.h2
-                  className="mt-4 text-lg font-medium text-primary"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
-                >
-                  {(agentId || teamId || workflowId) ? 'New Session' : 'Quality Autopilot'}
-                </motion.h2>
-                <motion.p
-                  className="mt-2 max-w-sm text-sm text-muted"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.24 }}
-                >
-                  {!isEndpointActive ? 'Connect to your AgentOS endpoint to start chatting.'
-                    : !hasEntity ? 'Select an agent, team, or workflow from the sidebar to begin.'
-                      : 'Enter your input to get started.'}
-                </motion.p>
 
                 {/* Quick-prompt chips */}
                 {isEndpointActive && hasEntity && (() => {
@@ -1213,7 +1218,7 @@ export default function ChatPage() {
                   if (prompts.length === 0) return null
                   return (
                     <motion.div
-                      className="mt-8 flex flex-wrap items-center justify-center gap-3"
+                      className="mb-[10%] flex flex-wrap items-center justify-center gap-3"
                       initial="hidden"
                       animate="visible"
                       variants={{ visible: { transition: { staggerChildren: 0.07, delayChildren: 0.3 } } }}
@@ -1223,12 +1228,12 @@ export default function ChatPage() {
                           key={prompt}
                           variants={{ hidden: { opacity: 0, scale: 0.9, y: 8 }, visible: { opacity: 1, scale: 1, y: 0 } }}
                           transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-                          whileHover={{ scale: 1.03, y: -1 }}
+                          whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={() => setInputMessage(prompt)}
-                          className="flex max-w-[325px] select-none items-center justify-center overflow-hidden rounded-full border border-accent bg-primaryAccent px-4 py-2 text-sm text-primary shadow-sm transition-colors hover:bg-accent/60 hover:border-brand/50"
+                          className="flex w-full max-w-[325px] select-none items-center justify-center overflow-hidden rounded-full border border-accent bg-primaryAccent px-4 py-2 text-[0.875rem] text-primary transition-colors hover:cursor-pointer hover:bg-accent/60"
                         >
-                          <span className="truncate">{prompt}</span>
+                          <span className="truncate text-center">{prompt}</span>
                         </motion.button>
                       ))}
                     </motion.div>
@@ -1247,14 +1252,17 @@ export default function ChatPage() {
         {/* Inline activity log */}
         {showActivity && <ActivityLog events={chatEvents} isStreaming={isStreaming} />}
 
-        {/* Input */}
-        <div className="border-t border-accent/50 p-4">
-          <div className="mx-auto max-w-3xl space-y-2">
-            {/* File preview strip */}
+        {/* Input — agno.com card style */}
+        <div className="px-4 pb-4 pt-2">
+          <div
+            id="chat-input-container"
+            className="mx-auto w-full max-w-[800px] flex-col items-center gap-2 rounded-xl border border-accent bg-accent p-2 shadow-md"
+          >
+            {/* File preview strip — inside card */}
             {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="mb-2 flex flex-wrap gap-1.5 px-1 pt-1">
                 {attachedFiles.map((file, i) => (
-                  <div key={i} className="flex items-center gap-1.5 rounded-lg border border-accent bg-primaryAccent px-2 py-1 text-xs">
+                  <div key={i} className="flex items-center gap-1.5 rounded-lg border border-accent/60 bg-background px-2 py-1 text-xs">
                     {file.type.startsWith('image/') ? (
                       <ImageIcon className="size-3 text-brand" />
                     ) : (
@@ -1271,33 +1279,24 @@ export default function ChatPage() {
                 ))}
               </div>
             )}
-            {/* Input row */}
-            <div className="flex items-end gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,.pdf,.txt,.md,.csv,.json"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files ?? [])
-                  setAttachedFiles((prev) => [...prev, ...files])
-                  e.target.value = ''
-                }}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                title="Attach files or images"
-                disabled={!hasEntity}
-                onClick={() => fileInputRef.current?.click()}
-                className="h-12 w-10 shrink-0 rounded-xl border border-accent text-muted hover:text-primary"
-              >
-                <Paperclip className="size-4" />
-              </Button>
+
+            {/* Textarea */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              id="file-upload"
+              accept="image/*,.pdf,.csv,.json,.txt,.md,.doc,.docx,.webp,.jpeg,.jpg,.png"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? [])
+                setAttachedFiles((prev) => [...prev, ...files])
+                e.target.value = ''
+              }}
+            />
+            <div className="rounded-lg bg-background/30">
               <TextArea
-                placeholder={mode === 'workflow' ? 'Enter workflow input…' : 'Ask the QAP agents anything…'}
+                placeholder="Ask anything..."
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={(e) => {
@@ -1305,17 +1304,47 @@ export default function ChatPage() {
                     e.preventDefault(); handleSubmit()
                   }
                 }}
-                className="min-h-[48px] flex-1 resize-none border-accent bg-primaryAccent text-sm"
+                className="w-full resize-none border-none bg-transparent p-3 text-[0.875rem] leading-[21px] tracking-[-0.02em] placeholder:text-muted/50 focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[44px] max-h-[213px]"
                 disabled={!hasEntity}
               />
-              <Button
-                onClick={handleSubmit}
-                disabled={(!inputMessage.trim() && attachedFiles.length === 0) || isStreaming || !hasEntity}
-                size="icon"
-                className="h-12 w-12 rounded-xl bg-primary"
-              >
-                <Icon type="send" size="xs" color="primaryAccent" />
-              </Button>
+            </div>
+
+            {/* Bottom toolbar */}
+            <div className="flex w-full items-center justify-between gap-2 px-1 pb-1">
+              {/* Left: attach + model switcher */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  title="Attach files"
+                  disabled={!hasEntity}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-accent/70 bg-transparent text-primary shadow-sm transition-colors hover:bg-primary/5 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <Paperclip className="size-4" />
+                </button>
+                <ModelSwitcher />
+              </div>
+
+              {/* Right: entity chip + send */}
+              <div className="flex items-center gap-2">
+                {(agentId || teamId || workflowId) && (
+                  <div className="flex h-8 max-w-[220px] items-center gap-2 rounded-md border border-accent/60 px-3">
+                    <span className="truncate text-[0.75rem] uppercase tracking-[-0.02em] text-primary font-medium">
+                      {agentId ?? teamId ?? workflowId}
+                    </span>
+                    <div className="shrink-0 rounded-[6px] border border-accent/60 p-[2px]">
+                      <Icon type="agno" size="xxs" />
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={handleSubmit}
+                  disabled={(!inputMessage.trim() && attachedFiles.length === 0) || isStreaming || !hasEntity}
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-background shadow-sm transition-colors hover:bg-primary/80 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <ArrowUp className="size-[10.67px]" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
