@@ -26,6 +26,7 @@ from agents.scribe import scribe
 from app.registry import registry
 from app.settings import RUNTIME_ENV, agent_db
 from teams.context import context_team
+from teams.diagnostics import diagnostics_team
 from teams.engineering import engineering_team
 from teams.operations import operations_team
 from teams.strategy import strategy_team
@@ -59,6 +60,7 @@ agent_os = AgentOS(
         strategy_team,
         engineering_team,
         operations_team,
+        diagnostics_team,
     ],
     workflows=[
         discovery_onboard,
