@@ -1,3 +1,5 @@
+name: qap
+
 services:
   qap-db:
     image: agnohq/pgvector:18

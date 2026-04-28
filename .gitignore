@@ -37,11 +37,16 @@ pgdata/
 *.log
 logs/
 
-# Test output
+# Test output (automation framework)
 test-output/
 playwright-report/
 test-results/
 trace.zip
+automation/test-results/
+automation/playwright-report/
+automation/reports/
+automation/.last-run.json
+automation/data/run_context.json
 
 # Node
 node_modules/
