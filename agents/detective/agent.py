@@ -11,7 +11,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.detective.instructions import INSTRUCTIONS
-from agents.detective.tools import classify_failure, parse_ci_log, parse_trace_zip
+from agents.detective.tools import classify_failure, extract_screenshot_from_trace, parse_ci_log, parse_trace_zip
 from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
 
@@ -75,6 +75,7 @@ detective = Agent(
         *_decision_tools,
         *_github_tools,
         parse_trace_zip,
+        extract_screenshot_from_trace,
         parse_ci_log,
         classify_failure,
     ],
