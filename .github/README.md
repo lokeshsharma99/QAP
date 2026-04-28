@@ -1,126 +1,151 @@
-# GitHub Hooks and CI/CD Workflows
+# QAP — Quality Autopilot
 
-This document describes the local Git hooks and GitHub Actions workflows configured for Quality Autopilot.
+**Agentic Compiler for the Software Testing Life Cycle (STLC).**
 
-## Local Git Hooks
+Quality Autopilot treats AI as a Senior SDET that reasons through requirements, writes Playwright automation, and self-heals broken tests.
 
-### Pre-Commit Hook
-- **Location**: `.githooks/pre-commit`
-- **Purpose**: Validate code before committing
-- **Checks**:
-  - Python linting with black and flake8
-  - TypeScript linting with eslint (on automation/ folder)
-  - YAML file validation
-  - Hardcoded secrets detection
+> **Status:** Phases 0–4 complete ✅ | Phase 5 (Full Autonomy) 🔄 next
 
-### Post-Commit Hook
-- **Location**: `.githooks/post-commit`
-- **Purpose**: Trigger knowledge base re-index after commit
-- **Triggers**: Only on main/develop branches
-- **Actions**: Calls API endpoint to re-index codebase_vectors
+---
 
-### Enabling Hooks
-The hooks are automatically enabled via `git config core.hooksPath .githooks`. To disable hooks temporarily:
+## Quick Start
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) running
+- `.env` configured (copy from `example.env`)
+
 ```bash
-git config --unset core.hooksPath
+cp example.env .env
+# Edit .env — set OPENAI_API_KEY at minimum
+docker compose up -d --build
+curl http://localhost:8000/health
+# → {"status":"ok","instantiated_at":"..."}
 ```
 
-## GitHub Actions Workflows
+### Access
 
-### 1. CI Workflow (.github/workflows/ci.yml)
-- **Triggers**: Push to main/develop, Pull Requests
-- **Steps**:
-  - Checkout code
-  - Set up Python environment
-  - Install dependencies
-  - Run Python linting (black, flake8)
-  - Run Python tests (Phase 2 DoD, Jira integration)
-  - Build Docker images
-  - Start services and health check
+| Service | URL |
+|---------|-----|
+| AgentOS API | http://localhost:8000 |
+| API Docs | http://localhost:8000/docs |
+| PostgreSQL / PgVector | localhost:5432 |
 
-### 2. Jira Integration Workflow (.github/workflows/jira-trigger.yml)
-- **Triggers**: Manual workflow dispatch, repository dispatch (jira-webhook)
-- **Purpose**: Generate automation from Jira tickets
-- **Steps**:
-  - Fetch Jira ticket details
-  - Build and start Docker services
-  - Trigger Strategy Team via API
-  - Generate Gherkin specs and automation
+---
 
-### 3. App Integration Workflow (.github/workflows/app-integration.yml)
-- **Triggers**: Manual workflow dispatch, repository dispatch (app-update)
-- **Purpose**: Trigger Discovery Agent when GDS-Demo-App changes
-- **Steps**:
-  - Build and start Docker services
-  - Trigger Discovery Agent via webhook
-  - Update site_manifesto and re-index KB
+## Architecture
 
-### 4. Automation Test Workflow (.github/workflows/test-automation.yml)
-- **Triggers**: Push to automation/ folder, Pull Requests
-- **Purpose**: Run Playwright tests when automation code changes
-- **Steps**:
-  - Set up Node.js environment
-  - Install Playwright dependencies
-  - Run Playwright tests
-  - Upload test results and screenshots
-
-## Webhook Endpoints
-
-### /webhooks/jira
-- **Purpose**: Receive Jira webhooks
-- **Triggers**: Strategy Team when ticket status is "Ready for QA"
-- **Payload**: JiraWebhookPayload (issue_key, issue_url, status, etc.)
-
-### /webhooks/app-update
-- **Purpose**: Receive webhooks from GDS-Demo-App
-- **Triggers**: Discovery Agent to re-scan AUT
-- **Payload**: AppWebhookPayload (repo, branch, commit_sha, etc.)
-
-### /health
-- **Purpose**: Health check endpoint for CI/CD
-- **Returns**: Service health status
-
-## GitHub Secrets
-
-Required secrets to configure in GitHub repository settings:
-
-### quality-autopilot Repository
-- `GITHUB_PAT`: Personal Access Token for API calls between repos
-- `JIRA_URL`: Jira instance URL
-- `JIRA_USERNAME`: Jira username
-- `JIRA_API_TOKEN`: Jira API token
-- `DOCKER_USERNAME`: Docker Hub username (optional)
-- `DOCKER_PASSWORD`: Docker Hub password (optional)
-
-### GDS-Demo-App Repository
-- `WEBHOOK_URL`: Quality Autopilot webhook URL
-- `WEBHOOK_SECRET`: Secret for webhook validation (optional)
-
-## Setting Up Webhooks
-
-### GDS-Demo-App → Quality Autopilot
-1. Go to GDS-Demo-App repository settings
-2. Navigate to Webhooks
-3. Add new webhook:
-   - URL: `https://<quality-autopilot-host>/webhooks/app-update`
-   - Content type: `application/json`
-   - Events: Push, Pull Request
-
-### Jira → Quality Autopilot
-1. Go to Jira project settings
-2. Navigate to Webhooks
-3. Add new webhook:
-   - URL: `https://<quality-autopilot-host>/webhooks/jira`
-   - Events: Issue updated (status change to "Ready for QA")
-
-## Manual Workflow Triggers
-
-### Trigger Jira Integration Workflow
-```bash
-gh workflow run jira-trigger.yml -f ticket_key=GDS-4
+```
+QAP/
+├── agents/          9 agents
+│   ├── architect    semantic_search  → RequirementContext
+│   ├── scribe       gherkin_formatter → GherkinSpec
+│   ├── discovery    ui_crawler       → SiteManifesto
+│   ├── librarian    vector_indexing  → PgVector KB
+│   ├── engineer     file_writer      → GitHub PR
+│   ├── data_agent   data_factory     → RunContext
+│   ├── detective    trace_analyzer   → RCAReport
+│   ├── medic        surgical_editor  → HealingPatch
+│   └── judge        adversarial_review → JudgeVerdict
+├── teams/           4 squads (all TeamMode.coordinate)
+│   ├── strategy     Architect + Scribe
+│   ├── context      Discovery + Librarian
+│   ├── engineering  Engineer + Data Agent
+│   └── operations   Detective + Medic
+├── workflows/       3 pipelines
+│   ├── spec_to_code          Requirement → Spec → Code → PR
+│   ├── discovery_onboard     AUT → Site Manifesto → KB
+│   └── triage_heal           Failure → RCA → Patch → Verify
+├── contracts/       9 Pydantic hand-off models
+├── automation/      BDD+POM TypeScript framework
+│   ├── features/            Gherkin .feature files
+│   ├── step_definitions/    Cucumber steps
+│   ├── pages/               Playwright Page Object Models
+│   ├── hooks/               Before/After hooks
+│   └── fixtures/            Test data fixtures
+├── db/              PostgreSQL + PgVector helpers
+└── app/             AgentOS entry point + settings
 ```
 
-### Trigger App Integration Workflow
-```bash
-gh workflow run app-integration.yml -f repo=lokeshsharma99/GDS-Demo-App -f branch=main
+---
+
+## Agents
+
+| Agent | ID | Primary Skill | Output |
+|-------|----|--------------|--------|
+| Architect | `architect` | `semantic_search` | `RequirementContext` |
+| Scribe | `scribe` | `gherkin_formatter` | `GherkinSpec` |
+| Discovery | `discovery` | `ui_crawler` | `SiteManifesto` |
+| Librarian | `librarian` | `vector_indexing` | PgVector KB |
+| Engineer | `engineer` | `file_writer` | GitHub PR |
+| Data Agent | `data-agent` | `data_factory` | `RunContext` |
+| Detective | `detective` | `trace_analyzer` | `RCAReport` |
+| Medic | `medic` | `surgical_editor` | `HealingPatch` |
+| Judge | `judge` | `adversarial_review` | `JudgeVerdict` |
+
+---
+
+## Judge Quality Gate
+
 ```
+confidence ≥ 0.90  → AUTO-APPROVE  → pipeline continues
+confidence < 0.90  → Human review  → hold for Human Lead
+confidence < 0.50  → AUTO-REJECT   → back to producing agent
+```
+
+---
+
+## Automation Framework
+
+```bash
+cd automation
+npm install
+
+npm test                   # all tests (headless)
+npm run test:headed        # visible browser
+```
+
+Locator strategy: `data-testid` → `role` → `text`. No CSS/XPath. No `waitForTimeout`.
+
+---
+
+## Gated Roadmap
+
+| Phase | Goal | Status |
+|-------|------|--------|
+| 0 | Docker + `/health 200` | ✅ Done |
+| 0.5 | Site Manifesto in PgVector | ✅ Done |
+| 1 | Codebase KB indexed | ✅ Done |
+| 2 | Gherkin workflow live | ✅ Done |
+| 3 | Spec → Code → Green | ✅ Done |
+| 4 | Triage + Heal loop | ✅ Done |
+| 5 | 95% autonomous / 30 days | 🔄 Next |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Agent framework | [Agno](https://docs.agno.com) (`agno[os]`) |
+| Runtime | AgentOS (FastAPI) on port 8000 |
+| Database | PostgreSQL 16 + PgVector |
+| Model | OpenRouter via Kilo AI Gateway |
+| Embeddings | OllamaEmbedder `qwen3-embedding:4b` |
+| Test engine | Playwright + Cucumber (TypeScript) |
+| Container | Docker Compose |
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | ✅ | Model API key |
+| `DB_USER` | ✅ | PostgreSQL user (default: `ai`) |
+| `DB_PASS` | ✅ | PostgreSQL password (default: `ai`) |
+| `AUT_BASE_URL` | Optional | Application Under Test URL |
+| `AUT_AUTH_USER` | Optional | AUT login username |
+| `AUT_AUTH_PASS` | Optional | AUT login password |
+
+See `example.env` for the full template.
