@@ -7,10 +7,21 @@ Role: Parse requirements, query KB for impact, produce RequirementContext (Execu
 """
 
 from agno.agent import Agent
+from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.architect.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
+from db import get_automation_kb, get_qap_learnings_kb, get_site_manifesto_kb
+
+# ---------------------------------------------------------------------------
+# Knowledge Bases
+# Primary: qap_learnings (shared collective intelligence — all agents)
+# Domain:  site_manifesto + automation (read-only — Architect queries existing POMs)
+# ---------------------------------------------------------------------------
+qap_learnings_kb = get_qap_learnings_kb()
+site_manifesto_kb = get_site_manifesto_kb()
+automation_kb = get_automation_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -24,8 +35,14 @@ architect = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    knowledge=qap_learnings_kb,
+    search_knowledge=True,
     # Capabilities
-    tools=[ReasoningTools(add_instructions=True)],
+    tools=[
+        ReasoningTools(add_instructions=True),
+        KnowledgeTools(knowledge=site_manifesto_kb),
+        KnowledgeTools(knowledge=automation_kb),
+    ],
     # Instructions
     instructions=INSTRUCTIONS,
     # Feature-specific

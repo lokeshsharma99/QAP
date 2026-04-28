@@ -7,11 +7,25 @@ Role: Parse Playwright traces to classify failure root cause.
 """
 
 from agno.agent import Agent
+from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.detective.instructions import INSTRUCTIONS
 from agents.detective.tools import classify_failure, parse_ci_log, parse_trace_zip
 from app.settings import MODEL, agent_db
+from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
+
+# ---------------------------------------------------------------------------
+# Knowledge Bases
+# Primary: qap_learnings (shared)
+# Domain:  rca_kb      — Detective WRITES failure classifications here
+#          automation_kb  — Detective reads code to understand what broke
+#          site_manifesto — Detective checks if UI changed
+# ---------------------------------------------------------------------------
+qap_learnings_kb = get_qap_learnings_kb()
+rca_kb = get_rca_kb()
+automation_kb = get_automation_kb()
+site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -25,9 +39,15 @@ detective = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    knowledge=qap_learnings_kb,
+    search_knowledge=True,
     # Capabilities
     tools=[
         ReasoningTools(add_instructions=True),
+        KnowledgeTools(knowledge=qap_learnings_kb),
+        KnowledgeTools(knowledge=rca_kb),
+        KnowledgeTools(knowledge=automation_kb),
+        KnowledgeTools(knowledge=site_manifesto_kb),
         parse_trace_zip,
         parse_ci_log,
         classify_failure,

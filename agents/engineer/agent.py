@@ -9,11 +9,22 @@ Role: Author modular Playwright POMs and Step Definitions (Look-Before-You-Leap)
 from agno.agent import Agent
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
+from agno.tools.knowledge import KnowledgeTools
 
 from agents.engineer.instructions import INSTRUCTIONS
 from agents.engineer.tools import run_typecheck, write_feature, write_pom, write_step_def
 from agents.librarian.agent import automation_knowledge
 from app.settings import MODEL, agent_db
+from db import get_qap_learnings_kb, get_site_manifesto_kb
+
+# ---------------------------------------------------------------------------
+# Knowledge Bases
+# Primary: automation_kb (from Librarian — shared object, same PG table)
+# Domain:  site_manifesto — Engineer reads Discovery's output before writing code
+# Shared:  qap_learnings — Engineer reads patterns, writes learnings after PRs
+# ---------------------------------------------------------------------------
+qap_learnings_kb = get_qap_learnings_kb()
+site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -33,6 +44,9 @@ engineer = Agent(
     tools=[
         CodingTools(),
         FileTools(),
+        KnowledgeTools(knowledge=automation_knowledge),
+        KnowledgeTools(knowledge=site_manifesto_kb),
+        KnowledgeTools(knowledge=qap_learnings_kb),
         write_pom,
         write_step_def,
         write_feature,

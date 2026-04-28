@@ -7,11 +7,22 @@ Role: Run DoD checklist, auto-approve at >= 90% confidence.
 """
 
 from agno.agent import Agent
+from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.judge.instructions import INSTRUCTIONS
 from agents.judge.tools import check_code_quality, lint_gherkin, score_confidence
 from app.settings import MODEL, agent_db
+from db import get_qap_learnings_kb, get_rca_kb
+
+# ---------------------------------------------------------------------------
+# Knowledge Bases
+# Primary: qap_learnings — Judge reads prior approval decisions for consistency
+#                          Judge WRITES its verdicts as learnings for future runs
+# Domain:  rca_kb        — Judge reads RCA history when reviewing healing patches
+# ---------------------------------------------------------------------------
+qap_learnings_kb = get_qap_learnings_kb()
+rca_kb = get_rca_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -24,9 +35,13 @@ judge = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    knowledge=qap_learnings_kb,
+    search_knowledge=True,
     # Capabilities
     tools=[
         ReasoningTools(add_instructions=True),
+        KnowledgeTools(knowledge=qap_learnings_kb),
+        KnowledgeTools(knowledge=rca_kb),
         lint_gherkin,
         check_code_quality,
         score_confidence,

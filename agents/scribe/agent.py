@@ -9,9 +9,17 @@ Role: Author BDD Gherkin specs from RequirementContext.
 from agno.agent import Agent
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
+from agno.tools.knowledge import KnowledgeTools
 
 from agents.scribe.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
+from db import get_qap_learnings_kb
+
+# ---------------------------------------------------------------------------
+# Knowledge Bases
+# Primary: qap_learnings — Scribe reads prior Gherkin patterns and conventions
+# ---------------------------------------------------------------------------
+qap_learnings_kb = get_qap_learnings_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -25,8 +33,14 @@ scribe = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    knowledge=qap_learnings_kb,
+    search_knowledge=True,
     # Capabilities
-    tools=[CodingTools(), FileTools()],
+    tools=[
+        CodingTools(),
+        FileTools(),
+        KnowledgeTools(knowledge=qap_learnings_kb),
+    ],
     # Instructions
     instructions=INSTRUCTIONS,
     # Feature-specific
