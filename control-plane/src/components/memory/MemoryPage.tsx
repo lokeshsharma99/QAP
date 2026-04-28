@@ -5,7 +5,7 @@ import { APIRoutes } from '@/api/routes'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Brain, RefreshCw, Search, Trash2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
+import { Brain, RefreshCw, Search, Trash2, ChevronDown, ChevronUp, Sparkles, BarChart3 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { toast } from 'sonner'
 
@@ -72,11 +72,23 @@ const MemoryCard = ({ mem, onDelete }: { mem: Memory; onDelete: (id: string) => 
   )
 }
 
+interface MemoryUserStats {
+  total_memories: number
+  total_agents: number
+  memories_by_agent: Record<string, number>
+  memories_by_topic: Record<string, number>
+  oldest_memory?: string
+  newest_memory?: string
+}
+
 export default function MemoryPage() {
   const { selectedEndpoint, authToken } = useStore()
+  const [tab, setTab] = useState<'memories' | 'stats'>('memories')
   const [memories, setMemories] = useState<Memory[]>([])
   const [topics, setTopics] = useState<MemoryTopic[]>([])
+  const [userStats, setUserStats] = useState<MemoryUserStats | null>(null)
   const [loading, setLoading] = useState(false)
+  const [statsLoading, setStatsLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [optimizing, setOptimizing] = useState(false)
 
@@ -122,7 +134,21 @@ export default function MemoryPage() {
     finally { setOptimizing(false) }
   }
 
+  const fetchStats = useCallback(async () => {
+    if (!selectedEndpoint) return
+    setStatsLoading(true)
+    try {
+      const res = await fetch(APIRoutes.UserMemoryStats(selectedEndpoint), { headers })
+      if (res.ok) {
+        const d = await res.json()
+        setUserStats(d?.data ?? d)
+      }
+    } catch { /* silent */ }
+    finally { setStatsLoading(false) }
+  }, [selectedEndpoint, authToken])
+
   useEffect(() => { fetchAll() }, [fetchAll])
+  useEffect(() => { if (tab === 'stats') fetchStats() }, [tab, fetchStats])
 
   const filtered = search
     ? memories.filter((m) => (m.memory || m.summary || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -149,6 +175,83 @@ export default function MemoryPage() {
           </div>
         </div>
 
+        {/* Tab switcher */}
+        <div className="flex gap-1 rounded-xl border border-accent bg-primaryAccent p-1">
+          <button
+            onClick={() => setTab('memories')}
+            className={cn(
+              'flex-1 rounded-lg py-1.5 text-xs font-medium uppercase transition-colors',
+              tab === 'memories' ? 'bg-accent text-primary' : 'text-muted hover:text-primary'
+            )}
+          >
+            <span className="flex items-center justify-center gap-1.5"><Brain className="size-3.5" />Memories</span>
+          </button>
+          <button
+            onClick={() => setTab('stats')}
+            className={cn(
+              'flex-1 rounded-lg py-1.5 text-xs font-medium uppercase transition-colors',
+              tab === 'stats' ? 'bg-accent text-primary' : 'text-muted hover:text-primary'
+            )}
+          >
+            <span className="flex items-center justify-center gap-1.5"><BarChart3 className="size-3.5" />User Stats</span>
+          </button>
+        </div>
+
+        {tab === 'stats' ? (
+          statsLoading ? (
+            <div className="space-y-3">{Array.from({length:4}).map((_,i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
+          ) : !userStats ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-accent bg-primaryAccent py-16 text-center">
+              <BarChart3 className="size-10 text-muted/20" />
+              <p className="mt-3 text-sm font-medium text-muted">No stats available</p>
+              <Button size="sm" variant="outline" onClick={fetchStats} className="mt-4">Load Stats</Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                {[['Total Memories', userStats.total_memories], ['Total Agents', userStats.total_agents], ['Topics', Object.keys(userStats.memories_by_topic ?? {}).length]].map(([label, val]) => (
+                  <div key={String(label)} className="rounded-xl border border-accent bg-primaryAccent p-4 text-center">
+                    <div className="text-2xl font-semibold text-primary">{val}</div>
+                    <div className="mt-1 text-xs text-muted uppercase">{label}</div>
+                  </div>
+                ))}
+              </div>
+              {userStats.memories_by_agent && Object.keys(userStats.memories_by_agent).length > 0 && (
+                <div className="rounded-xl border border-accent bg-primaryAccent p-4">
+                  <div className="mb-3 text-xs font-medium uppercase text-muted">Memories by Agent</div>
+                  <div className="space-y-2">
+                    {Object.entries(userStats.memories_by_agent).sort((a,b) => b[1]-a[1]).map(([agent, count]) => (
+                      <div key={agent} className="flex items-center gap-3">
+                        <div className="w-28 truncate text-xs text-primary">{agent}</div>
+                        <div className="flex-1 rounded-full bg-accent h-1.5 overflow-hidden">
+                          <div className="h-full rounded-full bg-brand" style={{ width: `${Math.round((count / userStats.total_memories) * 100)}%` }} />
+                        </div>
+                        <div className="w-8 text-right text-xs text-muted">{count}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {userStats.memories_by_topic && Object.keys(userStats.memories_by_topic).length > 0 && (
+                <div className="rounded-xl border border-accent bg-primaryAccent p-4">
+                  <div className="mb-3 text-xs font-medium uppercase text-muted">Top Topics</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(userStats.memories_by_topic).sort((a,b) => b[1]-a[1]).slice(0,20).map(([topic, count]) => (
+                      <span key={topic} className="rounded-full bg-accent px-2 py-0.5 text-xs text-muted">{topic} <span className="text-muted/50">({count})</span></span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="rounded-xl border border-accent bg-primaryAccent p-4">
+                <div className="space-y-1 text-xs text-muted">
+                  {userStats.oldest_memory && <div>Oldest: {dayjs(userStats.oldest_memory).format('MMM D YYYY, HH:mm')}</div>}
+                  {userStats.newest_memory && <div>Newest: {dayjs(userStats.newest_memory).format('MMM D YYYY, HH:mm')}</div>}
+                </div>
+              </div>
+            </div>
+          )
+        ) : (
+          <>
         {/* Stats + topics */}
         {loading ? (
           <Skeleton className="h-16 rounded-xl" />
@@ -197,6 +300,8 @@ export default function MemoryPage() {
             filtered.map((mem) => <MemoryCard key={mem.id} mem={mem} onDelete={handleDelete} />)
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   )

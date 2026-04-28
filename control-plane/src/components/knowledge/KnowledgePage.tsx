@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   BookOpen, RefreshCw, Search, ChevronDown, ChevronUp, Plus, Trash2,
-  FileText, Link2, Upload, X, AlertCircle
+  FileText, Link2, Upload, X, AlertCircle, Globe
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { toast } from 'sonner'
@@ -224,7 +224,7 @@ const SearchResultCard = ({ doc }: { doc: KBDocument & { score?: number } }) => 
 // ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
-type UploadTab = 'text' | 'file' | 'url'
+type UploadTab = 'text' | 'file' | 'url' | 'remote'
 
 export default function KnowledgePage() {
   const { selectedEndpoint, authToken } = useStore()
@@ -250,6 +250,8 @@ export default function KnowledgePage() {
   const [uploadName, setUploadName]   = useState('')
   const [textContent, setTextContent] = useState('')
   const [urlInput, setUrlInput]       = useState('')
+  const [remoteUrl, setRemoteUrl]     = useState('')
+  const [remoteLoader, setRemoteLoader] = useState('website')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading]     = useState(false)
 
@@ -410,9 +412,27 @@ export default function KnowledgePage() {
     if (uploadTab === 'text' && !textContent.trim()) return
     if (uploadTab === 'url'  && !urlInput.trim())    return
     if (uploadTab === 'file' && !selectedFile)        return
+    if (uploadTab === 'remote' && !remoteUrl.trim())  return
 
     setUploading(true)
     try {
+      if (uploadTab === 'remote') {
+        const body: Record<string, unknown> = {
+          url: remoteUrl.trim(),
+          loader_type: remoteLoader,
+        }
+        if (selectedKb) Object.assign(body, kbParam(selectedKb))
+        const res = await fetch(APIRoutes.RemoteContent(selectedEndpoint), {
+          method: 'POST',
+          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) throw new Error(await res.text())
+        toast.success('Remote source queued for indexing')
+        setRemoteUrl('')
+        setTimeout(() => fetchDocs(selectedKb), 2000)
+        return
+      }
       const resolvedId = selectedKb
       const uploadUrl = new URL(APIRoutes.KnowledgeContent(selectedEndpoint))
       if (resolvedId) {
@@ -464,9 +484,10 @@ export default function KnowledgePage() {
   useEffect(() => { if (selectedKb) fetchDocs(selectedKb) }, [selectedKb, fetchDocs])
 
   const canUpload =
-    (uploadTab === 'text' && textContent.trim()) ||
-    (uploadTab === 'url'  && urlInput.trim()) ||
-    (uploadTab === 'file' && !!selectedFile)
+    (uploadTab === 'text'   && textContent.trim().length > 0) ||
+    (uploadTab === 'url'    && urlInput.trim().length > 0) ||
+    (uploadTab === 'file'   && !!selectedFile) ||
+    (uploadTab === 'remote' && remoteUrl.trim().length > 0)
 
   const displayDocs = searchResults !== null ? searchResults : docs
 
@@ -532,9 +553,10 @@ export default function KnowledgePage() {
           {/* Tab bar */}
           <div className="flex border-b border-accent">
             {([
-              { id: 'text' as UploadTab, icon: FileText,  label: 'Text' },
-              { id: 'file' as UploadTab, icon: Upload,    label: 'Upload File' },
-              { id: 'url'  as UploadTab, icon: Link2,     label: 'Add URL' },
+              { id: 'text'   as UploadTab, icon: FileText, label: 'Text' },
+              { id: 'file'   as UploadTab, icon: Upload,   label: 'Upload File' },
+              { id: 'url'    as UploadTab, icon: Link2,    label: 'Add URL' },
+              { id: 'remote' as UploadTab, icon: Globe,    label: 'Remote Source' },
             ] as const).map(({ id, icon: Icon, label }) => (
               <button
                 key={id}
@@ -619,6 +641,29 @@ export default function KnowledgePage() {
               </div>
             )}
 
+            {uploadTab === 'remote' && (
+              <div className="space-y-2">
+                <input
+                  value={remoteUrl}
+                  onChange={(e) => setRemoteUrl(e.target.value)}
+                  placeholder="https://example.com/ — crawl and index via Agno loader"
+                  className="w-full rounded-xl border border-accent bg-background px-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
+                />
+                <select
+                  value={remoteLoader}
+                  onChange={(e) => setRemoteLoader(e.target.value)}
+                  className="w-full rounded-xl border border-accent bg-background px-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
+                >
+                  {['website', 'sitemap', 'pdf', 'docx', 'github', 'jira', 'confluence'].map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted/60">
+                  Uses Agno&apos;s remote content loader — crawls and vectorizes the target source.
+                </p>
+              </div>
+            )}
+
             <Button
               size="sm"
               onClick={handleUpload}
@@ -630,7 +675,7 @@ export default function KnowledgePage() {
               ) : (
                 <Plus className="size-3.5" />
               )}
-              {uploading ? 'Uploading…' : 'Add to Knowledge Base'}
+              {uploading ? 'Uploading…' : uploadTab === 'remote' ? 'Index Remote Source' : 'Add to Knowledge Base'}
             </Button>
           </div>
         </div>

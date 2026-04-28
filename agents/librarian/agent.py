@@ -24,7 +24,7 @@ from db import get_automation_kb, get_qap_learnings_kb
 _kg_tools: list = []
 try:
     from app.semantica_config import SemanticaContext
-    if SemanticaContext.is_enabled():
+    if SemanticaContext.is_agent_enabled("librarian"):
         from integrations.agno import AgnoKGToolkit  # type: ignore[import]
         from app.semantica_context import get_shared_context
         _shared_ctx = get_shared_context()

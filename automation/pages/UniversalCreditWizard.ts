@@ -9,7 +9,7 @@
  */
 
 import { type Page, type Locator, expect } from '@playwright/test';
-import { logger } from '../support/logger';
+import { logger } from '../../support/logger';
 import { UniversalCreditPersonalDetailsPage } from './UniversalCreditPersonalDetailsPage';
 
 /**

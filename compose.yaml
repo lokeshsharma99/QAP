@@ -12,7 +12,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
     ports:
-      - "5432:5432"
+      - "0.0.0.0:5432:5432"   # LAN-accessible
     networks:
       - qap-net
 
@@ -24,7 +24,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "0.0.0.0:8000:8000"   # LAN-accessible
     volumes:
       # Hot-reload: mount source code
       - .:/app
@@ -81,6 +81,26 @@ services:
       - qap-net
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # ---------------------------------------------------------------------------
+  # Quality Autopilot Control Plane  (Next.js UI — port 3000)
+  # ---------------------------------------------------------------------------
+  qap-ui:
+    build:
+      context: ./control-plane
+      dockerfile: Dockerfile
+    container_name: qap-ui
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:3000:3000"   # LAN-accessible
+    environment:
+      # NEXT_PUBLIC_AGENTOS_URL is a build-time Next.js var — not effective here.
+      # The UI auto-detects the backend at window.location.hostname:8000 at runtime.
+      - NEXT_PUBLIC_OS_SECURITY_KEY=${NEXT_PUBLIC_OS_SECURITY_KEY:-}
+    depends_on:
+      - qap-api
+    networks:
+      - qap-net
 
   # ---------------------------------------------------------------------------
   # Playwright MCP Server  (browser automation for Discovery + Engineer agents)

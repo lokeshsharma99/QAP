@@ -20,6 +20,8 @@ SEMANTICA_DETECTIVE_ENABLED = getenv("SEMANTICA_DETECTIVE_ENABLED", "false").low
 SEMANTICA_MEDIC_ENABLED = getenv("SEMANTICA_MEDIC_ENABLED", "false").lower() in ["true", "1", "yes"]
 SEMANTICA_JUDGE_ENABLED = getenv("SEMANTICA_JUDGE_ENABLED", "false").lower() in ["true", "1", "yes"]
 SEMANTICA_CI_LOG_ANALYZER_ENABLED = getenv("SEMANTICA_CI_LOG_ANALYZER_ENABLED", "false").lower() in ["true", "1", "yes"]
+SEMANTICA_LIBRARIAN_ENABLED = getenv("SEMANTICA_LIBRARIAN_ENABLED", "false").lower() in ["true", "1", "yes"]
+SEMANTICA_ARCHITECT_ENABLED = getenv("SEMANTICA_ARCHITECT_ENABLED", "false").lower() in ["true", "1", "yes"]
 
 # Per-feature feature flags
 SEMANTICA_TEMPORAL_ENABLED = getenv("SEMANTICA_TEMPORAL_ENABLED", "false").lower() in ["true", "1", "yes"]
@@ -53,6 +55,8 @@ class SemanticaContext:
             "judge": SEMANTICA_JUDGE_ENABLED,
             "healing_judge": SEMANTICA_JUDGE_ENABLED,
             "ci_log_analyzer": SEMANTICA_CI_LOG_ANALYZER_ENABLED,
+            "librarian": SEMANTICA_LIBRARIAN_ENABLED,
+            "architect": SEMANTICA_ARCHITECT_ENABLED,
         }
 
         return agent_flags.get(agent_id, False)

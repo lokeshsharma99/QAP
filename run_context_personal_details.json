@@ -1,0 +1,82 @@
+{
+  "ticket_id": "UC-BAT-001",
+  "scenario": "Personal Details - Happy Path Validation",
+  "test_users": [
+    {
+      "username": "qap_user_1714900000",
+      "email": "user.1714900000.1234@qap.test",
+      "password": "QAP_Test_1714900000!",
+      "role": "applicant",
+      "profile": {
+        "first_name": "John",
+        "last_name": "Smith",
+        "date_of_birth": "1990-05-15",
+        "nino": "AB123456C"
+      }
+    },
+    {
+      "username": "qap_user_1714900001",
+      "email": "user.1714900001.5678@qap.test",
+      "password": "QAP_Test_1714900001!",
+      "role": "applicant",
+      "profile": {
+        "first_name": "Emma",
+        "last_name": "Johnson",
+        "date_of_birth": "1985-12-30",
+        "nino": "CD987654A"
+      }
+    },
+    {
+      "username": "qap_user_1714900002",
+      "email": "user.1714900002.9012@qap.test",
+      "password": "QAP_Test_1714900002!",
+      "role": "applicant",
+      "profile": {
+        "first_name": "Mohammed",
+        "last_name": "Ali",
+        "date_of_birth": "1993-07-22",
+        "nino": "EF112233D"
+      }
+    }
+  ],
+  "db_seed_queries": [
+    "-- Seed personal details for test user 1",
+    "INSERT INTO personal_details (user_id, first_name, last_name, date_of_birth, nino, address_line1, address_line2, town, county, postcode, phone_number, email, created_at) VALUES (1, 'John', 'Smith', '1990-05-15', 'AB123456C', '123 Main Street', '', 'London', 'Greater London', 'SW1A 1AA', '+447700900123', 'john.smith.valid.001@qap.test', NOW());",
+    "-- Seed personal details for test user 2",
+    "INSERT INTO personal_details (user_id, first_name, last_name, date_of_birth, nino, address_line1, address_line2, town, county, postcode, phone_number, email, created_at) VALUES (2, 'Emma', 'Johnson', '1985-12-30', 'CD987654A', '456 Oak Avenue', 'Flat 2', 'Manchester', 'Greater Manchester', 'M1 1AA', '+447700900456', 'emma.johnson.valid.002@qap.test', NOW());",
+    "-- Seed personal details for test user 3",
+    "INSERT INTO personal_details (user_id, first_name, last_name, date_of_birth, nino, address_line1, address_line2, town, county, postcode, phone_number, email, created_at) VALUES (3, 'Mohammed', 'Ali', '1993-07-22', 'EF112233D', '789 High Road', '', 'Birmingham', 'West Midlands', 'B1 1AA', '+447700900789', 'mohammed.ali.valid.003@qap.test', NOW());"
+  ],
+  "cleanup_queries": [
+    "-- Clean up seeded personal details",
+    "DELETE FROM personal_details WHERE email IN ('john.smith.valid.001@qap.test', 'emma.johnson.valid.002@qap.test', 'mohammed.ali.valid.003@qap.test');",
+    "-- Clean up test users",
+    "DELETE FROM users WHERE email LIKE '%@qap.test';"
+  ],
+  "api_mocks": {
+    "/api/validation/nino-check": {
+      "method": "POST",
+      "response": {
+        "valid": true,
+        "message": "NINO format is valid"
+      }
+    },
+    "/api/validation/postcode-check": {
+      "method": "POST",
+      "response": {
+        "valid": true,
+        "postcode": "SW1A 1AA",
+        "region": "London"
+      }
+    }
+  },
+  "pii_masked": true,
+  "unique_constraints_valid": true,
+  "data_source": "personal_info_data_table.json",
+  "validation_notes": {
+    "nino_format": "Valid UK NINO format: 2 letters, 6 digits, 1 letter (e.g., AB123456C)",
+    "postcode_format": "Valid UK postcode format with space (e.g., SW1A 1AA)",
+    "email_domain": "All emails use @qap.test synthetic domain",
+    "phone_format": "E.164 international format"
+  }
+}

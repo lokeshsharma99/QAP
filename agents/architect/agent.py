@@ -22,6 +22,25 @@ from app.github_mcp import get_github_mcp_for_architect
 _github_tools = get_github_mcp_for_architect()
 
 # ---------------------------------------------------------------------------
+# Semantica Context Graph Toolkit (optional — activated via SEMANTICA_ENABLED)
+# Architect uses context graphs to build requirement-to-POM traceability:
+# - Node: Jira ticket → links to affected PageObjects → links to Gherkin specs
+# - Traceability graph shows which tests cover which acceptance criteria
+# - KG dedup ensures the same POM isn't listed twice under different names
+# ---------------------------------------------------------------------------
+_kg_tools: list = []
+try:
+    from app.semantica_config import SemanticaContext
+    if SemanticaContext.is_agent_enabled("architect"):
+        from integrations.agno import AgnoKGToolkit  # type: ignore[import]
+        from app.semantica_context import get_shared_context
+        _shared_ctx = get_shared_context()
+        if _shared_ctx is not None:
+            _kg_tools = [AgnoKGToolkit(context=_shared_ctx)]
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: qap_learnings (shared collective intelligence — all agents)
 # Domain:  site_manifesto + automation (read-only — Architect queries existing POMs)
@@ -49,6 +68,7 @@ architect = Agent(
         ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=site_manifesto_kb),
         KnowledgeTools(knowledge=automation_kb),
+        *_kg_tools,
         *_github_tools,
     ],
     # Instructions

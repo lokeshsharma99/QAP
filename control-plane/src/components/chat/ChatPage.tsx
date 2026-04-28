@@ -329,7 +329,11 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
                 ),
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 code: ({ inline, children, className }: any) => {
-                  if (inline) {
+                  // Inline detection: use the `inline` prop when available (react-markdown <9),
+                  // but also fall back to checking className — fenced code blocks always have
+                  // a `language-*` class; bare backtick inline code never does.
+                  const isBlock = Boolean(className?.startsWith('language-'))
+                  if (inline || !isBlock) {
                     return (
                       <code className="relative rounded-sm bg-secondary px-1 py-0.5 font-dmmono text-[0.8rem]">{children}</code>
                     )

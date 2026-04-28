@@ -412,9 +412,9 @@ Semantica provides advanced decision tracking, context graphs, and provenance fo
 | Agent | Semantica Features | Status |
 |-------|-------------------|--------|
 | Judge | Decision tracking, precedent search, impact analysis | ✅ Pilot Complete |
-| Detective | Reasoning engines (forward chaining, abductive, Rete) | 🔄 Planned Phase 2 |
-| Librarian | Conflict detection, entity resolution, temporal conflicts | 🔄 Planned Phase 2 |
-| Architect | Context graphs, traceability graphs | 🔄 Planned Phase 3 |
+| Detective | Reasoning engines (forward chaining, abductive, Rete) | ✅ Phase 2 Complete |
+| Librarian | Conflict detection, entity resolution, temporal conflicts | ✅ Phase 2 Complete |
+| Architect | Context graphs, traceability graphs | ✅ Phase 3 Complete |
 
 **Judge Agent Semantica Tools:**
 - `record_judge_decision`: Record approval/rejection with causal chains

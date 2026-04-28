@@ -509,6 +509,13 @@ export default function TracesPage() {
   const [selectedTrace, setSelectedTrace] = useState<string | null>(null)
   const [page, setPage]       = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  // DSL search
+  const [dslMode, setDslMode] = useState(false)
+  const [dslQuery, setDslQuery] = useState(JSON.stringify({ filters: [], limit: 20 }, null, 2))
+  const [dslSearching, setDslSearching] = useState(false)
+  const [dslResults, setDslResults] = useState<TraceSummary[] | null>(null)
+
+  const authHeaders: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {}
 
   const fetchTraces = useCallback(async (pg = 1) => {
     if (!selectedEndpoint) return
@@ -518,9 +525,7 @@ export default function TracesPage() {
       url.searchParams.set('limit', '20')
       url.searchParams.set('page', String(pg))
       if (filter !== 'all') url.searchParams.set('status', filter)
-      const res = await fetch(url.toString(), {
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
-      })
+      const res = await fetch(url.toString(), { headers: authHeaders })
       if (!res.ok) throw new Error(res.statusText)
       const data = await res.json()
       setTraces(data?.data ?? [])
@@ -529,6 +534,24 @@ export default function TracesPage() {
     } catch { /* silently handled */ }
     finally { setLoading(false) }
   }, [selectedEndpoint, authToken, filter])
+
+  const handleDslSearch = async () => {
+    if (!selectedEndpoint) return
+    setDslSearching(true)
+    try {
+      const body = JSON.parse(dslQuery)
+      const res = await fetch(APIRoutes.SearchTracesDSL(selectedEndpoint), {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      setDslResults(data?.data ?? data ?? [])
+    } catch (e) {
+      toast.error(`DSL search failed: ${e instanceof Error ? e.message : String(e)}`)
+    } finally { setDslSearching(false) }
+  }
 
   useEffect(() => { fetchTraces(1) }, [fetchTraces])
 
@@ -597,44 +620,78 @@ export default function TracesPage() {
         </div>
 
         {/* Search + filter */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, agent, team, trace ID…"
-              className="w-full rounded-xl border border-accent bg-primaryAccent pl-8 pr-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
-            />
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, agent, team, trace ID…"
+                disabled={dslMode}
+                className="w-full rounded-xl border border-accent bg-primaryAccent pl-8 pr-3 py-2 text-xs text-primary outline-none focus:border-primary/30 disabled:opacity-50"
+              />
+            </div>
+            <div className="flex gap-1 rounded-xl border border-accent bg-primaryAccent p-1">
+              {(['all', 'OK', 'ERROR'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  disabled={dslMode}
+                  className={cn(
+                    'rounded-lg px-3 py-1 text-xs font-medium uppercase transition-colors disabled:opacity-40',
+                    filter === f ? 'bg-accent text-primary' : 'text-muted hover:text-primary'
+                  )}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+            <Button
+              size="sm"
+              variant={dslMode ? 'default' : 'outline'}
+              onClick={() => { setDslMode(!dslMode); setDslResults(null) }}
+              className="gap-1.5 text-xs"
+            >
+              DSL
+            </Button>
           </div>
-          <div className="flex gap-1 rounded-xl border border-accent bg-primaryAccent p-1">
-            {(['all', 'OK', 'ERROR'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={cn(
-                  'rounded-lg px-3 py-1 text-xs font-medium uppercase transition-colors',
-                  filter === f ? 'bg-accent text-primary' : 'text-muted hover:text-primary'
+
+          {dslMode && (
+            <div className="rounded-xl border border-brand/30 bg-primaryAccent p-3 space-y-2">
+              <div className="text-xs text-muted">JSON filter query — send POST to <code>/traces/search</code></div>
+              <textarea
+                value={dslQuery}
+                onChange={(e) => setDslQuery(e.target.value)}
+                rows={6}
+                className="w-full rounded-xl border border-accent bg-background px-3 py-2 font-mono text-xs text-primary outline-none resize-y focus:border-primary/30"
+                placeholder='{"filters":[{"field":"status","operator":"eq","value":"ERROR"}],"limit":20}'
+              />
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleDslSearch} disabled={dslSearching} className="gap-1.5">
+                  {dslSearching ? <RefreshCw className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
+                  {dslSearching ? 'Searching…' : 'Run DSL Search'}
+                </Button>
+                {dslResults !== null && (
+                  <Button size="sm" variant="outline" onClick={() => setDslResults(null)}>Clear Results</Button>
                 )}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* List */}
         <div className="space-y-2">
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
-          ) : filtered.length === 0 ? (
+          ) : (dslResults !== null ? dslResults : filtered).length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-accent bg-primaryAccent py-16 text-center">
               <Activity className="size-10 text-muted/20" />
               <p className="mt-3 text-sm font-medium text-muted">No traces found</p>
               <p className="mt-1 text-xs text-muted/60">Traces are recorded every time an agent or team runs.</p>
             </div>
           ) : (
-            filtered.map((t) => (
+            (dslResults !== null ? dslResults : filtered).map((t) => (
               <TraceCard key={t.trace_id} trace={t} onClick={() => setSelectedTrace(t.trace_id)} />
             ))
           )}
