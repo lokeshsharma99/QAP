@@ -37,6 +37,15 @@ RUN groupadd -r app && useradd -r -g app -m -s /bin/bash app
 WORKDIR /app
 COPY requirements.txt .
 RUN uv pip sync requirements.txt --system
+
+# ---------------------------------------------------------------------------
+# Patch agno library: PostgresDb.get_all_memory_topics() does not accept
+# user_id kwarg — strip it so /memory_topics returns 200 instead of 500.
+# ---------------------------------------------------------------------------
+RUN sed -i \
+    's/db\.get_all_memory_topics(user_id=user_id)/db.get_all_memory_topics()/g' \
+    /usr/local/lib/python3.12/site-packages/agno/os/routers/memory/memory.py
+
 COPY . .
 
 # ---------------------------------------------------------------------------
