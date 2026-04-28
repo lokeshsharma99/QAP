@@ -209,14 +209,26 @@ def download_ci_artifact(run_id: str, artifact_name: str, output_dir: str = "") 
         return {"error": f"Artifact ZIP is corrupt: {exc}", "run_id": run_id}
 
     # Step 5 — locate useful files inside the extraction
+    #
+    # Playwright trace file naming inside a playwright-traces artifact:
+    #   actions/upload-artifact uploads `path: test-results/` so the ZIP entries
+    #   are relative to that dir.  Each failing test gets its own subdirectory:
+    #     FR-02-01-Submit-form-chromium/trace.zip
+    #     FR-02-01-Submit-form-chromium/screenshot.png
+    #   The trace files are always named exactly `trace.zip`, so we match on
+    #   the final path component, not a suffix like "-trace.zip".
     trace_zips = [
         str((dest / f).resolve())
         for f in extracted_files
-        if f.endswith("-trace.zip") or f.endswith(".trace.zip")
+        if f == "trace.zip" or f.endswith("/trace.zip")
     ]
+    # Prefer e2e-junit.xml specifically; fall back to any .xml in the archive.
     junit_xml = next(
-        (str((dest / f).resolve()) for f in extracted_files if f.endswith(".xml")),
-        "",
+        (str((dest / f).resolve()) for f in extracted_files if f == "e2e-junit.xml"),
+        next(
+            (str((dest / f).resolve()) for f in extracted_files if f.endswith(".xml")),
+            "",
+        ),
     )
 
     return {
