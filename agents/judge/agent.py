@@ -16,6 +16,21 @@ from app.settings import MODEL, agent_db
 from db import get_qap_learnings_kb, get_rca_kb
 
 # ---------------------------------------------------------------------------
+# Semantica Decision Intelligence (optional — activated via SEMANTICA_ENABLED)
+# ---------------------------------------------------------------------------
+_decision_tools: list = []
+try:
+    from app.semantica_config import SemanticaContext
+    if SemanticaContext.is_agent_enabled("judge"):
+        from integrations.agno import AgnoDecisionKit  # type: ignore[import]
+        from app.semantica_context import get_shared_context
+        _shared_ctx = get_shared_context()
+        if _shared_ctx is not None:
+            _decision_tools = [AgnoDecisionKit(context=_shared_ctx)]
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: qap_learnings — Judge reads prior approval decisions for consistency
 #                          Judge WRITES its verdicts as learnings for future runs
@@ -42,6 +57,7 @@ judge = Agent(
         ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=qap_learnings_kb),
         KnowledgeTools(knowledge=rca_kb),
+        *_decision_tools,
         lint_gherkin,
         check_code_quality,
         score_confidence,

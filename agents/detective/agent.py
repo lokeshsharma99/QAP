@@ -16,6 +16,23 @@ from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
+# Semantica Decision Intelligence (optional — activated via SEMANTICA_ENABLED)
+# Records every RCA classification into the shared context graph so Judge and
+# Medic can find precedents ("was LOCATOR_STALE seen before on this element?")
+# ---------------------------------------------------------------------------
+_decision_tools: list = []
+try:
+    from app.semantica_config import SemanticaContext
+    if SemanticaContext.is_agent_enabled("detective"):
+        from integrations.agno import AgnoDecisionKit  # type: ignore[import]
+        from app.semantica_context import get_shared_context
+        _shared_ctx = get_shared_context()
+        if _shared_ctx is not None:
+            _decision_tools = [AgnoDecisionKit(context=_shared_ctx)]
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: qap_learnings (shared)
 # Domain:  rca_kb      — Detective WRITES failure classifications here
@@ -48,6 +65,7 @@ detective = Agent(
         KnowledgeTools(knowledge=rca_kb),
         KnowledgeTools(knowledge=automation_kb),
         KnowledgeTools(knowledge=site_manifesto_kb),
+        *_decision_tools,
         parse_trace_zip,
         parse_ci_log,
         classify_failure,
