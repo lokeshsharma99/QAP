@@ -109,13 +109,90 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
         </div>
       )}
       {msg.content && (
-        <div className={cn('max-w-2xl rounded-xl px-4 py-3 text-sm',
-          isUser ? 'bg-accent text-primary'
-            : msg.streamingError ? 'border border-destructive/30 bg-background text-destructive'
+        <div className={cn('max-w-2xl rounded-xl px-4 py-3',
+          isUser ? 'bg-accent text-primary text-sm'
+            : msg.streamingError ? 'border border-destructive/30 bg-background text-destructive text-sm'
               : 'bg-primaryAccent text-primary'
         )}>
-          {isUser ? <p className="whitespace-pre-wrap">{msg.content}</p>
-            : <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{msg.content}</ReactMarkdown>}
+          {isUser ? (
+            <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+          ) : (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw, rehypeSanitize]}
+              components={{
+                p: ({ children }) => (
+                  <p className="text-[0.875rem] font-normal leading-[21px] tracking-[-0.02em] whitespace-pre-wrap mb-3 last:mb-0">{children}</p>
+                ),
+                h1: ({ children }) => (
+                  <h1 className="text-[1.5rem] font-semibold leading-tight tracking-[-0.02em] mb-3 mt-4 first:mt-0">{children}</h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="text-[1.25rem] font-semibold leading-tight tracking-[-0.02em] mb-2 mt-4 first:mt-0">{children}</h2>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-[1.1rem] font-semibold leading-tight tracking-[-0.02em] mb-2 mt-3 first:mt-0">{children}</h3>
+                ),
+                h4: ({ children }) => (
+                  <h4 className="text-[1rem] font-semibold leading-tight tracking-[-0.02em] mb-2 mt-3 first:mt-0">{children}</h4>
+                ),
+                ul: ({ children }) => (
+                  <ul className="list-disc flex flex-col gap-y-1.5 pl-5 mb-3 text-[0.875rem]">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="list-decimal flex flex-col gap-y-1.5 pl-5 mb-3 text-[0.875rem]">{children}</ol>
+                ),
+                li: ({ children }) => (
+                  <li className="leading-[21px] tracking-[-0.02em]">{children}</li>
+                ),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                code: ({ inline, children, className }: any) => {
+                  if (inline) {
+                    return (
+                      <code className="relative rounded-sm bg-secondary px-1 py-0.5 font-dmmono text-[0.8rem]">{children}</code>
+                    )
+                  }
+                  const lang = className?.replace('language-', '') || ''
+                  return (
+                    <div className="rounded-md overflow-hidden border border-border/50 mb-3">
+                      {lang && (
+                        <div className="flex items-center justify-between bg-[#2d2d2d] px-3 py-1.5 border-b border-border/30">
+                          <span className="text-[0.7rem] font-medium uppercase text-muted/70 font-dmmono">{lang}</span>
+                        </div>
+                      )}
+                      <pre className="bg-[#1e1e1e] p-3 overflow-x-auto">
+                        <code className="font-dmmono text-[0.8rem] leading-relaxed text-[#d4d4d4]">{children}</code>
+                      </pre>
+                    </div>
+                  )
+                },
+                pre: ({ children }) => <>{children}</>,
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-4 border-border pl-4 italic text-muted mb-3 [&>p]:whitespace-normal">{children}</blockquote>
+                ),
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+                hr: () => <hr className="my-4 h-px w-full border-0 bg-border" />,
+                a: ({ href, children }) => (
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-brand underline underline-offset-2 hover:opacity-80">{children}</a>
+                ),
+                table: ({ children }) => (
+                  <div className="w-full overflow-hidden rounded-md border border-border mb-3">
+                    <div className="w-full overflow-x-auto">
+                      <table className="w-full text-[0.8rem]">{children}</table>
+                    </div>
+                  </div>
+                ),
+                thead: ({ children }) => <thead className="border-b border-border bg-accent/60">{children}</thead>,
+                tbody: ({ children }) => <tbody>{children}</tbody>,
+                tr: ({ children }) => <tr className="border-b border-border last:border-b-0">{children}</tr>,
+                th: ({ children }) => <th className="p-2 text-left text-xs font-semibold">{children}</th>,
+                td: ({ children }) => <td className="whitespace-nowrap p-2 text-xs font-normal">{children}</td>,
+              }}
+            >
+              {msg.content}
+            </ReactMarkdown>
+          )}
         </div>
       )}
     </motion.div>
