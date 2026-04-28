@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 
 export default function GuidePage() {
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="absolute inset-0 flex flex-col overflow-hidden">
       {/* Top bar with back button */}
       <div className="flex shrink-0 items-center gap-3 border-b border-accent/50 px-4 py-2.5">
         <Link
@@ -17,11 +17,12 @@ export default function GuidePage() {
         <span className="text-xs font-medium text-primary">System Guide</span>
       </div>
 
-      {/* Full-height iframe */}
+      {/* Full-height iframe — flex-1 + min-h-0 forces flex to own the height */}
       <iframe
         src="/system-guide.html"
-        className="flex-1 w-full border-0"
+        className="min-h-0 w-full flex-1 border-0"
         title="Quality Autopilot System Guide"
+        loading="lazy"
       />
     </div>
   )

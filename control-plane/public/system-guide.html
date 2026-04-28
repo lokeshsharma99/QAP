@@ -497,51 +497,51 @@
     </div>
     <nav>
       <div class="nav-section">Overview</div>
-      <div class="nav-item active" onclick="show('overview')">
+      <div class="nav-item active" onclick="show('overview', this)">
         <div class="nav-dot" style="background:#58a6ff"></div> Overview
       </div>
-      <div class="nav-item" onclick="show('stack')">
+      <div class="nav-item" onclick="show('stack', this)">
         <div class="nav-dot" style="background:#3fb950"></div> Tech Stack
       </div>
 
       <div class="nav-section">Agents</div>
-      <div class="nav-item" onclick="show('agents')">
+      <div class="nav-item" onclick="show('agents', this)">
         <div class="nav-dot" style="background:#bc8cff"></div> All 13 Agents
       </div>
-      <div class="nav-item" onclick="show('squads')">
+      <div class="nav-item" onclick="show('squads', this)">
         <div class="nav-dot" style="background:#ffa657"></div> 5 Squads (Teams)
       </div>
-      <div class="nav-item" onclick="show('judge')">
+      <div class="nav-item" onclick="show('judge', this)">
         <div class="nav-dot" style="background:#f85149"></div> The Judge
       </div>
 
       <div class="nav-section">Pipelines</div>
-      <div class="nav-item" onclick="show('flow-overview')">
+      <div class="nav-item" onclick="show('flow-overview', this)">
         <div class="nav-dot" style="background:#39d353"></div> Master Flow
       </div>
-      <div class="nav-item" onclick="show('spec-to-code')">
+      <div class="nav-item" onclick="show('spec-to-code', this)">
         <div class="nav-dot" style="background:#58a6ff"></div> Spec → Code
       </div>
-      <div class="nav-item" onclick="show('triage-heal')">
+      <div class="nav-item" onclick="show('triage-heal', this)">
         <div class="nav-dot" style="background:#ff7b72"></div> Triage &amp; Heal
       </div>
-      <div class="nav-item" onclick="show('discovery')">
+      <div class="nav-item" onclick="show('discovery', this)">
         <div class="nav-dot" style="background:#3fb950"></div> Discovery
       </div>
 
       <div class="nav-section">Data</div>
-      <div class="nav-item" onclick="show('contracts')">
+      <div class="nav-item" onclick="show('contracts', this)">
         <div class="nav-dot" style="background:#d29922"></div> Contracts
       </div>
-      <div class="nav-item" onclick="show('knowledge')">
+      <div class="nav-item" onclick="show('knowledge', this)">
         <div class="nav-dot" style="background:#bc8cff"></div> Knowledge Bases
       </div>
 
       <div class="nav-section">Phases</div>
-      <div class="nav-item" onclick="show('roadmap')">
+      <div class="nav-item" onclick="show('roadmap', this)">
         <div class="nav-dot" style="background:#58a6ff"></div> Roadmap (0–7)
       </div>
-      <div class="nav-item" onclick="show('antipatterns')">
+      <div class="nav-item" onclick="show('antipatterns', this)">
         <div class="nav-dot" style="background:#f85149"></div> Anti-Patterns
       </div>
     </nav>
@@ -1592,7 +1592,7 @@
 </div>
 
 <script>
-  function show(id) {
+  function show(id, el) {
     // Hide all sections
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     // Deactivate all nav items
@@ -1603,10 +1603,11 @@
     if (section) section.classList.add('active');
 
     // Activate clicked nav item
-    event.currentTarget.classList.add('active');
+    if (el) el.classList.add('active');
 
     // Scroll main to top
-    document.querySelector('.main').scrollTop = 0;
+    const main = document.querySelector('.main');
+    if (main) main.scrollTop = 0;
     window.scrollTo(0, 0);
   }
 </script>

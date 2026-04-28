@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '@/store'
 import useChatActions from '@/hooks/useChatActions'
 import useAIChatStreamHandler from '@/hooks/useAIStreamHandler'
@@ -87,10 +88,15 @@ const ReasoningBlock = ({ steps }: { steps: NonNullable<ChatMessage['extra_data'
   )
 }
 
-const MessageItem = ({ msg }: { msg: ChatMessage }) => {
+const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
   const isUser = msg.role === 'user'
   return (
-    <div className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
+    <motion.div
+      className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}
+      initial={{ opacity: 0, y: 16, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1], delay: Math.min(index * 0.04, 0.3) }}
+    >
       <div className="flex items-center gap-2">
         <Icon type={isUser ? 'user' : 'agent'} size="xs" />
         <span className="text-xs font-medium uppercase text-muted">{isUser ? 'You' : 'Agent'}</span>
@@ -112,7 +118,7 @@ const MessageItem = ({ msg }: { msg: ChatMessage }) => {
             : <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>{msg.content}</ReactMarkdown>}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -131,13 +137,19 @@ const SessionItem = ({ session, isSelected, onClick }: {
   isSelected: boolean
   onClick: () => void
 }) => (
-  <button onClick={onClick} className={cn(
-    'w-full truncate rounded-xl px-3 py-2 text-left text-xs transition-colors',
-    isSelected ? 'bg-accent text-primary' : 'text-muted hover:bg-accent/50 hover:text-primary'
-  )}>
+  <motion.button
+    onClick={onClick}
+    whileHover={{ x: 2 }}
+    whileTap={{ scale: 0.98 }}
+    transition={{ duration: 0.15 }}
+    className={cn(
+      'w-full truncate rounded-xl px-3 py-2 text-left text-xs transition-colors',
+      isSelected ? 'bg-accent text-primary' : 'text-muted hover:bg-accent/50 hover:text-primary'
+    )}
+  >
     <div className="font-medium">Session {session.session_id.slice(0, 8)}…</div>
     <div className="mt-0.5 text-muted/50">{fmtSessionDate(session.created_at)}</div>
-  </button>
+  </motion.button>
 )
 
 // ---------------------------------------------------------------------------
@@ -577,24 +589,40 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
       </div>
 
       {/* Config tab — editable AgentConfigPanel */}
+      <AnimatePresence mode="wait">
       {tab === 'config' && isConfigurable && currentEntityId && (
-        <div className="flex-1 overflow-y-auto">
+        <motion.div
+          key="config"
+          className="flex-1 overflow-y-auto"
+          initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+        >
           <AgentConfigPanel
             entityId={currentEntityId}
             entityType={mode as 'agent' | 'team'}
           />
-        </div>
+        </motion.div>
       )}
 
       {tab === 'config' && isConfigurable && !currentEntityId && (
-        <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted/40">
+        <motion.div
+          key="config-empty"
+          className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted/40"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
           Select an agent or team to configure
-        </div>
+        </motion.div>
       )}
 
       {/* Memory tab */}
       {tab === 'memory' && isConfigurable && (
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <motion.div
+          key="memory"
+          className="flex-1 overflow-y-auto p-3 space-y-2"
+          initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+        >
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-semibold uppercase text-muted">Stored Memories</span>
             <button
@@ -626,7 +654,13 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
             </div>
           ) : (
             memories.map((mem, i) => (
-              <div key={mem.id || i} className="rounded-xl border border-accent bg-background p-3">
+              <motion.div
+                key={mem.id || i}
+                className="rounded-xl border border-accent bg-background p-3"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: i * 0.05 }}
+              >
                 <p className="text-xs text-primary leading-relaxed">{mem.memory || mem.summary || '—'}</p>
                 {mem.topics && mem.topics.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-1">
@@ -638,14 +672,13 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
                 <div className="mt-1 text-[10px] text-muted/40">
                   {mem.updated_at ? dayjs(mem.updated_at).format('MMM D, HH:mm') : mem.created_at ? dayjs(mem.created_at).format('MMM D, HH:mm') : ''}
                 </div>
-              </div>
+              </motion.div>
             ))
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
-=======
->>>>>>> origin/main
       {/* Details tab — existing read-only view */}
       {(tab === 'details' || !isConfigurable) && (
         <>
@@ -926,6 +959,45 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
 // ---------------------------------------------------------------------------
 // Main ChatPage
 // ---------------------------------------------------------------------------
+// Quick-prompt suggestions per agent / team
+// ---------------------------------------------------------------------------
+
+const AGENT_PROMPTS: Record<string, string[]> = {
+  // Squad 1 – Strategy
+  architect:         ['Analyze this Jira ticket: PROJ-123', 'Which Page Objects are affected by the checkout redesign?', 'Parse this requirement and produce an execution plan'],
+  scribe:            ['Write a Gherkin spec for user login with MFA', 'Convert this acceptance criterion into BDD steps', 'Generate reusable step definitions for the cart flow'],
+  // Squad 2 – Context
+  discovery:         ['Crawl the AUT and generate the Site Manifesto', 'What pages are available on the AUT?', 'Extract the accessibility tree for the login page'],
+  librarian:         ['Index all Page Objects in the automation/ folder', 'Find the POM for the checkout page', 'Re-index the codebase after recent commits'],
+  // Squad 3 – Engineering
+  engineer:          ['Generate a Page Object for the dashboard', 'Write step definitions for the Gherkin spec', 'Create a Playwright POM following the Look-Before-You-Leap pattern'],
+  'data-agent':      ['Provision a fresh test user for the smoke suite', 'Seed the DB with valid checkout data', 'Generate a RunContext for the login feature'],
+  // Squad 4 – Operations
+  detective:         ['Analyze this Playwright trace.zip for the failing test', 'Classify the root cause of the checkout timeout failure', 'Is this failure a locator issue or a real app bug?'],
+  medic:             ['Heal the broken locator in CheckoutPage.ts', 'Fix the stale selector for the submit button', 'Apply a surgical patch to the failing locator only'],
+  judge:             ['Review this Gherkin spec against the DoD checklist', 'Evaluate the generated Page Object for quality', 'Run adversarial review on this healing patch'],
+  // Extras
+  'ci-log-analyzer': ['Analyze the latest GitHub Actions failure log', 'Which step caused the pipeline to fail?', 'Summarize flaky tests from the last 10 runs'],
+  curator:           ['What knowledge base entries are outdated?', 'Identify stale codebase vectors for cleanup', 'Show the indexing status of the automation/ folder'],
+  'technical-tester':['Generate unit tests for the login module', 'Create API tests for the /auth endpoint', 'Write integration tests for the cart service'],
+  // Teams
+  strategy:          ['Architect + Scribe: Turn this Jira ticket into a ready Gherkin spec', 'Analyze requirements for the new search feature', 'Produce an execution plan with acceptance criteria coverage'],
+  context:           ['Discovery + Librarian: Onboard the AUT and index the codebase', 'Crawl the app and sync the vector KB', 'What UI components are available on the dashboard page?'],
+  engineering:       ['Engineer + Data Agent: Implement the checkout spec end-to-end', 'Generate POM, step defs and test data for the login feature', 'Build automation for the new user registration flow'],
+  operations:        ['Detective + Medic: Triage and heal the failing smoke tests', 'Analyze trace.zip and patch broken locators', 'Run the full triage-heal loop on the CI failure'],
+  grooming:          ['Curator + Librarian: Audit and clean the KB', 'Find and remove obsolete Page Object vectors', 'Sync the knowledge base with the latest commits'],
+  diagnostics:       ['Analyze pipeline failures from the last sprint', 'Correlate test failures with recent code changes', 'Generate an RCA report for the nightly regression'],
+}
+
+const DEFAULT_PROMPTS: Record<string, string[]> = {
+  agent:    ['What can you help me with?', 'Show me your available tools', 'Walk me through your primary skill'],
+  team:     ['What does this team specialise in?', 'Run a quick smoke check on the AUT', 'Show me the team members and their roles'],
+  workflow: ['Describe what this workflow does', 'Run the workflow with default parameters', 'Show me the workflow steps'],
+}
+
+// ---------------------------------------------------------------------------
+// Main ChatPage
+// ---------------------------------------------------------------------------
 
 export default function ChatPage() {
   const [inputMessage, setInputMessage] = useState('')
@@ -1058,11 +1130,17 @@ export default function ChatPage() {
         }}
       >
         {isDragOver && (
-          <div className="pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center gap-2 rounded-none border-2 border-dashed border-brand bg-brand/5 backdrop-blur-sm">
+          <motion.div
+            className="pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center gap-2 rounded-none border-2 border-dashed border-brand bg-brand/5 backdrop-blur-sm"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
             <Paperclip className="size-10 text-brand/60" />
             <p className="text-sm font-semibold text-brand">Drop files or a URL here</p>
             <p className="text-xs text-brand/60">Images · PDF · TXT · CSV · JSON · URLs</p>
-          </div>
+          </motion.div>
         )}
         {/* Toolbar */}
         <div className="flex items-center justify-between border-b border-accent/50 px-4 py-2">
@@ -1096,20 +1174,73 @@ export default function ChatPage() {
         {/* Messages */}
         <StickToBottom className="relative flex-1 overflow-y-auto" resize="smooth" initial="smooth">
           <StickToBottom.Content className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+            <AnimatePresence mode="wait">
             {messages.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center py-20 text-center">
-                <Icon type="agno" size="md" />
-                <h2 className="mt-4 text-lg font-medium text-primary">Quality Autopilot</h2>
-                <p className="mt-2 max-w-sm text-sm text-muted">
+              <motion.div
+                key="empty-state"
+                className="flex h-full flex-col items-center justify-center py-16 text-center"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              >
+                <motion.div
+                  initial={{ scale: 0.85, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3, type: 'spring', stiffness: 260, damping: 22 }}
+                >
+                  <Icon type="agno" size="md" />
+                </motion.div>
+                <motion.h2
+                  className="mt-4 text-lg font-medium text-primary"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
+                >
+                  {(agentId || teamId || workflowId) ? 'New Session' : 'Quality Autopilot'}
+                </motion.h2>
+                <motion.p
+                  className="mt-2 max-w-sm text-sm text-muted"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.24 }}
+                >
                   {!isEndpointActive ? 'Connect to your AgentOS endpoint to start chatting.'
                     : !hasEntity ? 'Select an agent, team, or workflow from the sidebar to begin.'
-                      : mode === 'workflow' ? 'Describe what you want the workflow to do.'
-                        : 'Start a conversation with your QAP agent.'}
-                </p>
-              </div>
+                      : 'Enter your input to get started.'}
+                </motion.p>
+
+                {/* Quick-prompt chips */}
+                {isEndpointActive && hasEntity && (() => {
+                  const key = agentId ?? teamId ?? workflowId ?? ''
+                  const prompts = AGENT_PROMPTS[key] ?? DEFAULT_PROMPTS[mode] ?? []
+                  if (prompts.length === 0) return null
+                  return (
+                    <motion.div
+                      className="mt-8 flex flex-wrap items-center justify-center gap-3"
+                      initial="hidden"
+                      animate="visible"
+                      variants={{ visible: { transition: { staggerChildren: 0.07, delayChildren: 0.3 } } }}
+                    >
+                      {prompts.map((prompt) => (
+                        <motion.button
+                          key={prompt}
+                          variants={{ hidden: { opacity: 0, scale: 0.9, y: 8 }, visible: { opacity: 1, scale: 1, y: 0 } }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+                          whileHover={{ scale: 1.03, y: -1 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => setInputMessage(prompt)}
+                          className="flex max-w-[325px] select-none items-center justify-center overflow-hidden rounded-full border border-accent bg-primaryAccent px-4 py-2 text-sm text-primary shadow-sm transition-colors hover:bg-accent/60 hover:border-brand/50"
+                        >
+                          <span className="truncate">{prompt}</span>
+                        </motion.button>
+                      ))}
+                    </motion.div>
+                  )
+                })()}
+              </motion.div>
             ) : (
-              messages.map((msg, i) => <MessageItem key={i} msg={msg} />)
+              <motion.div key="messages" className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+                {messages.map((msg, i) => <MessageItem key={i} msg={msg} index={i} />)}
+              </motion.div>
             )}
+            </AnimatePresence>
           </StickToBottom.Content>
         </StickToBottom>
 
