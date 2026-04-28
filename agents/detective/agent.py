@@ -16,6 +16,13 @@ from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
+# GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
+# Detective reads GitHub Actions workflow runs + CI logs to diagnose failures
+# ---------------------------------------------------------------------------
+from app.github_mcp import get_github_mcp_for_detective
+_github_tools = get_github_mcp_for_detective()
+
+# ---------------------------------------------------------------------------
 # Semantica Decision Intelligence (optional — activated via SEMANTICA_ENABLED)
 # Records every RCA classification into the shared context graph so Judge and
 # Medic can find precedents ("was LOCATOR_STALE seen before on this element?")
@@ -66,6 +73,7 @@ detective = Agent(
         KnowledgeTools(knowledge=automation_kb),
         KnowledgeTools(knowledge=site_manifesto_kb),
         *_decision_tools,
+        *_github_tools,
         parse_trace_zip,
         parse_ci_log,
         classify_failure,

@@ -16,6 +16,14 @@ from app.settings import MODEL, agent_db
 from db import get_qap_learnings_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
+# GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
+# Discovery reads Wiki pages (Domain Knowledge, Wireframes) for AUT context
+# before crawling so it knows what pages and flows to prioritise.
+# ---------------------------------------------------------------------------
+from app.github_mcp import get_github_mcp_for_discovery
+_github_tools = get_github_mcp_for_discovery()
+
+# ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: qap_learnings (shared collective intelligence)
 # Domain:  site_manifesto — Discovery is the WRITER of this KB
@@ -42,6 +50,7 @@ discovery = Agent(
         ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=qap_learnings_kb),
         KnowledgeTools(knowledge=site_manifesto_kb),
+        *_github_tools,
         fetch_html,
         parse_dom_tree,
         save_learning,

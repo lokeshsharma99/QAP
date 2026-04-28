@@ -18,6 +18,13 @@ from app.settings import MODEL, agent_db
 from db import get_qap_learnings_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
+# GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
+# Engineer reads existing repo structure + creates PRs with generated code
+# ---------------------------------------------------------------------------
+from app.github_mcp import get_github_mcp_for_engineer
+_github_tools = get_github_mcp_for_engineer()
+
+# ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: automation_kb (from Librarian — shared object, same PG table)
 # Domain:  site_manifesto — Engineer reads Discovery's output before writing code
@@ -47,6 +54,7 @@ engineer = Agent(
         KnowledgeTools(knowledge=automation_knowledge),
         KnowledgeTools(knowledge=site_manifesto_kb),
         KnowledgeTools(knowledge=qap_learnings_kb),
+        *_github_tools,
         write_pom,
         write_step_def,
         write_feature,

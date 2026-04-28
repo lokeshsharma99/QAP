@@ -34,9 +34,20 @@ RUNTIME_ENV = getenv("RUNTIME_ENV", "dev")
 # ---------------------------------------------------------------------------
 # AUT Configuration (Application Under Test)
 # ---------------------------------------------------------------------------
-AUT_BASE_URL = getenv("AUT_BASE_URL", "https://gds-demo-app.vercel.app/")
+AUT_BASE_URL = getenv("AUT_BASE_URL", "https://lokeshsharma99.github.io/GDS-Demo-App/")
 AUT_AUTH_USER = getenv("AUT_AUTH_USER", "")
 AUT_AUTH_PASS = getenv("AUT_AUTH_PASS", "")
+
+# AUT GitHub repo (GDS-Demo-App) — used by GitHub MCP tools
+AUT_GITHUB_OWNER = getenv("AUT_GITHUB_OWNER", "lokeshsharma99")
+AUT_GITHUB_REPO = getenv("AUT_GITHUB_REPO", "GDS-Demo-App")
+AUT_GITHUB_REPO_FULL = f"{AUT_GITHUB_OWNER}/{AUT_GITHUB_REPO}"
+AUT_PRODUCTION_URL = getenv("AUT_PRODUCTION_URL", "https://lokeshsharma99.github.io/GDS-Demo-App/")
+AUT_ALLURE_REPORT_URL = getenv("AUT_ALLURE_REPORT_URL", "https://lokeshsharma99.github.io/GDS-Demo-App/allure-report/")
+AUT_GITHUB_PROJECT_URL = getenv("AUT_GITHUB_PROJECT_URL", "https://github.com/users/lokeshsharma99/projects/6/views/1")
+AUT_SONARCLOUD_URL = getenv("AUT_SONARCLOUD_URL", "https://sonarcloud.io/summary/overall?id=lokeshsharma99_GDS-Demo-App&branch=main")
+AUT_WIKI_DOMAIN_KNOWLEDGE_URL = "https://github.com/lokeshsharma99/GDS-Demo-App/wiki/Domain-Knowledge"
+AUT_WIKI_WIREFRAMES_URL = "https://github.com/lokeshsharma99/GDS-Demo-App/wiki/Wireframes"
 
 # ---------------------------------------------------------------------------
 # Jira / ADO Integration
