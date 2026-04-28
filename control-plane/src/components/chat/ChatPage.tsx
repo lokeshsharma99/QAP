@@ -14,7 +14,7 @@ import Icon from '@/components/ui/icon'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
-import rehypeSanitize from 'rehype-sanitize'
+// rehypeSanitize intentionally removed — it corrupts code block text nodes, breaking mermaid
 import { useQueryState } from 'nuqs'
 import { cn } from '@/lib/utils'
 import dayjs from 'dayjs'
@@ -24,7 +24,8 @@ import {
   ChevronDown, ChevronUp, Wrench, Brain, Plus, PanelRightOpen, PanelRightClose,
   Bot, Cpu, Database, Hash, Clock, CheckCircle, XCircle, Zap, GitBranch, Activity,
   Users, Settings, BookOpen, MemoryStick, Layers, MessageSquare, MessagesSquare,
-  Play, CornerDownRight, ArrowUp, Paperclip, X as XIcon, FileText, Image as ImageIcon
+  Play, CornerDownRight, ArrowUp, Paperclip, X as XIcon, FileText, Image as ImageIcon,
+  Hammer, ChevronRight
 } from 'lucide-react'
 
 import { getAgentDetailAPI, getTeamDetailAPI, getWorkflowDetailAPI } from '@/api/os'
@@ -32,29 +33,91 @@ import { AgentFullDetail, TeamFullDetail, WorkflowFullDetail, WorkflowStep } fro
 import AgentConfigPanel from '@/components/chat/AgentConfigPanel'
 import { constructEndpointUrl } from '@/lib/constructEndpointUrl'
 
-const ToolCallItem = ({ toolCall }: { toolCall: NonNullable<ChatMessage['tool_calls']>[0] }) => {
+// ---------------------------------------------------------------------------
+// Tool Calls — accordion item inside the sidebar panel
+// ---------------------------------------------------------------------------
+const ToolCallAccordionItem = ({ toolCall }: { toolCall: NonNullable<ChatMessage['tool_calls']>[0] }) => {
   const [open, setOpen] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyCall = toolCall as any
+  const durationMs: string | null =
+    anyCall.metrics?.time != null ? (anyCall.metrics.time * 1000).toFixed(3)
+    : anyCall.metrics?.execution_time != null ? Number(anyCall.metrics.execution_time).toFixed(3)
+    : null
+
   return (
-    <div className={cn('rounded-xl border text-xs', toolCall.tool_call_error ? 'border-destructive/30' : 'border-accent')}>
-      <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2 px-3 py-2 text-left">
-        <Wrench className="size-3 shrink-0 text-muted" />
-        <span className="flex-1 font-medium text-muted">{toolCall.tool_name}</span>
-        {toolCall.tool_call_error && <span className="rounded bg-destructive/20 px-1.5 py-0.5 text-destructive">error</span>}
-        {open ? <ChevronUp className="size-3 text-muted" /> : <ChevronDown className="size-3 text-muted" />}
-      </button>
+    <div className="w-full rounded-lg border border-border p-4">
+      <h3 className="flex">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex flex-1 items-center gap-2 justify-between text-sm font-medium"
+        >
+          <div className="flex w-full">
+            <div className="flex flex-col gap-1">
+              <p className="font-inter text-[0.875rem] font-medium leading-5 tracking-[-0.02em] text-left">
+                {toolCall.tool_name}
+              </p>
+              {toolCall.tool_call_error && (
+                <span className="text-[0.7rem] text-destructive">error</span>
+              )}
+            </div>
+          </div>
+          <ChevronDown
+            className={cn(
+              'shrink-0 transition-transform duration-200 text-primary bg-secondary size-6 rounded-sm p-1',
+              open && 'rotate-180'
+            )}
+          />
+        </button>
+      </h3>
+
       {open && (
-        <div className="border-t border-accent px-3 py-2 space-y-2">
+        <div className="mt-4 space-y-4">
+          {/* Tool Name */}
+          <div>
+            <p className="text-xs font-medium uppercase text-muted mb-1">Tool Name</p>
+            <p className="font-inter text-[0.875rem] font-medium tracking-[-0.02em]">{toolCall.tool_name}</p>
+          </div>
+
+          {/* Tool Args */}
           {toolCall.tool_args && Object.keys(toolCall.tool_args).length > 0 && (
             <div>
-              <div className="mb-1 text-xs font-medium uppercase text-muted">Args</div>
-              <pre className="overflow-x-auto rounded bg-background px-2 py-1.5 text-xs text-primary">{JSON.stringify(toolCall.tool_args, null, 2)}</pre>
+              <p className="text-xs font-medium uppercase text-muted mb-2">Tool Args</p>
+              <div className="space-y-2">
+                {Object.entries(toolCall.tool_args).map(([key, value]) => (
+                  <div key={key}>
+                    <p className="text-xs text-muted/60 mb-0.5">{key} :</p>
+                    <pre className="overflow-x-auto rounded bg-background px-2 py-1.5 text-xs text-primary whitespace-pre-wrap break-all font-dmmono">
+                      {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
+
+          {/* Metrics */}
+          {durationMs && (
+            <div>
+              <p className="text-xs font-medium uppercase text-muted mb-1">Tool Metrics</p>
+              <p className="text-xs font-dmmono text-muted">Duration: {durationMs} ms</p>
+            </div>
+          )}
+
+          {/* Result */}
           {toolCall.content && (
             <div>
-              <div className="mb-1 text-xs font-medium uppercase text-muted">Result</div>
-              <pre className="max-h-40 overflow-y-auto rounded bg-background px-2 py-1.5 text-xs text-primary">
-                {typeof toolCall.content === 'string' ? toolCall.content : JSON.stringify(toolCall.content, null, 2)}
+              <p className="text-xs font-medium uppercase text-muted mb-1">Tool Result</p>
+              <pre
+                className={cn(
+                  'max-h-64 overflow-y-auto rounded px-2 py-1.5 text-xs font-dmmono whitespace-pre-wrap break-all',
+                  toolCall.tool_call_error ? 'bg-destructive/10 text-destructive' : 'bg-background text-primary'
+                )}
+              >
+                {typeof toolCall.content === 'string'
+                  ? toolCall.content
+                  : JSON.stringify(toolCall.content, null, 2)}
               </pre>
             </div>
           )}
@@ -63,6 +126,69 @@ const ToolCallItem = ({ toolCall }: { toolCall: NonNullable<ChatMessage['tool_ca
     </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Tool Calls — sliding sidebar panel
+// ---------------------------------------------------------------------------
+const ToolCallsSidebar = ({
+  open,
+  onClose,
+  toolCalls,
+}: {
+  open: boolean
+  onClose: () => void
+  toolCalls: NonNullable<ChatMessage['tool_calls']>
+}) => (
+  <AnimatePresence>
+    {open && (
+      <>
+        {/* invisible backdrop to close on outside click */}
+        <motion.div
+          key="tc-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-40"
+          onClick={onClose}
+        />
+        {/* panel */}
+        <motion.div
+          key="tc-panel"
+          initial={{ x: '100%' }}
+          animate={{ x: 0 }}
+          exit={{ x: '100%' }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="fixed inset-y-0 right-0 z-50 flex w-[500px] flex-col bg-accent border-l border-border shadow-xl"
+          role="dialog"
+          aria-label="Tool Calls"
+        >
+          {/* header */}
+          <div className="sticky top-0 z-20 flex items-center border-b border-border bg-accent px-6 py-4 shrink-0">
+            <h2 className="font-inter text-[0.875rem] font-medium leading-normal tracking-[-0.02em] truncate min-w-0 flex-1 pr-8">
+              Tool Calls
+            </h2>
+            <button
+              onClick={onClose}
+              className="inline-flex size-6 items-center justify-center rounded-sm bg-secondary text-primary opacity-70 hover:opacity-100 transition-opacity"
+            >
+              <XIcon style={{ width: '10.67px', height: '10.67px' }} />
+              <span className="sr-only">Close</span>
+            </button>
+          </div>
+          {/* scrollable content */}
+          <div className="flex-1 overflow-y-auto p-6 pt-4">
+            <div className="flex flex-col gap-4">
+              {toolCalls.map((tc, i) => (
+                <ToolCallAccordionItem key={i} toolCall={tc} />
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </>
+    )}
+  </AnimatePresence>
+)
 
 // ---------------------------------------------------------------------------
 // Robust message timestamp formatter
@@ -128,6 +254,7 @@ const ReasoningBlock = ({ steps }: { steps: NonNullable<ChatMessage['extra_data'
 
 const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
   const isUser = msg.role === 'user'
+  const [toolCallsOpen, setToolCallsOpen] = useState(false)
   return (
     <motion.div
       className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}
@@ -142,9 +269,26 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
       </div>
       {msg.extra_data?.reasoning_steps && <ReasoningBlock steps={msg.extra_data.reasoning_steps} />}
       {msg.tool_calls && msg.tool_calls.length > 0 && (
-        <div className="w-full max-w-2xl space-y-1">
-          {msg.tool_calls.map((tc, i) => <ToolCallItem key={i} toolCall={tc} />)}
-        </div>
+        <>
+          {/* chip — click to open sidebar */}
+          <div className="flex flex-wrap items-center gap-2 pl-9">
+            <div className="cursor-pointer bg-transparent py-1" onClick={() => setToolCallsOpen(true)}>
+              <div className="flex items-center justify-between gap-x-2 rounded-sm bg-secondary px-2 py-1">
+                <Hammer className="text-primary size-4" />
+                <p className="font-dmmono text-xs font-normal tracking-[0.02em] leading-[1rem] space-x-2 uppercase">
+                  <span className="text-muted">{msg.tool_calls.length} </span>Tools Called
+                </p>
+                <ChevronRight className="text-primary size-4" />
+              </div>
+            </div>
+          </div>
+          {/* sliding sidebar panel */}
+          <ToolCallsSidebar
+            open={toolCallsOpen}
+            onClose={() => setToolCallsOpen(false)}
+            toolCalls={msg.tool_calls}
+          />
+        </>
       )}
       {msg.content && (
         <div className={cn('max-w-2xl rounded-xl px-4 py-3',
@@ -157,7 +301,7 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
           ) : (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw, rehypeSanitize]}
+              rehypePlugins={[rehypeRaw]}
               components={{
                 p: ({ children }) => (
                   <p className="text-[0.875rem] font-normal leading-[21px] tracking-[-0.02em] whitespace-pre-wrap mb-3 last:mb-0">{children}</p>
