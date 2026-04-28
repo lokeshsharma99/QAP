@@ -1,0 +1,473 @@
+import { useCallback } from 'react'
+import { flushSync } from 'react-dom'
+import { APIRoutes } from '@/api/routes'
+
+import useChatActions from '@/hooks/useChatActions'
+import { useStore } from '../store'
+import { RunEvent, RunResponseContent, type RunResponse } from '@/types/os'
+import { constructEndpointUrl } from '@/lib/constructEndpointUrl'
+import useAIResponseStream from './useAIResponseStream'
+import { ToolCall } from '@/types/os'
+import { useQueryState } from 'nuqs'
+import { getJsonMarkdown } from '@/lib/utils'
+
+const useAIChatStreamHandler = () => {
+  const setMessages = useStore((state) => state.setMessages)
+  const { addMessage, focusChatInput } = useChatActions()
+  const [agentId] = useQueryState('agent')
+  const [teamId] = useQueryState('team')
+  const [workflowId] = useQueryState('workflow')
+  const [sessionId, setSessionId] = useQueryState('session')
+  const selectedEndpoint = useStore((state) => state.selectedEndpoint)
+  const authToken = useStore((state) => state.authToken)
+  const mode = useStore((state) => state.mode)
+  const setStreamingErrorMessage = useStore((state) => state.setStreamingErrorMessage)
+  const setIsStreaming = useStore((state) => state.setIsStreaming)
+  const setSessionsData = useStore((state) => state.setSessionsData)
+  const addChatEvent = useStore((state) => state.addChatEvent)
+  const clearChatEvents = useStore((state) => state.clearChatEvents)
+  const { streamResponse } = useAIResponseStream()
+
+  const updateMessagesWithErrorState = useCallback(() => {
+    setMessages((prevMessages) => {
+      const newMessages = [...prevMessages]
+      const lastMessage = newMessages[newMessages.length - 1]
+      if (lastMessage && lastMessage.role === 'agent') {
+        lastMessage.streamingError = true
+      }
+      return newMessages
+    })
+  }, [setMessages])
+
+  /**
+   * Processes a new tool call and adds it to the message
+   */
+  const processToolCall = useCallback(
+    (toolCall: ToolCall, prevToolCalls: ToolCall[] = []) => {
+      const toolCallId =
+        toolCall.tool_call_id || `${toolCall.tool_name}-${toolCall.created_at}`
+
+      const existingToolCallIndex = prevToolCalls.findIndex(
+        (tc) =>
+          (tc.tool_call_id && tc.tool_call_id === toolCall.tool_call_id) ||
+          (!tc.tool_call_id &&
+            toolCall.tool_name &&
+            toolCall.created_at &&
+            `${tc.tool_name}-${tc.created_at}` === toolCallId)
+      )
+      if (existingToolCallIndex >= 0) {
+        const updatedToolCalls = [...prevToolCalls]
+        updatedToolCalls[existingToolCallIndex] = {
+          ...updatedToolCalls[existingToolCallIndex],
+          ...toolCall
+        }
+        return updatedToolCalls
+      } else {
+        return [...prevToolCalls, toolCall]
+      }
+    },
+    []
+  )
+
+  /**
+   * Processes tool calls from a chunk, handling both single tool object and tools array formats
+   */
+  const processChunkToolCalls = useCallback(
+    (
+      chunk: RunResponseContent | RunResponse,
+      existingToolCalls: ToolCall[] = []
+    ) => {
+      let updatedToolCalls = [...existingToolCalls]
+      if (chunk.tool) {
+        updatedToolCalls = processToolCall(chunk.tool, updatedToolCalls)
+      }
+      if (chunk.tools && chunk.tools.length > 0) {
+        for (const toolCall of chunk.tools) {
+          updatedToolCalls = processToolCall(toolCall, updatedToolCalls)
+        }
+      }
+      return updatedToolCalls
+    },
+    [processToolCall]
+  )
+
+  const handleStreamResponse = useCallback(
+    async (input: string | FormData) => {
+      setIsStreaming(true)
+      clearChatEvents()
+      addChatEvent({ type: 'run_start', label: 'Run started', ts: Date.now() })
+
+      const formData = input instanceof FormData ? input : new FormData()
+      if (typeof input === 'string') {
+        formData.append('message', input)
+      }
+
+      setMessages((prevMessages) => {
+        if (prevMessages.length >= 2) {
+          const lastMessage = prevMessages[prevMessages.length - 1]
+          const secondLastMessage = prevMessages[prevMessages.length - 2]
+          if (
+            lastMessage.role === 'agent' &&
+            lastMessage.streamingError &&
+            secondLastMessage.role === 'user'
+          ) {
+            return prevMessages.slice(0, -2)
+          }
+        }
+        return prevMessages
+      })
+
+      addMessage({
+        role: 'user',
+        content: formData.get('message') as string,
+        created_at: Math.floor(Date.now() / 1000)
+      })
+
+      addMessage({
+        role: 'agent',
+        content: '',
+        tool_calls: [],
+        streamingError: false,
+        created_at: Math.floor(Date.now() / 1000) + 1
+      })
+
+      let lastContent = ''
+      let newSessionId = sessionId
+      try {
+        const endpointUrl = constructEndpointUrl(selectedEndpoint)
+
+        let RunUrl: string | null = null
+
+        if (mode === 'team' && teamId) {
+          RunUrl = APIRoutes.TeamRun(endpointUrl, teamId)
+        } else if (mode === 'agent' && agentId) {
+          RunUrl = APIRoutes.AgentRun(endpointUrl).replace('{agent_id}', agentId)
+        } else if (mode === 'workflow' && workflowId) {
+          RunUrl = APIRoutes.WorkflowRun(endpointUrl, workflowId)
+        }
+
+        if (!RunUrl) {
+          updateMessagesWithErrorState()
+          setStreamingErrorMessage('Please select an agent, team, or workflow first.')
+          setIsStreaming(false)
+          return
+        }
+
+        formData.append('stream', 'true')
+        formData.append('session_id', sessionId ?? '')
+
+        const headers: Record<string, string> = {}
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`
+        }
+
+        await streamResponse({
+          apiUrl: RunUrl,
+          headers,
+          requestBody: formData,
+          onChunk: (chunk: RunResponse) => {
+            if (
+              chunk.event === RunEvent.RunStarted ||
+              chunk.event === RunEvent.TeamRunStarted ||
+              chunk.event === RunEvent.ReasoningStarted ||
+              chunk.event === RunEvent.TeamReasoningStarted ||
+              chunk.event === RunEvent.WorkflowStarted
+            ) {
+              newSessionId = chunk.session_id as string
+              setSessionId(chunk.session_id as string)
+              if ((!sessionId || sessionId !== chunk.session_id) && chunk.session_id) {
+                const sessionData = {
+                  session_id: chunk.session_id as string,
+                  session_name: formData.get('message') as string,
+                  created_at: chunk.created_at
+                }
+                setSessionsData((prevSessionsData) => {
+                  const sessionExists = prevSessionsData?.some(
+                    (session) => session.session_id === chunk.session_id
+                  )
+                  if (sessionExists) return prevSessionsData
+                  return [sessionData, ...(prevSessionsData ?? [])]
+                })
+              }
+              addChatEvent({ type: 'run_start', label: `${chunk.event}`, ts: Date.now(), detail: chunk.session_id as string | undefined })
+            } else if (
+              chunk.event === RunEvent.ToolCallStarted ||
+              chunk.event === RunEvent.TeamToolCallStarted ||
+              chunk.event === RunEvent.ToolCallCompleted ||
+              chunk.event === RunEvent.TeamToolCallCompleted
+            ) {
+              const toolName = chunk.tool?.tool_name ?? 'tool'
+              const isDone = chunk.event === RunEvent.ToolCallCompleted || chunk.event === RunEvent.TeamToolCallCompleted
+              addChatEvent({
+                type: isDone ? 'tool_done' : 'tool_start',
+                label: isDone ? `✓ ${toolName}` : `⚙ ${toolName}`,
+                ts: Date.now(),
+                detail: chunk.tool?.tool_args ? JSON.stringify(chunk.tool.tool_args).slice(0, 120) : undefined
+              })
+              setMessages((prevMessages) => {
+                const newMessages = [...prevMessages]
+                const idx = newMessages.length - 1
+                const lastMessage = newMessages[idx]
+                if (lastMessage && lastMessage.role === 'agent') {
+                  newMessages[idx] = {
+                    ...lastMessage,
+                    tool_calls: processChunkToolCalls(chunk, lastMessage.tool_calls),
+                  }
+                }
+                return newMessages
+              })
+            } else if (
+              chunk.event === RunEvent.RunContent ||
+              chunk.event === RunEvent.TeamRunContent
+            ) {
+              flushSync(() => {
+                setMessages((prevMessages) => {
+                  const newMessages = [...prevMessages]
+                  const idx = newMessages.length - 1
+                  const lastMessage = newMessages[idx]
+                  if (
+                    lastMessage &&
+                    lastMessage.role === 'agent' &&
+                    typeof chunk.content === 'string'
+                  ) {
+                    const uniqueContent = chunk.content.replace(lastContent, '')
+                    lastContent = chunk.content
+                    newMessages[idx] = {
+                      ...lastMessage,
+                      content: lastMessage.content + uniqueContent,
+                      tool_calls: processChunkToolCalls(chunk, lastMessage.tool_calls),
+                      extra_data: {
+                        ...lastMessage.extra_data,
+                        ...(chunk.extra_data?.reasoning_steps && { reasoning_steps: chunk.extra_data.reasoning_steps }),
+                        ...(chunk.extra_data?.references && { references: chunk.extra_data.references }),
+                      },
+                      created_at: chunk.created_at ?? lastMessage.created_at,
+                      ...(chunk.images && { images: chunk.images }),
+                      ...(chunk.videos && { videos: chunk.videos }),
+                      ...(chunk.audio && { audio: chunk.audio }),
+                    }
+                  } else if (
+                    lastMessage &&
+                    lastMessage.role === 'agent' &&
+                    typeof chunk?.content !== 'string' &&
+                    chunk.content !== null
+                  ) {
+                    const jsonBlock = getJsonMarkdown(chunk?.content)
+                    lastContent = jsonBlock
+                    newMessages[idx] = { ...lastMessage, content: lastMessage.content + jsonBlock }
+                  } else if (
+                    chunk.response_audio?.transcript &&
+                    typeof chunk.response_audio?.transcript === 'string' &&
+                    lastMessage
+                  ) {
+                    const transcript = chunk.response_audio.transcript
+                    newMessages[idx] = {
+                      ...lastMessage,
+                      response_audio: {
+                        ...lastMessage.response_audio,
+                        transcript: (lastMessage.response_audio?.transcript ?? '') + transcript,
+                      },
+                    }
+                  }
+                  return newMessages
+                })
+              })
+            } else if (
+              chunk.event === RunEvent.ReasoningStep ||
+              chunk.event === RunEvent.TeamReasoningStep
+            ) {
+              const step = chunk.extra_data?.reasoning_steps?.[chunk.extra_data.reasoning_steps.length - 1]
+              if (step) {
+                addChatEvent({ type: 'reasoning', label: `Reasoning: ${step.title}`, ts: Date.now(), detail: step.reasoning?.slice(0, 100) })
+              }
+              setMessages((prevMessages) => {
+                const newMessages = [...prevMessages]
+                const idx = newMessages.length - 1
+                const lastMessage = newMessages[idx]
+                if (lastMessage && lastMessage.role === 'agent') {
+                  const existingSteps = lastMessage.extra_data?.reasoning_steps ?? []
+                  const incomingSteps = chunk.extra_data?.reasoning_steps ?? []
+                  newMessages[idx] = {
+                    ...lastMessage,
+                    extra_data: {
+                      ...lastMessage.extra_data,
+                      reasoning_steps: [...existingSteps, ...incomingSteps],
+                    },
+                  }
+                }
+                return newMessages
+              })
+            } else if (
+              chunk.event === RunEvent.ReasoningCompleted ||
+              chunk.event === RunEvent.TeamReasoningCompleted
+            ) {
+              setMessages((prevMessages) => {
+                const newMessages = [...prevMessages]
+                const idx = newMessages.length - 1
+                const lastMessage = newMessages[idx]
+                if (lastMessage && lastMessage.role === 'agent' && chunk.extra_data?.reasoning_steps) {
+                  newMessages[idx] = {
+                    ...lastMessage,
+                    extra_data: {
+                      ...lastMessage.extra_data,
+                      reasoning_steps: chunk.extra_data.reasoning_steps,
+                    },
+                  }
+                }
+                return newMessages
+              })
+            } else if (
+              chunk.event === RunEvent.RunError ||
+              chunk.event === RunEvent.TeamRunError ||
+              chunk.event === RunEvent.TeamRunCancelled
+            ) {
+              updateMessagesWithErrorState()
+              const rawError = (chunk.content as string) || (chunk.event === RunEvent.TeamRunCancelled ? 'Run cancelled' : 'Error during run')
+              const errorContent = /VLM|Vision Language Model|not a vlm/i.test(rawError)
+                ? 'The current model does not support image/file attachments. Either use a vision-capable model or attach text/code files only.'
+                : rawError
+              addChatEvent({ type: 'error', label: `Error: ${String(errorContent).slice(0, 80)}`, ts: Date.now() })
+              setStreamingErrorMessage(errorContent)
+              if (newSessionId) {
+                setSessionsData(
+                  (prevSessionsData) =>
+                    prevSessionsData?.filter((session) => session.session_id !== newSessionId) ?? null
+                )
+              }
+            } else if (
+              chunk.event === RunEvent.UpdatingMemory ||
+              chunk.event === RunEvent.TeamMemoryUpdateStarted ||
+              chunk.event === RunEvent.TeamMemoryUpdateCompleted
+            ) {
+              addChatEvent({
+                type: 'memory',
+                label: chunk.event === RunEvent.UpdatingMemory || chunk.event === RunEvent.TeamMemoryUpdateStarted
+                  ? 'Updating memory…'
+                  : '✓ Memory updated',
+                ts: Date.now()
+              })
+            } else if (
+              chunk.event === RunEvent.RunCompleted ||
+              chunk.event === RunEvent.TeamRunCompleted ||
+              chunk.event === RunEvent.WorkflowCompleted
+            ) {
+              addChatEvent({ type: 'run_done', label: 'Run completed', ts: Date.now() })
+              setMessages((prevMessages) => {
+                const newMessages = prevMessages.map((message, index) => {
+                  if (index === prevMessages.length - 1 && message.role === 'agent') {
+                    let updatedContent: string
+                    if (typeof chunk.content === 'string') {
+                      updatedContent = chunk.content
+                    } else {
+                      try {
+                        updatedContent = JSON.stringify(chunk.content)
+                      } catch {
+                        updatedContent = 'Error parsing response'
+                      }
+                    }
+                    // For WorkflowCompleted: only update content if we got content (don't blank out streamed content)
+                    if (chunk.event === RunEvent.WorkflowCompleted && !updatedContent && message.content) {
+                      return message
+                    }
+                    return {
+                      ...message,
+                      content: updatedContent,
+                      tool_calls: processChunkToolCalls(chunk, message.tool_calls),
+                      images: chunk.images ?? message.images,
+                      videos: chunk.videos ?? message.videos,
+                      response_audio: chunk.response_audio,
+                      created_at: chunk.created_at ?? message.created_at,
+                      extra_data: {
+                        reasoning_steps:
+                          chunk.extra_data?.reasoning_steps ?? message.extra_data?.reasoning_steps,
+                        references:
+                          chunk.extra_data?.references ?? message.extra_data?.references
+                      }
+                    }
+                  }
+                  return message
+                })
+                return newMessages
+              })
+            } else if (
+              chunk.event === RunEvent.StepCompleted
+            ) {
+              const stepName = (chunk as RunResponse & { step_name?: string }).step_name
+              addChatEvent({ type: 'run_done', label: `✓ Step${stepName ? `: ${stepName}` : ''} completed`, ts: Date.now() })
+            } else if (
+              chunk.event === RunEvent.WorkflowError ||
+              chunk.event === RunEvent.StepError
+            ) {
+              updateMessagesWithErrorState()
+              const rawError = (chunk.content as string) || 'Workflow error'
+              addChatEvent({ type: 'error', label: `Error: ${String(rawError).slice(0, 80)}`, ts: Date.now() })
+              setStreamingErrorMessage(rawError)
+              if (newSessionId) {
+                setSessionsData(
+                  (prevSessionsData) =>
+                    prevSessionsData?.filter((session) => session.session_id !== newSessionId) ?? null
+                )
+              }
+            } else if (
+              chunk.event === RunEvent.WorkflowCancelled
+            ) {
+              updateMessagesWithErrorState()
+              addChatEvent({ type: 'error', label: 'Workflow cancelled', ts: Date.now() })
+              setStreamingErrorMessage('Workflow was cancelled')
+            }
+          },
+          onError: (error) => {
+            updateMessagesWithErrorState()
+            addChatEvent({ type: 'error', label: `Error: ${error.message.slice(0, 80)}`, ts: Date.now() })
+            setStreamingErrorMessage(error.message)
+            if (newSessionId) {
+              setSessionsData(
+                (prevSessionsData) =>
+                  prevSessionsData?.filter((session) => session.session_id !== newSessionId) ?? null
+              )
+            }
+          },
+          onComplete: () => {}
+        })
+      } catch (error) {
+        updateMessagesWithErrorState()
+        const errMsg = error instanceof Error ? error.message : String(error)
+        addChatEvent({ type: 'error', label: `Error: ${errMsg.slice(0, 80)}`, ts: Date.now() })
+        setStreamingErrorMessage(errMsg)
+        if (newSessionId) {
+          setSessionsData(
+            (prevSessionsData) =>
+              prevSessionsData?.filter((session) => session.session_id !== newSessionId) ?? null
+          )
+        }
+      } finally {
+        focusChatInput()
+        setIsStreaming(false)
+      }
+    },
+    [
+      setMessages,
+      addMessage,
+      updateMessagesWithErrorState,
+      selectedEndpoint,
+      authToken,
+      streamResponse,
+      agentId,
+      teamId,
+      mode,
+      setStreamingErrorMessage,
+      setIsStreaming,
+      focusChatInput,
+      setSessionsData,
+      sessionId,
+      setSessionId,
+      processChunkToolCalls,
+      addChatEvent,
+      clearChatEvents
+    ]
+  )
+
+  return { handleStreamResponse }
+}
+
+export default useAIChatStreamHandler

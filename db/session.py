@@ -124,3 +124,31 @@ def get_rca_kb() -> Knowledge:
     if _rca_kb is None:
         _rca_kb = create_knowledge("RCA History", "rca_vectors")
     return _rca_kb
+
+
+_test_results_kb: Knowledge | None = None
+_document_library_kb: Knowledge | None = None
+
+
+def get_test_results_kb() -> Knowledge:
+    """Test Results KB — Data Agent writes, Detective/Judge read.
+
+    Table: test_results_vectors
+    Purpose: Historical test execution results, pass/fail trends, flaky test patterns.
+    """
+    global _test_results_kb
+    if _test_results_kb is None:
+        _test_results_kb = create_knowledge("Test Results", "test_results_vectors")
+    return _test_results_kb
+
+
+def get_document_library_kb() -> Knowledge:
+    """Document Library KB — Architect/Scribe write, all agents read.
+
+    Table: document_library_vectors
+    Purpose: Requirements documents, ADO/Jira tickets, release notes, design docs.
+    """
+    global _document_library_kb
+    if _document_library_kb is None:
+        _document_library_kb = create_knowledge("Document Library", "document_library_vectors")
+    return _document_library_kb

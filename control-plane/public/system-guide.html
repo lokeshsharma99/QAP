@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quality Autopilot — System Guide</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --surface2: #21262d;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --accent:   #58a6ff;
+      --green:    #3fb950;
+      --yellow:   #d29922;
+      --red:      #f85149;
+      --purple:   #bc8cff;
+      --orange:   #ffa657;
+      --teal:     #39d353;
+      --pink:     #ff7b72;
+      --font:     'Segoe UI', system-ui, sans-serif;
+      --mono:     'Cascadia Code', 'Fira Code', monospace;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    .shell {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 0 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.3px;
+    }
+    .sidebar-logo p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .sidebar nav { padding: 12px 0; }
+    .nav-section {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+      padding: 12px 20px 4px;
+      text-transform: uppercase;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 20px;
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+    .nav-item:hover, .nav-item.active {
+      color: var(--text);
+      background: var(--surface2);
+      border-left-color: var(--accent);
+    }
+    .nav-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Main Content ─────────────────────────────────────────────────────── */
+    .main {
+      padding: 40px 48px;
+      max-width: 1200px;
+    }
+
+    /* ── Sections ────────────────────────────────────────────────────────── */
+    .section {
+      display: none;
+    }
+    .section.active {
+      display: block;
+    }
+
+    /* ── Page Header ─────────────────────────────────────────────────────── */
+    .page-header {
+      margin-bottom: 32px;
+    }
+    .page-header h2 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .page-header p {
+      color: var(--muted);
+      margin-top: 6px;
+      font-size: 14px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      margin-right: 4px;
+    }
+    .badge.green  { border-color: var(--green);  color: var(--green); }
+    .badge.yellow { border-color: var(--yellow); color: var(--yellow); }
+    .badge.blue   { border-color: var(--accent); color: var(--accent); }
+    .badge.purple { border-color: var(--purple); color: var(--purple); }
+
+    /* ── Cards ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .card-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .card-title { font-size: 15px; font-weight: 700; }
+    .card-subtitle { font-size: 12px; color: var(--muted); margin-top: 1px; }
+    .card-body { color: var(--muted); font-size: 13px; }
+    .card-body p { margin-bottom: 8px; }
+    .card-body p:last-child { margin-bottom: 0; }
+
+    /* ── Grid Layouts ────────────────────────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+    /* ── Agent Card ──────────────────────────────────────────────────────── */
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: default;
+    }
+    .agent-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .agent-card .agent-icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .agent-card .agent-name {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .agent-card .agent-skill {
+      font-size: 11px;
+      color: var(--accent);
+      font-family: var(--mono);
+      margin-top: 2px;
+    }
+    .agent-card .agent-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .agent-card .agent-output {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+    }
+    .agent-card .agent-output span {
+      font-family: var(--mono);
+      color: var(--green);
+    }
+
+    /* ── Flow Diagram ────────────────────────────────────────────────────── */
+    .flow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin: 16px 0;
+    }
+    .flow-step {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .flow-step.highlight {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .flow-arrow {
+      color: var(--muted);
+      font-size: 16px;
+      padding: 0 2px;
+    }
+    .flow-gate {
+      background: rgba(210, 153, 34, 0.15);
+      border: 1px solid var(--yellow);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--yellow);
+    }
+    .flow-condition {
+      background: rgba(188, 140, 255, 0.1);
+      border: 1px dashed var(--purple);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--purple);
+    }
+
+    /* ── Phase Timeline ──────────────────────────────────────────────────── */
+    .timeline {
+      position: relative;
+      padding-left: 32px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px; top: 0; bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .tl-item {
+      position: relative;
+      margin-bottom: 24px;
+    }
+    .tl-dot {
+      position: absolute;
+      left: -29px;
+      top: 4px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .tl-dot.done { background: var(--green); border-color: var(--green); }
+    .tl-dot.next { background: var(--accent); border-color: var(--accent); }
+    .tl-dot.pending { background: var(--surface2); }
+    .tl-title {
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tl-body {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .tl-gate {
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: var(--surface2);
+      border-left: 3px solid;
+      border-radius: 0 6px 6px 0;
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+
+    /* ── Code Block ──────────────────────────────────────────────────────── */
+    pre {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text);
+      margin: 12px 0;
+    }
+    .hl-key   { color: var(--purple); }
+    .hl-str   { color: var(--green); }
+    .hl-cmt   { color: var(--muted); font-style: italic; }
+    .hl-fn    { color: var(--accent); }
+    .hl-class { color: var(--orange); }
+    .hl-num   { color: var(--yellow); }
+
+    /* ── Table ───────────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin: 12px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-weight: 600;
+      text-align: left;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+    }
+    td {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: top;
+    }
+    tr:hover td { background: var(--surface2); }
+    .mono { font-family: var(--mono); color: var(--accent); }
+
+    /* ── Sections ────────────────────────────────────────────────────────── */
+    h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 28px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h3::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin-left: 8px;
+    }
+
+    /* ── Judge Verdict ───────────────────────────────────────────────────── */
+    .verdict-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .verdict-row {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      border-bottom: 1px solid var(--border);
+    }
+    .verdict-row:last-child { border-bottom: none; }
+    .verdict-label {
+      background: var(--surface2);
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      border-right: 1px solid var(--border);
+    }
+    .verdict-value {
+      padding: 10px 14px;
+      font-size: 12px;
+    }
+    .v-green { color: var(--green); font-weight: 700; }
+    .v-yellow { color: var(--yellow); font-weight: 700; }
+    .v-red { color: var(--red); font-weight: 700; }
+
+    /* ── Stack visual ────────────────────────────────────────────────────── */
+    .stack-layer {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .stack-layer .sl-icon { font-size: 20px; width: 28px; text-align: center; }
+    .stack-layer .sl-name { font-size: 13px; font-weight: 700; }
+    .stack-layer .sl-detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .stack-layer .sl-port {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+    }
+
+    /* ── KB Table ────────────────────────────────────────────────────────── */
+    .kb-item {
+      display: grid;
+      grid-template-columns: 200px 180px 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .kb-item:last-child { border-bottom: none; }
+    .kb-table-name { font-family: var(--mono); color: var(--accent); }
+
+    /* ── Scrollbar ───────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* ── Callout ─────────────────────────────────────────────────────────── */
+    .callout {
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      margin: 12px 0;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .callout-icon { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+    .callout.info    { background: rgba(88,166,255,0.1);  border: 1px solid rgba(88,166,255,0.3);  }
+    .callout.success { background: rgba(63,185,80,0.1);   border: 1px solid rgba(63,185,80,0.3);  }
+    .callout.warning { background: rgba(210,153,34,0.1);  border: 1px solid rgba(210,153,34,0.3); }
+    .callout.danger  { background: rgba(248,81,73,0.1);   border: 1px solid rgba(248,81,73,0.3);  }
+
+    /* ── Big Number ──────────────────────────────────────────────────────── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .stat-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-num { font-size: 32px; font-weight: 800; line-height: 1; }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>🤖 Quality Autopilot</h1>
+      <p>System Guide &amp; Architecture</p>
+    </div>
+    <nav>
+      <div class="nav-section">Overview</div>
+      <div class="nav-item active" onclick="show('overview')">
+        <div class="nav-dot" style="background:#58a6ff"></div> Overview
+      </div>
+      <div class="nav-item" onclick="show('stack')">
+        <div class="nav-dot" style="background:#3fb950"></div> Tech Stack
+      </div>
+
+      <div class="nav-section">Agents</div>
+      <div class="nav-item" onclick="show('agents')">
+        <div class="nav-dot" style="background:#bc8cff"></div> All 13 Agents
+      </div>
+      <div class="nav-item" onclick="show('squads')">
+        <div class="nav-dot" style="background:#ffa657"></div> 5 Squads (Teams)
+      </div>
+      <div class="nav-item" onclick="show('judge')">
+        <div class="nav-dot" style="background:#f85149"></div> The Judge
+      </div>
+
+      <div class="nav-section">Pipelines</div>
+      <div class="nav-item" onclick="show('flow-overview')">
+        <div class="nav-dot" style="background:#39d353"></div> Master Flow
+      </div>
+      <div class="nav-item" onclick="show('spec-to-code')">
+        <div class="nav-dot" style="background:#58a6ff"></div> Spec → Code
+      </div>
+      <div class="nav-item" onclick="show('triage-heal')">
+        <div class="nav-dot" style="background:#ff7b72"></div> Triage &amp; Heal
+      </div>
+      <div class="nav-item" onclick="show('discovery')">
+        <div class="nav-dot" style="background:#3fb950"></div> Discovery
+      </div>
+
+      <div class="nav-section">Data</div>
+      <div class="nav-item" onclick="show('contracts')">
+        <div class="nav-dot" style="background:#d29922"></div> Contracts
+      </div>
+      <div class="nav-item" onclick="show('knowledge')">
+        <div class="nav-dot" style="background:#bc8cff"></div> Knowledge Bases
+      </div>
+
+      <div class="nav-section">Phases</div>
+      <div class="nav-item" onclick="show('roadmap')">
+        <div class="nav-dot" style="background:#58a6ff"></div> Roadmap (0–7)
+      </div>
+      <div class="nav-item" onclick="show('antipatterns')">
+        <div class="nav-dot" style="background:#f85149"></div> Anti-Patterns
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- OVERVIEW                                                            -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-overview" class="section active">
+      <div class="page-header">
+        <h2>🤖 What is Quality Autopilot?</h2>
+        <p>An agentic compiler for the Software Testing Life Cycle — treats AI as a Senior SDET that reasons through requirements, writes Playwright automation, and self-heals broken tests.</p>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="stat-num" style="color:var(--purple)">13</div>
+          <div class="stat-label">Autonomous Agents</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" style="color:var(--accent)">5</div>
+          <div class="stat-label">Coordinating Teams</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" style="color:var(--green)">7</div>
+          <div class="stat-label">Workflows</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" style="color:var(--orange)">10</div>
+          <div class="stat-label">Pydantic Contracts</div>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <div class="callout-icon">💡</div>
+        <div><strong>Core Paradigm:</strong> Use LLM tokens for high-value reasoning (design, coding, triage). Execute zero-cost static code (Playwright) for regression. Moving from "testing the code" to "compiling the specification into a self-healing automation asset."</div>
+      </div>
+
+      <h3>🔄 The Big Picture</h3>
+      <div class="card">
+        <div class="flow">
+          <div class="flow-step highlight">📋 Jira Ticket</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">🏛️ Architect</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">✍️ Scribe</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-gate">⚖️ Gherkin Judge</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">🗄️ Data Agent</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">⚙️ Engineer</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-gate">⚖️ Code Judge</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">🚀 GitHub PR</div>
+        </div>
+        <div class="flow" style="margin-top:16px">
+          <div class="flow-step highlight">❌ CI Failure</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">🔍 Detective</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-condition">if LOCATOR_STALE</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">🩺 Medic</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-gate">⚖️ Healing Judge</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">✅ Auto-healed PR</div>
+        </div>
+      </div>
+
+      <h3>🏗️ Directory Structure</h3>
+      <pre><span class="hl-cmt">quality-autopilot/</span>
+├── <span class="hl-class">agents/</span>        <span class="hl-cmt"># 13 autonomous agents (one directory each)</span>
+├── <span class="hl-class">teams/</span>         <span class="hl-cmt"># 5 coordinating squads</span>
+├── <span class="hl-class">workflows/</span>     <span class="hl-cmt"># 7 multi-step pipelines</span>
+├── <span class="hl-class">contracts/</span>     <span class="hl-cmt"># 10 Pydantic hand-off models</span>
+├── <span class="hl-class">db/</span>            <span class="hl-cmt"># PostgreSQL + PgVector helpers</span>
+├── <span class="hl-class">automation/</span>    <span class="hl-cmt"># BDD+POM test framework (TypeScript)</span>
+├── <span class="hl-class">app/</span>           <span class="hl-cmt"># AgentOS FastAPI entry point</span>
+├── <span class="hl-class">evals/</span>         <span class="hl-cmt"># Smoke tests + gate verifications</span>
+└── <span class="hl-class">control-plane/</span> <span class="hl-cmt"># Next.js dashboard (port 3000)</span></pre>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TECH STACK                                                          -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-stack" class="section">
+      <div class="page-header">
+        <h2>🛠️ Technology Stack</h2>
+        <p>Every layer is non-negotiable. Do not substitute any component.</p>
+      </div>
+
+      <div class="stack-layer" style="border-color:var(--accent)">
+        <div class="sl-icon">🖥️</div>
+        <div>
+          <div class="sl-name">Control Plane UI — Next.js 15 (App Router)</div>
+          <div class="sl-detail">TypeScript · Tailwind CSS · Zustand · Lucide React · Radix UI · Framer Motion</div>
+        </div>
+        <div class="sl-port">:3000</div>
+      </div>
+      <div class="stack-layer" style="border-color:var(--green)">
+        <div class="sl-icon">⚡</div>
+        <div>
+          <div class="sl-name">AgentOS Backend — FastAPI (Agno Framework)</div>
+          <div class="sl-detail">Python 3.11+ · agno[os] · OpenRouter (kilo-auto/free) · Pydantic v2</div>
+        </div>
+        <div class="sl-port">:8000</div>
+      </div>
+      <div class="stack-layer" style="border-color:var(--purple)">
+        <div class="sl-icon">🗄️</div>
+        <div>
+          <div class="sl-name">PostgreSQL 16 + PgVector</div>
+          <div class="sl-detail">agnohq/pgvector:18 Docker image · Hybrid search (vector + keyword) · 4 knowledge base tables</div>
+        </div>
+        <div class="sl-port">:5432</div>
+      </div>
+      <div class="stack-layer" style="border-color:var(--orange)">
+        <div class="sl-icon">🎭</div>
+        <div>
+          <div class="sl-name">Playwright MCP Server</div>
+          <div class="sl-detail">@playwright/mcp@latest · HTTP transport · Browser automation for Engineer + Discovery agents</div>
+        </div>
+        <div class="sl-port">:8931</div>
+      </div>
+      <div class="stack-layer" style="border-color:var(--teal)">
+        <div class="sl-icon">🧪</div>
+        <div>
+          <div class="sl-name">Playwright Test Container (BDD+POM)</div>
+          <div class="sl-detail">Cucumber + Playwright · TypeScript · Isolated Docker sandbox · network_mode: none</div>
+        </div>
+        <div class="sl-port">sandbox</div>
+      </div>
+      <div class="stack-layer">
+        <div class="sl-icon">🤖</div>
+        <div>
+          <div class="sl-name">LLM — OpenRouter via Kilo AI</div>
+          <div class="sl-detail">MODEL = OpenRouter(id="kilo-auto/free") · Base URL: api.kilo.ai/api/openrouter/v1 · Per-agent override via PATCH /agents/{id}/config</div>
+        </div>
+        <div class="sl-port">API</div>
+      </div>
+      <div class="stack-layer">
+        <div class="sl-icon">📦</div>
+        <div>
+          <div class="sl-name">Embeddings — OllamaEmbedder (qwen3-embedding:4b)</div>
+          <div class="sl-detail">dimensions=2560 · All knowledge bases use SearchType.hybrid</div>
+        </div>
+        <div class="sl-port">local</div>
+      </div>
+
+      <h3>🐳 Docker Compose Services</h3>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Service</th><th>Image</th><th>Port</th><th>Purpose</th></tr>
+          <tr><td class="mono">qap-db</td><td>agnohq/pgvector:18</td><td class="mono">5432</td><td>Persistent vector + agent memory store</td></tr>
+          <tr><td class="mono">qap-api</td><td>./Dockerfile (Python)</td><td class="mono">8000</td><td>AgentOS — hosts all agents, teams, workflows</td></tr>
+          <tr><td class="mono">qap-ui</td><td>./control-plane/Dockerfile (Node)</td><td class="mono">3000</td><td>Control Plane dashboard (Next.js)</td></tr>
+          <tr><td class="mono">qap-playwright</td><td>playwright:v1.52.0-noble</td><td>—</td><td>Sandboxed test runner (profile: runner)</td></tr>
+        </table>
+      </div>
+
+      <div class="callout warning">
+        <div class="callout-icon">⚠️</div>
+        <div>Always use <code style="font-family:var(--mono);background:var(--surface2);padding:1px 5px;border-radius:3px">docker compose up -d --force-recreate qap-ui</code> after a build — plain <code style="font-family:var(--mono);background:var(--surface2);padding:1px 5px;border-radius:3px">up -d</code> skips recreation if the container is already running.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- AGENTS                                                              -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-agents" class="section">
+      <div class="page-header">
+        <h2>🤖 All 13 Agents</h2>
+        <p>Each agent lives in its own directory with <code style="font-family:var(--mono)">agent.py · instructions.py · __init__.py · __main__.py</code></p>
+      </div>
+
+      <div class="grid-4">
+
+        <div class="agent-card">
+          <div class="agent-icon">🏛️</div>
+          <div class="agent-name">Architect</div>
+          <div class="agent-skill">semantic_search</div>
+          <div class="agent-desc">Parses Jira/ADO tickets. Determines affected Page Objects via KB query. Produces the Execution Plan.</div>
+          <div class="agent-output">→ <span>RequirementContext</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">✍️</div>
+          <div class="agent-name">Scribe</div>
+          <div class="agent-skill">gherkin_formatter</div>
+          <div class="agent-desc">Translates RequirementContext into reusable BDD Gherkin steps. Ensures BA-readability and traceability.</div>
+          <div class="agent-output">→ <span>GherkinSpec (.feature)</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">🔭</div>
+          <div class="agent-name">Discovery</div>
+          <div class="agent-skill">ui_crawler</div>
+          <div class="agent-desc">Launches browser, authenticates with AUT, traverses Accessibility Tree of every page.</div>
+          <div class="agent-output">→ <span>SiteManifesto</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">📚</div>
+          <div class="agent-name">Librarian</div>
+          <div class="agent-skill">vector_indexing</div>
+          <div class="agent-desc">Watches Git commits, re-indexes POMs and Step Defs into PgVector on every push to main/develop.</div>
+          <div class="agent-output">→ <span>codebase_vectors KB</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">⚙️</div>
+          <div class="agent-name">Engineer</div>
+          <div class="agent-skill">file_writer</div>
+          <div class="agent-desc">Follows Look-Before-You-Leap: Manifesto → KB → MCP verify → write POM + StepDefs → run → PR.</div>
+          <div class="agent-output">→ <span>GitHub PR</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">🗄️</div>
+          <div class="agent-name">Data Agent</div>
+          <div class="agent-skill">data_factory</div>
+          <div class="agent-desc">Provisions unique users, injects DB records, sets up API mocks. PII masked. No production data.</div>
+          <div class="agent-output">→ <span>RunContext JSON</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">🔍</div>
+          <div class="agent-name">Detective</div>
+          <div class="agent-skill">trace_analyzer</div>
+          <div class="agent-desc">Pulls trace.zip from CI. Parses NDJSON events. Classifies failure root cause with >90% accuracy.</div>
+          <div class="agent-output">→ <span>RCAReport</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">🩺</div>
+          <div class="agent-name">Medic</div>
+          <div class="agent-skill">surgical_editor</div>
+          <div class="agent-desc">Patches only the stale locator line. NEVER changes business logic. Verifies 3× before PR.</div>
+          <div class="agent-output">→ <span>HealingPatch PR</span></div>
+        </div>
+
+        <div class="agent-card" style="border-color:var(--red)">
+          <div class="agent-icon">⚖️</div>
+          <div class="agent-name">Judge</div>
+          <div class="agent-skill">adversarial_review</div>
+          <div class="agent-desc">Invisible post_hook on every workflow step. Runs DoD checklist. ≥90% auto-approve, &lt;90% Human gate.</div>
+          <div class="agent-output">→ <span>JudgeVerdict</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">🧹</div>
+          <div class="agent-name">Curator</div>
+          <div class="agent-skill">suite_curation</div>
+          <div class="agent-desc">Detects obsolete tests. Manages HITL approval for test deletions. Keeps regression suite lean.</div>
+          <div class="agent-output">→ <span>TestDeletionApproval</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">🧪</div>
+          <div class="agent-name">Technical Tester</div>
+          <div class="agent-skill">test_generation</div>
+          <div class="agent-desc">Generates technical test plans and exploratory test cases beyond BDD scope.</div>
+          <div class="agent-output">→ <span>TestPlan</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">📊</div>
+          <div class="agent-name">CI Log Analyzer</div>
+          <div class="agent-skill">log_parsing</div>
+          <div class="agent-desc">Analyzes CI/CD pipeline logs and GitHub Actions runs for systemic failure patterns.</div>
+          <div class="agent-output">→ <span>PipelineRCAReport</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">🔬</div>
+          <div class="agent-name">Healing Judge</div>
+          <div class="agent-skill">healing_validation</div>
+          <div class="agent-desc">Specialized Judge variant: verifies surgical edits, 3× pass rate, zero logic drift.</div>
+          <div class="agent-output">→ <span>JudgeVerdict (heal)</span></div>
+        </div>
+
+      </div>
+
+      <h3>📁 Agent File Layout (every agent)</h3>
+      <pre><span class="hl-class">agents/&lt;name&gt;/</span>
+├── <span class="hl-fn">agent.py</span>        <span class="hl-cmt"># Agent definition — strict parameter ordering</span>
+├── <span class="hl-fn">instructions.py</span> <span class="hl-cmt"># INSTRUCTIONS = """...""" — system prompt</span>
+├── <span class="hl-fn">__init__.py</span>     <span class="hl-cmt"># from agents.&lt;name&gt;.agent import &lt;name&gt; as &lt;name&gt;</span>
+├── <span class="hl-fn">__main__.py</span>     <span class="hl-cmt"># CLI runner for local testing</span>
+└── <span class="hl-fn">tools.py</span>        <span class="hl-cmt"># custom tools (only if needed)</span></pre>
+
+      <h3>🔧 Agent Constructor — Parameter Order</h3>
+      <pre><span class="hl-fn">agent</span> = <span class="hl-class">Agent</span>(
+    <span class="hl-cmt"># Identity</span>
+    <span class="hl-key">id</span>=<span class="hl-str">"architect"</span>,
+    <span class="hl-key">name</span>=<span class="hl-str">"Architect"</span>,
+    <span class="hl-key">role</span>=<span class="hl-str">"..."</span>,          <span class="hl-cmt"># team members only</span>
+
+    <span class="hl-cmt"># Model</span>
+    <span class="hl-key">model</span>=<span class="hl-fn">MODEL</span>,
+
+    <span class="hl-cmt"># Data</span>
+    <span class="hl-key">db</span>=<span class="hl-fn">agent_db</span>,
+    <span class="hl-key">knowledge</span>=<span class="hl-fn">qap_learnings_kb</span>,
+    <span class="hl-key">search_knowledge</span>=<span class="hl-key">True</span>,
+
+    <span class="hl-cmt"># Capabilities</span>
+    <span class="hl-key">tools</span>=[...],
+    <span class="hl-key">learning</span>=<span class="hl-key">True</span>,
+    <span class="hl-key">add_learnings_to_context</span>=<span class="hl-key">True</span>,
+
+    <span class="hl-cmt"># Instructions</span>
+    <span class="hl-key">instructions</span>=<span class="hl-fn">INSTRUCTIONS</span>,
+
+    <span class="hl-cmt"># Memory</span>
+    <span class="hl-key">enable_agentic_memory</span>=<span class="hl-key">True</span>,
+
+    <span class="hl-cmt"># Context</span>
+    <span class="hl-key">add_datetime_to_context</span>=<span class="hl-key">True</span>,
+    <span class="hl-key">add_history_to_context</span>=<span class="hl-key">True</span>,
+    <span class="hl-key">read_chat_history</span>=<span class="hl-key">True</span>,
+    <span class="hl-key">num_history_runs</span>=<span class="hl-num">5</span>,
+
+    <span class="hl-cmt"># Output</span>
+    <span class="hl-key">markdown</span>=<span class="hl-key">True</span>,
+)</pre>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SQUADS                                                              -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-squads" class="section">
+      <div class="page-header">
+        <h2>🏢 The 5 Squads (Teams)</h2>
+        <p>All teams use <code style="font-family:var(--mono)">TeamMode.coordinate</code>. The team leader delegates to members, never the other way around.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(88,166,255,0.15)">📐</div>
+            <div>
+              <div class="card-title">Strategy Squad</div>
+              <div class="card-subtitle">teams/strategy/ · The Planners</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p><strong>Members:</strong> 🏛️ Architect + ✍️ Scribe</p>
+            <p><strong>Goal:</strong> Bridge BAs and engineers. Produce the "Contract" every other squad follows.</p>
+            <p><strong>Trigger:</strong> Jira webhook → /webhooks/jira</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(63,185,80,0.15)">🗺️</div>
+            <div>
+              <div class="card-title">Context Squad</div>
+              <div class="card-subtitle">teams/context/ · The Librarians</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p><strong>Members:</strong> 🔭 Discovery + 📚 Librarian</p>
+            <p><strong>Goal:</strong> Keep the "Digital Twin" of the AUT and codebase up to date in PgVector.</p>
+            <p><strong>Trigger:</strong> Manual onboard or Git commit hook</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(255,166,87,0.15)">🔨</div>
+            <div>
+              <div class="card-title">Engineering Squad</div>
+              <div class="card-subtitle">teams/engineering/ · The Coders</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p><strong>Members:</strong> ⚙️ Engineer + 🗄️ Data Agent</p>
+            <p><strong>Goal:</strong> Translate approved Gherkin specs into verified Playwright code and submit PRs.</p>
+            <p><strong>Pattern:</strong> Look-Before-You-Leap (Manifesto → KB → MCP → write)</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(248,81,73,0.15)">🛡️</div>
+            <div>
+              <div class="card-title">Operations Squad</div>
+              <div class="card-subtitle">teams/operations/ · The Guardians</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p><strong>Members:</strong> 🔍 Detective + 🩺 Medic</p>
+            <p><strong>Goal:</strong> Diagnose CI failures and surgically heal broken locators without touching business logic.</p>
+            <p><strong>Trigger:</strong> /webhooks/ci-failure</p>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: 1/-1">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(188,140,255,0.15)">🌱</div>
+            <div>
+              <div class="card-title">Grooming / Diagnostics Squads</div>
+              <div class="card-subtitle">teams/grooming/ · teams/diagnostics/ · The Curators</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p><strong>Members:</strong> 🧹 Curator + 📚 Librarian (grooming) · 📊 CI Log Analyzer + 🔍 Detective (diagnostics)</p>
+            <p><strong>Goal:</strong> Grooming keeps the regression suite clean (HITL-gated deletions). Diagnostics analyzes systemic CI failure patterns across pipeline runs.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- JUDGE                                                               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-judge" class="section">
+      <div class="page-header">
+        <h2>⚖️ The Agentic Judge</h2>
+        <p>The invisible quality gate. A <code style="font-family:var(--mono)">post_hook</code> on every workflow step — never a team member.</p>
+      </div>
+
+      <div class="callout danger">
+        <div class="callout-icon">🚨</div>
+        <div><strong>NEVER bypass the Judge.</strong> NEVER bypass HumanReviewGateStep. If Judge confidence &lt; 90%, the Human Lead MUST review. No exceptions.</div>
+      </div>
+
+      <h3>🎯 Trust Logic</h3>
+      <div class="verdict-box">
+        <div class="verdict-row">
+          <div class="verdict-label">confidence ≥ 90%</div>
+          <div class="verdict-value v-green">✅ AUTO-APPROVE — artifact proceeds to next pipeline step</div>
+        </div>
+        <div class="verdict-row">
+          <div class="verdict-label">confidence &lt; 90%</div>
+          <div class="verdict-value v-yellow">⏸ HumanReviewGateStep — artifact held for Human Lead in AgentUI</div>
+        </div>
+        <div class="verdict-row">
+          <div class="verdict-label">confidence &lt; 50%</div>
+          <div class="verdict-value v-red">❌ AUTO-REJECT — sent back to producing agent with specific feedback</div>
+        </div>
+      </div>
+
+      <h3>📋 Judge Variants (DoD Checklists)</h3>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Variant</th><th>Reviews</th><th>Key Checks</th></tr>
+          <tr>
+            <td>Gherkin Judge</td>
+            <td>Scribe output</td>
+            <td>BA-readable? Reusable steps? Syntax valid? Traceability to Jira AC?</td>
+          </tr>
+          <tr>
+            <td>Code Judge</td>
+            <td>Engineer output</td>
+            <td>No hardcoded sleep? Modular POM? eslint passes? Type-check passes? Look-Before-You-Leap followed?</td>
+          </tr>
+          <tr>
+            <td>Data Judge</td>
+            <td>Data Agent output</td>
+            <td>PII masked? Unique constraints satisfied? No production data? Cleanup queries present?</td>
+          </tr>
+          <tr>
+            <td>Healing Judge</td>
+            <td>Medic output</td>
+            <td>Verification passes 3×? logic_changed == False? Diff is surgical (single locator line)?</td>
+          </tr>
+        </table>
+      </div>
+
+      <h3>📄 JudgeVerdict Contract</h3>
+      <pre><span class="hl-key">class</span> <span class="hl-class">JudgeVerdict</span>(<span class="hl-class">BaseModel</span>):
+    <span class="hl-fn">artifact_type</span>: <span class="hl-class">str</span>           <span class="hl-cmt"># "gherkin" | "code" | "data" | "healing"</span>
+    <span class="hl-fn">agent_id</span>: <span class="hl-class">str</span>               <span class="hl-cmt"># ID of the producing agent</span>
+    <span class="hl-fn">confidence</span>: <span class="hl-class">float</span>           <span class="hl-cmt"># 0.0 – 1.0</span>
+    <span class="hl-fn">passed</span>: <span class="hl-class">bool</span>                <span class="hl-cmt"># True if confidence >= 0.90</span>
+    <span class="hl-fn">checklist_results</span>: <span class="hl-class">dict</span>[<span class="hl-class">str</span>, <span class="hl-class">bool</span>]  <span class="hl-cmt"># each DoD item pass/fail</span>
+    <span class="hl-fn">rejection_reasons</span>: <span class="hl-class">list</span>[<span class="hl-class">str</span>]      <span class="hl-cmt"># empty if passed</span>
+    <span class="hl-fn">requires_human</span>: <span class="hl-class">bool</span>        <span class="hl-cmt"># True if confidence < 0.90</span></pre>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- MASTER FLOW                                                         -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-flow-overview" class="section">
+      <div class="page-header">
+        <h2>🔄 Master Responsibility Handoff</h2>
+        <p>Every arrow is a Pydantic contract. Every diamond is the Agentic Judge gate.</p>
+      </div>
+
+      <div class="card">
+        <table style="width:100%">
+          <tr>
+            <th style="width:30%">Step</th>
+            <th style="width:20%">Agent → Agent</th>
+            <th style="width:25%">Contract Passed</th>
+            <th style="width:25%">Gate</th>
+          </tr>
+          <tr>
+            <td>BA moves Jira ticket</td>
+            <td>→ Architect</td>
+            <td>—</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Architect produces plan</td>
+            <td>→ Scribe</td>
+            <td class="mono">RequirementContext</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Scribe produces specs</td>
+            <td>→ Gherkin Judge</td>
+            <td class="mono">GherkinSpec (.feature)</td>
+            <td style="color:var(--yellow)">⚖️ ≥90% auto / &lt;90% Human</td>
+          </tr>
+          <tr>
+            <td>Judge-approved spec</td>
+            <td>→ Data Agent</td>
+            <td class="mono">GherkinSpec</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Data Agent provisions env</td>
+            <td>→ Engineer</td>
+            <td class="mono">RunContext</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Engineer writes code</td>
+            <td>→ Code Judge</td>
+            <td>POM + StepDefs</td>
+            <td style="color:var(--yellow)">⚖️ ≥90% auto / &lt;90% Human</td>
+          </tr>
+          <tr>
+            <td>Code Judge approves</td>
+            <td>→ GitHub PR</td>
+            <td>—</td>
+            <td style="color:var(--green)">✅ Auto-submit</td>
+          </tr>
+          <tr style="background:rgba(248,81,73,0.05)">
+            <td>CI test fails</td>
+            <td>→ Detective</td>
+            <td>trace.zip</td>
+            <td>—</td>
+          </tr>
+          <tr style="background:rgba(248,81,73,0.05)">
+            <td>Detective → LOCATOR_STALE</td>
+            <td>→ Medic</td>
+            <td class="mono">RCAReport</td>
+            <td style="color:var(--purple)">if LOCATOR_STALE only</td>
+          </tr>
+          <tr style="background:rgba(248,81,73,0.05)">
+            <td>Medic patches locator</td>
+            <td>→ Healing Judge</td>
+            <td class="mono">HealingPatch</td>
+            <td style="color:var(--yellow)">⚖️ ≥90% auto / &lt;90% Human</td>
+          </tr>
+          <tr style="background:rgba(248,81,73,0.05)">
+            <td>Detective → LOGIC_CHANGE</td>
+            <td>→ Human Lead</td>
+            <td class="mono">RCAReport</td>
+            <td style="color:var(--red)">🛑 Always human</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- SPEC TO CODE                                                        -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-spec-to-code" class="section">
+      <div class="page-header">
+        <h2>📋 Spec → Code Pipeline</h2>
+        <p>workflows/spec_to_code/ — Requirement to Green local run to GitHub PR</p>
+      </div>
+
+      <div class="card">
+        <div class="flow">
+          <div class="flow-step highlight">Jira Ticket</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">1. Parse Requirements<br><small style="color:var(--muted)">Architect</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">2. Author Gherkin<br><small style="color:var(--muted)">Scribe</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-gate">3. Gherkin Judge Gate</div>
+        </div>
+        <div class="flow" style="margin-top:8px;padding-left:120px">
+          <div class="flow-condition">if passed</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">4. Provision Data<br><small style="color:var(--muted)">Data Agent</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">5. Generate Code<br><small style="color:var(--muted)">Engineer</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-gate">6. Code Judge Gate</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">7. Submit PR</div>
+        </div>
+      </div>
+
+      <h3>🔬 Look-Before-You-Leap (Engineer's Law)</h3>
+      <div class="card">
+        <div class="flow">
+          <div class="flow-step">1. Check Site Manifesto<br><small style="color:var(--muted)">Does page exist?</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">2. Query Codebase KB<br><small style="color:var(--muted)">POM already exists?</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">3. Verify via Playwright MCP<br><small style="color:var(--muted)">Is selector live?</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">4. Write Modular Code<br><small style="color:var(--muted)">POM + StepDefs</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">5. Run Container<br><small style="color:var(--muted)">Green before PR?</small></div>
+        </div>
+      </div>
+
+      <h3>✅ Locator Rules (Enforced by Code Judge)</h3>
+      <div class="grid-2">
+        <div class="callout success">
+          <div class="callout-icon">✅</div>
+          <div><strong>Allowed:</strong> <code style="font-family:var(--mono)">data-testid</code>, <code style="font-family:var(--mono)">role</code>, <code style="font-family:var(--mono)">text</code> strategies</div>
+        </div>
+        <div class="callout danger">
+          <div class="callout-icon">❌</div>
+          <div><strong>Forbidden:</strong> CSS selectors, XPath, hardcoded <code style="font-family:var(--mono)">sleep()</code> or <code style="font-family:var(--mono)">waitForTimeout()</code></div>
+        </div>
+      </div>
+
+      <h3>💻 Workflow Code</h3>
+      <pre><span class="hl-fn">spec_to_code</span> = <span class="hl-class">Workflow</span>(
+    <span class="hl-key">id</span>=<span class="hl-str">"spec-to-code"</span>,
+    <span class="hl-key">name</span>=<span class="hl-str">"Spec to Code Pipeline"</span>,
+    <span class="hl-key">steps</span>=[
+        <span class="hl-class">Step</span>(<span class="hl-key">name</span>=<span class="hl-str">"Parse Requirements"</span>, <span class="hl-key">agent</span>=<span class="hl-fn">architect</span>),
+        <span class="hl-class">Step</span>(<span class="hl-key">name</span>=<span class="hl-str">"Author Gherkin"</span>,       <span class="hl-key">agent</span>=<span class="hl-fn">scribe</span>),
+        <span class="hl-class">Condition</span>(
+            <span class="hl-key">name</span>=<span class="hl-str">"Gherkin Judge Gate"</span>,
+            <span class="hl-key">evaluator</span>=<span class="hl-fn">judge_approves</span>,
+            <span class="hl-key">steps</span>=[
+                <span class="hl-class">Step</span>(<span class="hl-key">name</span>=<span class="hl-str">"Provision Data"</span>,  <span class="hl-key">agent</span>=<span class="hl-fn">data_agent</span>),
+                <span class="hl-class">Step</span>(<span class="hl-key">name</span>=<span class="hl-str">"Generate Code"</span>,   <span class="hl-key">agent</span>=<span class="hl-fn">engineer</span>),
+            ],
+        ),
+    ],
+)</pre>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TRIAGE HEAL                                                         -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-triage-heal" class="section">
+      <div class="page-header">
+        <h2>🔥 Triage &amp; Heal Pipeline</h2>
+        <p>workflows/triage_heal/ — CI failure to self-healed PR in minutes</p>
+      </div>
+
+      <div class="card">
+        <div class="flow">
+          <div class="flow-step highlight">CI Failure</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">1. Analyze Failure<br><small style="color:var(--muted)">Detective parses trace.zip</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-condition">2. Healable Check<br><small>LOCATOR_STALE + conf ≥ 0.90?</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">3. Patch Locator<br><small style="color:var(--muted)">Medic: 1 line only</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-gate">4. Healing Judge</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">Auto PR</div>
+        </div>
+      </div>
+
+      <h3>🏷️ Failure Classifications</h3>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Classification</th><th>Meaning</th><th>Who handles it</th></tr>
+          <tr><td class="mono" style="color:var(--orange)">LOCATOR_STALE</td><td>UI element changed — selector is broken</td><td>Medic (auto-heal)</td></tr>
+          <tr><td class="mono" style="color:var(--yellow)">DATA_MISMATCH</td><td>Test data issue — assertion mismatch</td><td>Data Agent (re-provision)</td></tr>
+          <tr><td class="mono" style="color:var(--yellow)">TIMING_FLAKE</td><td>Race condition — intermittent failure</td><td>Engineer (add explicit wait)</td></tr>
+          <tr><td class="mono" style="color:var(--red)">ENV_FAILURE</td><td>Infrastructure issue — 503/connection refused</td><td>DevOps / Human</td></tr>
+          <tr><td class="mono" style="color:var(--red)">LOGIC_CHANGE</td><td>Business logic changed — real app bug</td><td>Always Human Lead</td></tr>
+        </table>
+      </div>
+
+      <h3>🩺 Medic Constraints (Non-Negotiable)</h3>
+      <div class="callout danger">
+        <div class="callout-icon">⛔</div>
+        <div>
+          Medic is ONLY allowed to change <strong>locator selectors and wait strategies</strong>.<br>
+          NEVER: assertions, test flow, business logic, method names, imports.<br>
+          Edits must be surgical — <strong>one locator line, not a file rewrite</strong>.<br>
+          Must produce a unified diff for human review.<br>
+          Verification run must pass <strong>3× consecutively</strong> before PR.
+        </div>
+      </div>
+
+      <h3>📈 Gate 4 Results</h3>
+      <div class="grid-2">
+        <div class="stat-item">
+          <div class="stat-num" style="color:var(--green)">92.3%</div>
+          <div class="stat-label">Detective RCA Accuracy</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" style="color:var(--green)">10/10</div>
+          <div class="stat-label">Deliberate selector breaks healed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- DISCOVERY                                                           -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-discovery" class="section">
+      <div class="page-header">
+        <h2>🔭 Discovery &amp; Onboarding Pipeline</h2>
+        <p>workflows/discovery_onboard/ — AUT URL → Site Manifesto → PgVector KB</p>
+      </div>
+
+      <div class="card">
+        <div class="flow">
+          <div class="flow-step highlight">AUT URL</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">1. Authenticate<br><small style="color:var(--muted)">Discovery logs in</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">2. Crawl Pages<br><small style="color:var(--muted)">Accessibility Tree per page</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">3. Extract Components<br><small style="color:var(--muted)">Locators: testid/role/text</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">4. Librarian indexes<br><small style="color:var(--muted)">→ site_manifesto_vectors</small></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">KB ready</div>
+        </div>
+      </div>
+
+      <h3>📄 SiteManifesto Structure</h3>
+      <pre><span class="hl-key">class</span> <span class="hl-class">UIComponent</span>(<span class="hl-class">BaseModel</span>):
+    <span class="hl-fn">name</span>: <span class="hl-class">str</span>               <span class="hl-cmt"># e.g., "LoginForm"</span>
+    <span class="hl-fn">page</span>: <span class="hl-class">str</span>               <span class="hl-cmt"># e.g., "/login"</span>
+    <span class="hl-fn">locator_strategy</span>: <span class="hl-class">str</span>  <span class="hl-cmt"># data-testid | role | text</span>
+    <span class="hl-fn">locator_value</span>: <span class="hl-class">str</span>      <span class="hl-cmt"># e.g., "login-submit-btn"</span>
+    <span class="hl-fn">component_type</span>: <span class="hl-class">str</span>    <span class="hl-cmt"># button | input | link | modal</span>
+    <span class="hl-fn">aria_role</span>: <span class="hl-class">str</span> | <span class="hl-key">None</span>
+    <span class="hl-fn">aria_label</span>: <span class="hl-class">str</span> | <span class="hl-key">None</span>
+
+<span class="hl-key">class</span> <span class="hl-class">SiteManifesto</span>(<span class="hl-class">BaseModel</span>):
+    <span class="hl-fn">app_name</span>: <span class="hl-class">str</span>
+    <span class="hl-fn">base_url</span>: <span class="hl-class">str</span>
+    <span class="hl-fn">auth_strategy</span>: <span class="hl-class">str</span>     <span class="hl-cmt"># cookie | token | basic</span>
+    <span class="hl-fn">pages</span>: <span class="hl-class">list</span>[<span class="hl-class">PageEntry</span>]
+    <span class="hl-fn">generated_at</span>: <span class="hl-class">str</span>      <span class="hl-cmt"># ISO timestamp</span></pre>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- CONTRACTS                                                           -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-contracts" class="section">
+      <div class="page-header">
+        <h2>📝 Hand-off Contracts (Pydantic)</h2>
+        <p>Every agent-to-agent transition uses a structured Pydantic contract. Never pass raw strings between agents.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <tr><th>Contract</th><th>File</th><th>Producer → Consumer</th><th>Key Fields</th></tr>
+          <tr>
+            <td class="mono">RequirementContext</td>
+            <td>contracts/requirement_context.py</td>
+            <td>Architect → Scribe</td>
+            <td>ticket_id, acceptance_criteria, affected_page_objects, is_new_feature</td>
+          </tr>
+          <tr>
+            <td class="mono">GherkinSpec</td>
+            <td>contracts/gherkin_spec.py</td>
+            <td>Scribe → Engineer</td>
+            <td>feature_content, data_requirements, traceability</td>
+          </tr>
+          <tr>
+            <td class="mono">SiteManifesto</td>
+            <td>contracts/site_manifesto.py</td>
+            <td>Discovery → Librarian/Engineer</td>
+            <td>pages[], UIComponent[], accessibility_tree_hash</td>
+          </tr>
+          <tr>
+            <td class="mono">RunContext</td>
+            <td>contracts/run_context.py</td>
+            <td>Data Agent → Engineer</td>
+            <td>test_users, db_seed_queries, api_mocks, cleanup_queries, pii_masked</td>
+          </tr>
+          <tr>
+            <td class="mono">RCAReport</td>
+            <td>contracts/rca_report.py</td>
+            <td>Detective → Medic</td>
+            <td>classification, confidence, affected_locator, suggested_fix, requires_human</td>
+          </tr>
+          <tr>
+            <td class="mono">HealingPatch</td>
+            <td>contracts/healing_patch.py</td>
+            <td>Medic → Healing Judge</td>
+            <td>old_locator, new_locator, diff, verification_passes (≥3), logic_changed (must be False)</td>
+          </tr>
+          <tr>
+            <td class="mono">JudgeVerdict</td>
+            <td>contracts/judge_verdict.py</td>
+            <td>Judge → any</td>
+            <td>confidence, passed, checklist_results, rejection_reasons, requires_human</td>
+          </tr>
+          <tr>
+            <td class="mono">AutomationScaffold</td>
+            <td>contracts/automation_scaffold.py</td>
+            <td>Engineer → automation/</td>
+            <td>feature_files, page_objects, step_definitions, test_results</td>
+          </tr>
+          <tr>
+            <td class="mono">TestDeletionApproval</td>
+            <td>contracts/test_deletion_approval.py</td>
+            <td>Curator → Human/KB</td>
+            <td>deletion_requests, approvals, audit_trail</td>
+          </tr>
+          <tr>
+            <td class="mono">ImpactReport</td>
+            <td>contracts/impact_report.py</td>
+            <td>Impact Analyst → any</td>
+            <td>affected_agents, propagation_paths, risk_score</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- KNOWLEDGE BASES                                                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-knowledge" class="section">
+      <div class="page-header">
+        <h2>🧠 Knowledge Bases</h2>
+        <p>All KBs use <code style="font-family:var(--mono)">SearchType.hybrid</code> — vector similarity + keyword search combined.</p>
+      </div>
+
+      <div class="card">
+        <div class="kb-item">
+          <div class="kb-table-name">codebase_vectors</div>
+          <div><span class="badge blue">Librarian writes</span><span class="badge">Engineer reads</span></div>
+          <div style="color:var(--muted);font-size:13px">POMs, Step Definitions, utility helpers. Re-indexed on every Git commit.</div>
+        </div>
+        <div class="kb-item">
+          <div class="kb-table-name">site_manifesto_vectors</div>
+          <div><span class="badge blue">Discovery writes</span><span class="badge">Engineer reads</span></div>
+          <div style="color:var(--muted);font-size:13px">UI component catalog: pages, locators, Accessibility Tree snapshots.</div>
+        </div>
+        <div class="kb-item">
+          <div class="kb-table-name">rca_kb</div>
+          <div><span class="badge blue">Detective writes</span><span class="badge">Medic reads</span></div>
+          <div style="color:var(--muted);font-size:13px">Historical root cause analysis: failure classifications, error patterns.</div>
+        </div>
+        <div class="kb-item">
+          <div class="kb-table-name">qap_learnings</div>
+          <div><span class="badge purple">All agents</span></div>
+          <div style="color:var(--muted);font-size:13px">Shared collective intelligence: stable selector patterns, framework conventions, common gotchas.</div>
+        </div>
+        <div class="kb-item">
+          <div class="kb-table-name">test_results_vectors</div>
+          <div><span class="badge blue">CI writes</span><span class="badge">Detective reads</span></div>
+          <div style="color:var(--muted);font-size:13px">Historical pass/fail context for trend analysis.</div>
+        </div>
+      </div>
+
+      <h3>📦 How Knowledge Bases are Created</h3>
+      <pre><span class="hl-cmt"># db/session.py</span>
+<span class="hl-key">def</span> <span class="hl-fn">create_knowledge</span>(<span class="hl-fn">name</span>: <span class="hl-class">str</span>, <span class="hl-fn">table_name</span>: <span class="hl-class">str</span>) -> <span class="hl-class">Knowledge</span>:
+    <span class="hl-key">return</span> <span class="hl-class">Knowledge</span>(
+        <span class="hl-key">name</span>=<span class="hl-fn">name</span>,
+        <span class="hl-key">vector_db</span>=<span class="hl-class">PgVector</span>(
+            <span class="hl-key">db_url</span>=<span class="hl-fn">db_url</span>,
+            <span class="hl-key">table_name</span>=<span class="hl-fn">table_name</span>,
+            <span class="hl-key">search_type</span>=<span class="hl-class">SearchType</span>.<span class="hl-fn">hybrid</span>,
+            <span class="hl-key">embedder</span>=<span class="hl-class">OllamaEmbedder</span>(<span class="hl-key">id</span>=<span class="hl-str">"qwen3-embedding:4b"</span>, <span class="hl-key">dimensions</span>=<span class="hl-num">2560</span>),
+        ),
+    )</pre>
+
+      <div class="callout info">
+        <div class="callout-icon">ℹ️</div>
+        <div><strong>Git-sync hook:</strong> A <code style="font-family:var(--mono)">.git/hooks/post-commit</code> script triggers the Librarian to re-index <code style="font-family:var(--mono)">codebase_vectors</code> on every commit to main/develop. This keeps the Engineer's KB always current.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ROADMAP                                                             -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-roadmap" class="section">
+      <div class="page-header">
+        <h2>🗺️ Gated Roadmap — Phases 0–7</h2>
+        <p>Never implement Phase N+1 until Phase N gate passes. Each gate has explicit pass criteria.</p>
+      </div>
+
+      <div class="timeline">
+
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 0 — Infrastructure <span class="badge green">✅ GATE CLEARED</span></div>
+          <div class="tl-body">Docker Compose running. Agent writes to local disk. qap-db, qap-api, qap-ui services live.</div>
+          <div class="tl-gate" style="border-color:var(--green)">GET /health → 200 · Volume mount verified</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 0.5 — AUT Onboarding <span class="badge green">✅ GATE CLEARED</span></div>
+          <div class="tl-body">Discovery Agent generates Site Manifesto. SiteManifesto JSON persisted in PgVector.</div>
+          <div class="tl-gate" style="border-color:var(--green)">Autonomous login + navigates ≥3 core pages · Accessibility Tree extracted</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 1 — Contextual Indexing <span class="badge green">✅ GATE CLEARED</span></div>
+          <div class="tl-body">Existing POMs and Step Defs vectorized. Librarian indexes all test code. Git-sync hook active.</div>
+          <div class="tl-gate" style="border-color:var(--green)">Semantic query returns correct POM for UI component · 5/5 queries passed</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 2 — Spec-Driven Development <span class="badge green">✅ GATE CLEARED</span></div>
+          <div class="tl-body">Jira webhook → Gherkin workflow live. Architect + Scribe produce valid .feature files via AgentUI.</div>
+          <div class="tl-gate" style="border-color:var(--green)">Gherkin Judge ≥90% · Human approves first 5 specs · Traceability verified</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 3 — Autonomous Implementation <span class="badge yellow">⚠ PARTIAL (5/9)</span></div>
+          <div class="tl-body">Engineer generates and verifies feature tests. Look-Before-You-Leap pattern implemented. ESLint configured.</div>
+          <div class="tl-gate" style="border-color:var(--yellow)">Pending: Green local run · Code Judge ≥90% on generated code · &gt;90% execution success rate</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 4 — Triage &amp; Self-Healing <span class="badge green">✅ GATE CLEARED</span></div>
+          <div class="tl-body">Detective diagnoses failures. Medic patches locators. Healing loop verified end-to-end.</div>
+          <div class="tl-gate" style="border-color:var(--green)">92.3% Detective accuracy · 10/10 selector breaks healed · 0 human code interventions</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 5 — Autonomous Maturity <span class="badge yellow">⚠ IN PROGRESS</span></div>
+          <div class="tl-body">Scale and harden. Flip from "Human-Gated" to "Audit-Log" mode for routine maintenance.</div>
+          <div class="tl-gate" style="border-color:var(--yellow)">95% autonomous · 30 consecutive days · audit trail · &lt;$1/feature · zero secret leaks</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 6 — Regression Suite Curation <span class="badge yellow">⚠ INFRA DONE, TESTING PENDING</span></div>
+          <div class="tl-body">Curator agent detects obsolete tests. HITL-gated deletion flow. Regression Maintenance workflow.</div>
+          <div class="tl-gate" style="border-color:var(--yellow)">≥90% obsolescence detection accuracy · HITL approval works · Audit trail maintained</div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 7 — Semantica Integration <span class="badge green">✅ INFRASTRUCTURE COMPLETE</span></div>
+          <div class="tl-body">Semantic decision intelligence, temporal queries, provenance tracking across all 13 agents.</div>
+          <div class="tl-gate" style="border-color:var(--green)">All 13 agents extend SemanticaAgent · per-agent feature flags · API starts cleanly · zero impact when disabled</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ANTI-PATTERNS                                                       -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-antipatterns" class="section">
+      <div class="page-header">
+        <h2>🚫 Anti-Patterns</h2>
+        <p>Things that will break the system — and what to do instead.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <tr><th style="color:var(--red)">❌ Never Do This</th><th style="color:var(--green)">✅ Do This Instead</th></tr>
+          <tr>
+            <td>Use LangChain / CrewAI / AutoGen</td>
+            <td>Use <span class="mono">agno.agent.Agent</span>, <span class="mono">agno.team.Team</span>, <span class="mono">agno.workflow.Workflow</span> only</td>
+          </tr>
+          <tr>
+            <td>Hardcode <span class="mono">time.sleep()</span> or <span class="mono">waitForTimeout()</span></td>
+            <td>Use Playwright's built-in auto-waiting</td>
+          </tr>
+          <tr>
+            <td>Put all agents in one file</td>
+            <td>One directory per agent with agent.py, instructions.py, __init__.py</td>
+          </tr>
+          <tr>
+            <td>Skip Pydantic contracts between agents</td>
+            <td>Every hand-off uses a typed contract from <span class="mono">contracts/</span></td>
+          </tr>
+          <tr>
+            <td>Use CSS selectors or XPath in tests</td>
+            <td>Use <span class="mono">data-testid</span>, <span class="mono">role</span>, or <span class="mono">text</span> strategies</td>
+          </tr>
+          <tr>
+            <td>Medic changes business logic or assertions</td>
+            <td>Medic changes ONLY locator selectors and wait strategies</td>
+          </tr>
+          <tr>
+            <td>Use SQLite for agent persistence</td>
+            <td>PostgreSQL + PgVector via <span class="mono">db/session.py</span></td>
+          </tr>
+          <tr>
+            <td>Engineer writes code before checking Site Manifesto</td>
+            <td>Follow Look-Before-You-Leap: Manifesto → KB → MCP → write</td>
+          </tr>
+          <tr>
+            <td>Bypass the Judge or HumanReviewGateStep</td>
+            <td>Every artifact passes JudgeVerdict. If &lt;90%, hold for Human Lead.</td>
+          </tr>
+          <tr>
+            <td>Hardcode secrets or API keys in code</td>
+            <td>Use environment variables via <span class="mono">getenv()</span></td>
+          </tr>
+          <tr>
+            <td>Work on Phase N+1 before Phase N gate passes</td>
+            <td>Respect the gated roadmap. Check CHECKLIST.md first.</td>
+          </tr>
+          <tr>
+            <td>Nest code more than 3 levels deep</td>
+            <td>Flatten with early returns and helper functions</td>
+          </tr>
+          <tr>
+            <td><span class="mono">docker compose up -d qap-ui</span> after a build</td>
+            <td><span class="mono">docker compose up -d --force-recreate qap-ui</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <h3>🔐 Security Rules</h3>
+      <div class="callout danger">
+        <div class="callout-icon">🔒</div>
+        <div>
+          <strong>NEVER</strong> output .env contents, API keys, tokens, passwords, database credentials, or connection strings.<br>
+          Do not include example formats, redacted versions, or placeholder templates for secrets.<br>
+          All Playwright test containers run with <code style="font-family:var(--mono)">network_mode: "none"</code> (sandbox).<br>
+          All user input is validated at system boundaries via Pydantic contracts.<br>
+          No SQL string concatenation — use parameterised queries only.
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function show(id) {
+    // Hide all sections
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    // Deactivate all nav items
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    // Show target section
+    const section = document.getElementById('section-' + id);
+    if (section) section.classList.add('active');
+
+    // Activate clicked nav item
+    event.currentTarget.classList.add('active');
+
+    // Scroll main to top
+    document.querySelector('.main').scrollTop = 0;
+    window.scrollTo(0, 0);
+  }
+</script>
+</body>
+</html>
