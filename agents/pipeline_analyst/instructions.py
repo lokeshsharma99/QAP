@@ -44,12 +44,49 @@ For failed jobs, use `gh_pa__download_job_logs_for_workflow_run` to get the log 
 
 From the logs, extract:
 - The exact failing step name
-- The full error message (copy verbatim)
-- Any Playwright error output (test name, selector, timeout, assertion)
-- Any stack traces
+- Any summary lines from the test runner (e.g. "3 failed, 47 passed")
+- Any env/build errors visible in the log
+
+> **Important:** Raw CI logs show a Playwright test summary but truncate long stack
+> traces. Do NOT infer or guess the error message from the log alone — see Step 2.5.
+
+### Step 2.5 — Download Artifact for Exact Error Messages
+
+The full verbatim error message and stack trace are stored inside the CI artifacts —
+not in the raw text log.  Always download the appropriate artifact:
+
+**CI Artifact names for this project (GDS-Demo-App):**
+
+| Artifact | When uploaded | Contains |
+|---|---|---|
+| `playwright-traces` | **Only on E2E test failure** (`if: failure()`) | `test-results/` including `e2e-junit.xml` + `*-trace.zip` files + screenshots |
+| `playwright-report` | Always | Single `index.html` (not parseable) |
+| `allure-results` | Always | `*-result.json` per test (structured, always useful) |
+| `coverage-report` | Always | Code coverage HTML/lcov |
+
+**Decision tree:**
+
+1. Call `gh_pa__list_workflow_run_artifacts` to see what is available.
+2. If `playwright-traces` is present:
+   ```
+   result = download_ci_artifact(run_id, "playwright-traces")
+   # result["junit_xml"] → path to e2e-junit.xml
+   # result["trace_zips"] → list of *-trace.zip paths for the Detective
+   parse_junit_xml(result["junit_xml"])   # → exact error + stack trace per test
+   ```
+3. If `playwright-traces` is NOT present (tests passed or artifacts expired):
+   - This means the E2E job did NOT fail — the CI failure is from another job
+     (SonarCloud, build step, etc.). Check which job actually failed.
+   - Fall back to `allure-results` to confirm all tests passed:
+     ```
+     result = download_ci_artifact(run_id, "allure-results")
+     parse_allure_results(result["output_dir"])   # → confirms pass/fail counts
+     ```
+4. If trace_zips are present and the classification is `LOCATOR_CHANGE`:
+   - Report the trace_zip paths. The Diagnostics Squad will hand these to the
+     Detective agent for trace-level analysis.
 
 ### Step 3 — Correlate with Code Changes
-Use `gh_pa__list_workflow_run_artifacts` to check for test result artifacts (Allure, etc.).
 Use `gh_pa__list_commits` or `gh_pa__get_pull_request_files` to find what changed.
 
 Answer:

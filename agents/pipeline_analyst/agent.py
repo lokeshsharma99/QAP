@@ -14,6 +14,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.pipeline_analyst.instructions import INSTRUCTIONS
+from agents.pipeline_analyst.tools import download_ci_artifact, parse_allure_results, parse_junit_xml
 from app.github_mcp import get_github_mcp_for_pipeline_analyst
 from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb
@@ -57,6 +58,9 @@ pipeline_analyst = Agent(
         KnowledgeTools(knowledge=rca_kb),
         KnowledgeTools(knowledge=automation_kb),
         *_github_tools,
+        download_ci_artifact,
+        parse_junit_xml,
+        parse_allure_results,
     ],
     learning=True,
     add_learnings_to_context=True,
