@@ -181,3 +181,27 @@ def get_github_mcp_for_detective() -> list:
         )]
     except Exception:
         return []
+
+
+def get_github_mcp_for_impact_analyst() -> list:
+    """
+    GitHub MCP tools for the Impact Analyst agent.
+
+    Toolsets: repos (diff, file contents), pull_requests (PR details, changed
+    files, review status), issues (linked issues, acceptance criteria),
+    contexts (current repo metadata).
+
+    Impact Analyst uses these to:
+    - Read the full diff of an incoming PR to enumerate changed files
+    - Fetch linked GitHub Issues to extract acceptance criteria and scope
+    - Read the PR description for author-noted test implications
+    - List recent commits to understand the change surface
+    - Read source files to understand what was added/removed/renamed
+    """
+    try:
+        return [_make_github_mcp(
+            toolsets=["repos", "pull_requests", "issues", "contexts"],
+            tool_name_prefix="gh_ia_",
+        )]
+    except Exception:
+        return []

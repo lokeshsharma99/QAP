@@ -17,6 +17,7 @@ from agents.data_agent import data_agent
 from agents.detective import detective
 from agents.discovery import discovery
 from agents.engineer import engineer
+from agents.impact_analyst import impact_analyst
 from agents.judge import judge
 from agents.librarian import librarian
 from agents.medic import medic
@@ -49,6 +50,7 @@ agent_os = AgentOS(
         data_agent,
         detective,
         medic,
+        impact_analyst,
     ],
     teams=[
         context_team,
