@@ -24,7 +24,7 @@ from contracts.test_deletion_approval import (
     TestDeletionAudit,
     TestDeletionRequest,
 )
-from db.session import get_automation_knowledge
+from db.session import get_automation_kb
 
 
 # ---------------------------------------------------------------------------
