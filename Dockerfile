@@ -9,6 +9,17 @@
 FROM agnohq/python:3.12
 
 # ---------------------------------------------------------------------------
+# Node.js LTS — required for GitHub MCP server (npx @modelcontextprotocol/server-github)
+# Uses the official NodeSource setup script so the version is pinned via apt.
+# ---------------------------------------------------------------------------
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    node --version && npm --version
+
+# ---------------------------------------------------------------------------
 # Environment
 # ---------------------------------------------------------------------------
 ENV PYTHONUNBUFFERED=1 \
