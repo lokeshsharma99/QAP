@@ -205,3 +205,28 @@ def get_github_mcp_for_impact_analyst() -> list:
         )]
     except Exception:
         return []
+
+
+def get_github_mcp_for_pipeline_analyst() -> list:
+    """
+    GitHub MCP tools for the Pipeline Analyst agent.
+
+    Toolsets: actions (workflow runs, job logs, artifacts), repos (source file
+    diffs, commit history), pull_requests (triggering PR details),
+    contexts (current repo metadata).
+
+    Pipeline Analyst uses these to:
+    - Fetch the failed GitHub Actions workflow run details and status
+    - Read job logs to extract the exact failure message and step
+    - Download Allure/test-result artifact URLs for the failed run
+    - Read recent commits to correlate failures with code changes
+    - Fetch the triggering PR diff to understand the change surface
+    - Compare current run with previous passing run to identify regressions
+    """
+    try:
+        return [_make_github_mcp(
+            toolsets=["actions", "repos", "pull_requests", "contexts"],
+            tool_name_prefix="gh_pa_",
+        )]
+    except Exception:
+        return []

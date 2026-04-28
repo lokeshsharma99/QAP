@@ -7,6 +7,7 @@ from contracts.gherkin_spec import DataRequirement, GherkinSpec
 from contracts.healing_patch import HealingPatch
 from contracts.impact_report import ImpactReport, TestGap
 from contracts.judge_verdict import JudgeVerdict
+from contracts.pipeline_rca_report import FailedJob, PipelineRCAReport, RemediationStep
 from contracts.rca_report import RCAReport
 from contracts.requirement_context import AcceptanceCriterion, RequirementContext
 from contracts.run_context import RunContext, TestUser
@@ -35,4 +36,8 @@ __all__ = [
     # Phase 5 — Impact Analysis
     "ImpactReport",
     "TestGap",
+    # Phase 5 — Pipeline RCA
+    "PipelineRCAReport",
+    "RemediationStep",
+    "FailedJob",
 ]

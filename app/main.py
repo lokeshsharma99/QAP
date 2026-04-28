@@ -21,6 +21,7 @@ from agents.impact_analyst import impact_analyst
 from agents.judge import judge
 from agents.librarian import librarian
 from agents.medic import medic
+from agents.pipeline_analyst import pipeline_analyst
 from agents.scribe import scribe
 from app.registry import registry
 from app.settings import RUNTIME_ENV, agent_db
@@ -51,6 +52,7 @@ agent_os = AgentOS(
         detective,
         medic,
         impact_analyst,
+        pipeline_analyst,
     ],
     teams=[
         context_team,
