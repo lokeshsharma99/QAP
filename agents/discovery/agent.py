@@ -7,6 +7,7 @@ Role: Launch browser, authenticate with AUT, explore pages, generate Site Manife
 """
 
 from agno.agent import Agent
+from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.discovery.instructions import INSTRUCTIONS
@@ -39,6 +40,7 @@ discovery = Agent(
     # Capabilities
     tools=[
         ReasoningTools(add_instructions=True),
+        KnowledgeTools(knowledge=discovery_knowledge),
         fetch_html,
         parse_dom_tree,
         save_learning,
