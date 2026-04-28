@@ -1,0 +1,30 @@
+#!/bin/bash
+# Post-commit hook for Quality Autopilot
+# Triggers KB re-index after commit
+
+set -e
+
+echo "Running post-commit actions..."
+
+# Get the current branch
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Only re-index on main/develop branches
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "develop" ]; then
+    echo "Re-indexing knowledge base on $BRANCH branch..."
+    
+    # Check if Docker is running
+    if docker ps > /dev/null 2>&1; then
+        # Trigger KB re-index via API
+        curl -X POST http://localhost:8000/api/kb/reindex \
+            -H "Content-Type: application/json" \
+            -d '{"branch": "'"$BRANCH"'", "commit_sha": "'"$(git rev-parse HEAD)"'"}' \
+            2>/dev/null || echo "Warning: Could not trigger KB re-index"
+    else
+        echo "Docker not running, skipping KB re-index"
+    fi
+else
+    echo "Not on main/develop, skipping KB re-index"
+fi
+
+echo "Post-commit actions complete."

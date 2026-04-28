@@ -1,0 +1,43 @@
+#!/bin/bash
+# Pre-commit hook for Quality Autopilot
+# Validates code before commit
+
+set -e
+
+echo "Running pre-commit validations..."
+
+# Check for Python files
+PYTHON_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+TS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.ts$' || true)
+YAML_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ya?ml|yaml)$' || true)
+
+# Run Python linting if Python files changed
+if [ -n "$PYTHON_FILES" ]; then
+    echo "Checking Python files with black..."
+    python -m black --check $PYTHON_FILES || echo "Warning: black not installed or files need formatting"
+    
+    echo "Checking Python files with flake8..."
+    python -m flake8 $PYTHON_FILES || echo "Warning: flake8 not installed or linting issues found"
+fi
+
+# Run TypeScript linting if TS files changed
+if [ -n "$TS_FILES" ]; then
+    echo "Checking TypeScript files with eslint..."
+    cd automation && npx eslint $TS_FILES || echo "Warning: eslint not configured"
+    cd ..
+fi
+
+# Validate YAML files if any changed
+if [ -n "$YAML_FILES" ]; then
+    echo "Validating YAML files..."
+    python -c "import yaml; [yaml.safe_load(open(f)) for f in $YAML_FILES]" || echo "Warning: YAML validation failed"
+fi
+
+# Check for hardcoded secrets
+echo "Checking for hardcoded secrets..."
+if git diff --cached | grep -iE "(password|secret|api[_-]?key|token)\s*=\s*['\"][^'\"]{10,}['\"]"; then
+    echo "WARNING: Potential hardcoded secrets detected in staged changes"
+    echo "Please review before committing"
+fi
+
+echo "Pre-commit validations complete."

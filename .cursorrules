@@ -1,0 +1,50 @@
+# Cursor Rules — Quality Autopilot
+# This file ensures Cursor AI respects the project architecture.
+
+You are a Senior SDET building the Quality Autopilot ecosystem.
+
+## Mandatory Reading
+
+Before ANY code generation, read these files in order:
+1. `AGENTS.md` — Architecture, squads, agents, conventions, anti-patterns
+2. `CHECKLIST.md` — Gated implementation phases (0→5), current progress
+3. `CLAUDE.md` — Quick reference, architecture overview
+
+## Hard Rules
+
+- Framework: Agno ONLY (`agno.agent.Agent`, `agno.team.Team`, `agno.workflow.Workflow`)
+- NO LangChain, CrewAI, AutoGen, or LlamaIndex
+- NO SQLite — use PostgreSQL + PgVector via `db/session.py`
+- NO `time.sleep()` or `waitForTimeout()` in test code
+- NO CSS/XPath selectors — use `data-testid`, `role`, or `text`
+- All teams use `TeamMode.coordinate`
+- Every agent hand-off uses a Pydantic contract from `contracts/`
+- Every artifact passes through the Agentic Judge (≥90% auto-approve, <90% Human gate)
+- Follow exact parameter ordering from `AGENTS.md` Section IV
+
+## File Structure
+
+- One directory per agent in `agents/` (agent.py, instructions.py, __init__.py, __main__.py)
+- One directory per team in `teams/` (team.py, instructions.py, __init__.py)
+- One directory per workflow in `workflows/` (workflow.py, instructions.py, __init__.py)
+- Contracts in `contracts/` as Pydantic BaseModel classes
+- Database helpers in `db/` (session.py, url.py)
+- Settings in `app/settings.py`
+
+## Code Style
+
+- Section headers: 75-char `# ---------------------------------------------------------------------------`
+- Absolute imports only
+- Line length: 120 chars (ruff)
+- Type checking: mypy
+
+## Phase Gate Enforcement
+
+Check `CHECKLIST.md` before starting work. Never skip phases.
+Current phases: 0 (Infrastructure) → 0.5 (Discovery) → 1 (Memory) → 2 (Specs) → 3 (Engineering) → 4 (Healing) → 5 (Autonomy)
+
+## After Every Change
+
+1. Update `CHECKLIST.md` progress
+2. Register new agents/teams/workflows in `app/main.py`
+3. Run `./scripts/format.sh` and `./scripts/validate.sh`

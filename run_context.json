@@ -1,0 +1,411 @@
+{
+  "test_user": {
+    "username": "test_user_20260412_225227",
+    "password": "TestPass123!",
+    "email": "test@example.com",
+    "phone": "07700900000",
+    "address": "123 Test Street, Test City, TC1 1AA",
+    "postcode": "TC1 1AA",
+    "pii_masked": true,
+    "first_name": "Test",
+    "last_name": "User",
+    "date_of_birth": "1985-03-15",
+    "national_insurance_number": "QQ123456C"
+  },
+  "form_data": {
+    "firstName": "Test",
+    "lastName": "User",
+    "dob-day": "15",
+    "dob-month": "03",
+    "dob-year": "1985",
+    "niNumber": "QQ123456C"
+  },
+  "test_data_scenarios": {
+    "valid_complete": {
+      "form_data": {
+        "firstName": "Test",
+        "lastName": "User",
+        "dob-day": "15",
+        "dob-month": "03",
+        "dob-year": "1985",
+        "niNumber": "QQ123456C"
+      },
+      "description": "All valid fields - should pass"
+    },
+    "valid_format_with_spaces": {
+      "form_data": {
+        "firstName": "John",
+        "lastName": "Smith",
+        "dob-day": "20",
+        "dob-month": "06",
+        "dob-year": "1990",
+        "niNumber": "AB123456C"
+      },
+      "description": "Valid with different NI prefix"
+    },
+    "valid_format_no_spaces_display": {
+      "form_data": {
+        "firstName": "Jane",
+        "lastName": "Brown",
+        "dob-day": "01",
+        "dob-month": "12",
+        "dob-year": "1988",
+        "niNumber": "CD987654D"
+      },
+      "description": "Valid data - December birthday"
+    },
+    "boundary_exactly_18_years_old": {
+      "form_data": {
+        "firstName": "Kevin",
+        "lastName": "Martin",
+        "dob-day": "12",
+        "dob-month": "04",
+        "dob-year": "2008",
+        "niNumber": "QQ876543C"
+      },
+      "description": "Exactly 18 years old today - should be valid"
+    },
+    "boundary_17_years_364_days": {
+      "form_data": {
+        "firstName": "Young",
+        "lastName": "Person",
+        "dob-day": "13",
+        "dob-month": "04",
+        "dob-year": "2008",
+        "niNumber": "AB111222C"
+      },
+      "description": "One day before 18th birthday - should fail"
+    },
+    "missing_first_name": {
+      "form_data": {
+        "firstName": "",
+        "lastName": "User",
+        "dob-day": "15",
+        "dob-month": "03",
+        "dob-year": "1985",
+        "niNumber": "QQ123456C"
+      },
+      "description": "Missing firstName - expected error: 'Enter your first name'",
+      "expected_error": "Enter your first name"
+    },
+    "missing_last_name": {
+      "form_data": {
+        "firstName": "John",
+        "lastName": "",
+        "dob-day": "20",
+        "dob-month": "06",
+        "dob-year": "1990",
+        "niNumber": "AB123456C"
+      },
+      "description": "Missing lastName - expected error: 'Enter your last name'",
+      "expected_error": "Enter your last name"
+    },
+    "missing_dob_day": {
+      "form_data": {
+        "firstName": "Alice",
+        "lastName": "Brown",
+        "dob-day": "",
+        "dob-month": "03",
+        "dob-year": "1992",
+        "niNumber": "CD543210D"
+      },
+      "description": "Missing DOB day - expected error: 'Enter your date of birth'",
+      "expected_error": "Enter your date of birth"
+    },
+    "missing_dob_month": {
+      "form_data": {
+        "firstName": "Charlie",
+        "lastName": "Wilson",
+        "dob-day": "14",
+        "dob-month": "",
+        "dob-year": "1980",
+        "niNumber": "EF678901F"
+      },
+      "description": "Missing DOB month - expected error: 'Enter your date of birth'",
+      "expected_error": "Enter your date of birth"
+    },
+    "missing_dob_year": {
+      "form_data": {
+        "firstName": "Diana",
+        "lastName": "Miller",
+        "dob-day": "22",
+        "dob-month": "04",
+        "dob-year": "",
+        "niNumber": "GA345678A"
+      },
+      "description": "Missing DOB year - expected error: 'Enter your date of birth'",
+      "expected_error": "Enter your date of birth"
+    },
+    "missing_complete_dob": {
+      "form_data": {
+        "firstName": "Edward",
+        "lastName": "Taylor",
+        "dob-day": "",
+        "dob-month": "",
+        "dob-year": "",
+        "niNumber": "QQ987654C"
+      },
+      "description": "All DOB fields empty - expected error: 'Enter your date of birth'",
+      "expected_error": "Enter your date of birth"
+    },
+    "missing_ni_number": {
+      "form_data": {
+        "firstName": "Fiona",
+        "lastName": "Anderson",
+        "dob-day": "09",
+        "dob-month": "07",
+        "dob-year": "1983",
+        "niNumber": ""
+      },
+      "description": "Missing NI number - expected error",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_too_short": {
+      "form_data": {
+        "firstName": "George",
+        "lastName": "Thomas",
+        "dob-day": "30",
+        "dob-month": "01",
+        "dob-year": "1991",
+        "niNumber": "QQ12345"
+      },
+      "description": "NI only 7 chars - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_starts_with_numbers": {
+      "form_data": {
+        "firstName": "Hannah",
+        "lastName": "Jackson",
+        "dob-day": "12",
+        "dob-month": "05",
+        "dob-year": "1978",
+        "niNumber": "11123456A"
+      },
+      "description": "NI starts with numbers - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_with_dashes": {
+      "form_data": {
+        "firstName": "Ian",
+        "lastName": "White",
+        "dob-day": "30",
+        "dob-month": "06",
+        "dob-year": "2015",
+        "niNumber": "QQ-123-456-C"
+      },
+      "description": "NI with dashes - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_ends_with_number": {
+      "form_data": {
+        "firstName": "Julia",
+        "lastName": "Harris",
+        "dob-day": "01",
+        "dob-month": "01",
+        "dob-year": "2030",
+        "niNumber": "QQ1234561"
+      },
+      "description": "NI ends with number not letter - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_invalid_prefix_s": {
+      "form_data": {
+        "firstName": "Kevin",
+        "lastName": "Martin",
+        "dob-day": "09",
+        "dob-month": "07",
+        "dob-year": "1983",
+        "niNumber": "SQ123456C"
+      },
+      "description": "NI starts with S - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_invalid_prefix_d": {
+      "form_data": {
+        "firstName": "Laura",
+        "lastName": "Thompson",
+        "dob-day": "30",
+        "dob-month": "11",
+        "dob-year": "1991",
+        "niNumber": "DQ123456C"
+      },
+      "description": "NI starts with D - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_invalid_prefix_f": {
+      "form_data": {
+        "firstName": "Michael",
+        "lastName": "Roberts",
+        "dob-day": "22",
+        "dob-month": "02",
+        "dob-year": "1975",
+        "niNumber": "FQ123456C"
+      },
+      "description": "NI starts with F - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_invalid_prefix_i": {
+      "form_data": {
+        "firstName": "Nancy",
+        "lastName": "Clark",
+        "dob-day": "14",
+        "dob-month": "08",
+        "dob-year": "1987",
+        "niNumber": "IQ123456C"
+      },
+      "description": "NI starts with I - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_invalid_prefix_q": {
+      "form_data": {
+        "firstName": "Oscar",
+        "lastName": "Lewis",
+        "dob-day": "18",
+        "dob-month": "03",
+        "dob-year": "1995",
+        "niNumber": "QQ123456C"
+      },
+      "description": "NI starts with Q - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_invalid_prefix_u": {
+      "form_data": {
+        "firstName": "Paula",
+        "lastName": "Adams",
+        "dob-day": "25",
+        "dob-month": "09",
+        "dob-year": "1980",
+        "niNumber": "UQ123456C"
+      },
+      "description": "NI starts with U - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "ni_invalid_prefix_v": {
+      "form_data": {
+        "firstName": "Quinn",
+        "lastName": "Baker",
+        "dob-day": "07",
+        "dob-month": "12",
+        "dob-year": "1992",
+        "niNumber": "VQ123456C"
+      },
+      "description": "NI starts with V - expected error: 'Enter a valid National Insurance number'",
+      "expected_error": "Enter a valid National Insurance number"
+    },
+    "dob_under_18_years_old": {
+      "form_data": {
+        "firstName": "Rachel",
+        "lastName": "Green",
+        "dob-day": "30",
+        "dob-month": "06",
+        "dob-year": "2015",
+        "niNumber": "WB234567C"
+      },
+      "description": "DOB makes user under 18 - should fail validation",
+      "expected_error": "Enter a date of birth in the past"
+    },
+    "dob_in_future": {
+      "form_data": {
+        "firstName": "Steve",
+        "lastName": "Wilson",
+        "dob-day": "01",
+        "dob-month": "01",
+        "dob-year": "2030",
+        "niNumber": "YA345678D"
+      },
+      "description": "DOB in future - should fail validation",
+      "expected_error": "Enter a date of birth in the past"
+    },
+    "dob_invalid_day_32": {
+      "form_data": {
+        "firstName": "Tina",
+        "lastName": "Young",
+        "dob-day": "32",
+        "dob-month": "03",
+        "dob-year": "1985",
+        "niNumber": "ZB456789E"
+      },
+      "description": "Invalid day (32) - should fail validation",
+      "expected_error": "Enter a valid date of birth"
+    },
+    "dob_invalid_month_13": {
+      "form_data": {
+        "firstName": "Uma",
+        "lastName": "Nelson",
+        "dob-day": "15",
+        "dob-month": "13",
+        "dob-year": "1985",
+        "niNumber": "AC567890F"
+      },
+      "description": "Invalid month (13) - should fail validation",
+      "expected_error": "Enter a valid date of birth"
+    },
+    "dob_invalid_year_4_digits": {
+      "form_data": {
+        "firstName": "Victor",
+        "lastName": "Hill",
+        "dob-day": "15",
+        "dob-month": "03",
+        "dob-year": "85",
+        "niNumber": "AD678901A"
+      },
+      "description": "Year only 2 digits - should fail validation",
+      "expected_error": "Enter a valid date of birth"
+    }
+  },
+  "ni_number_validation_rules": {
+    "regex": "^[A-CEGHJ-PR-TW-Z]{2}[0-9]{6}[A-CEGHJ-PR-TW-Z]$",
+    "invalid_prefixes": ["D", "F", "I", "Q", "S", "U", "V"],
+    "valid_prefixes": ["AA", "AB", "AC", "BA", "BB", "BC", "CA", "CB", "CC", "EA", "EB", "EC", "GA", "GB", "HA", "HB", "JA", "JB", "KA", "KB", "LA", "LB", "MA", "NA", "OA", "PA", "PB", "RA", "RB", "SA", "TA", "VA", "WA", "YA", "ZA"],
+    "format_example": "QQ123456C",
+    "formatted_example": "QQ 12 34 56 C"
+  },
+  "dob_validation_rules": {
+    "minimum_age": 18,
+    "must_be_in_past": true,
+    "valid_months": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"],
+    "valid_days": ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+  },
+  "db_seed_queries": [
+    "INSERT INTO applicants (id, first_name, last_name, dob, ni_number, created_at) VALUES (UUID(), 'Test', 'User', '1985-03-15', 'QQ123456C', NOW());",
+    "INSERT INTO application_sessions (session_id, status, step, created_at) VALUES (UUID(), 'draft', 'personal_details', NOW());"
+  ],
+  "api_mocks": {
+    "/api/address-lookup": {
+      "status": 200,
+      "body": {
+        "postcode": "TC1 1AA",
+        "addresses": ["123 Test Street, Test City"]
+      }
+    },
+    "/api/ni-validation": {
+      "status": 200,
+      "body": {
+        "valid": true,
+        "formatted": "QQ 12 34 56 C"
+      }
+    }
+  },
+  "cleanup_queries": [
+    "DELETE FROM applicants WHERE ni_number = 'QQ123456C';",
+    "DELETE FROM application_sessions WHERE status = 'draft' AND step = 'personal_details';"
+  ],
+  "environment": "test",
+  "base_url": "https://gds-demo-app.vercel.app",
+  "locators": {
+    "firstName": "[data-testid='first-name-input']",
+    "lastName": "[data-testid='last-name-input']",
+    "dob-day": "[data-testid='dob-day-input']",
+    "dob-month": "[data-testid='dob-month-input']",
+    "dob-year": "[data-testid='dob-year-input']",
+    "niNumber": "[data-testid='ni-number-input']",
+    "continueButton": "button[type='submit']"
+  },
+  "browser_config": {
+    "viewport": "1280x720",
+    "device": "desktop"
+  },
+  "timeout_ms": 30000,
+  "retry_on_failure": false,
+  "max_retries": 3
+}
