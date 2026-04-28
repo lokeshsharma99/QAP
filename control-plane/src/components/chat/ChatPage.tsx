@@ -644,6 +644,8 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
         </div>
       )}
 
+=======
+>>>>>>> origin/main
       {/* Details tab — existing read-only view */}
       {(tab === 'details' || !isConfigurable) && (
         <>
