@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useEffect, useState, useCallback } from 'react'
 import { useStore } from '@/store'
 import { APIRoutes } from '@/api/routes'
@@ -141,8 +142,8 @@ const RunEvalModal = ({
   onClose: () => void
   onSubmit: (body: Record<string, unknown>) => Promise<void>
 }) => {
-  const { selectedEndpoint } = useStore()
-  const [agents, setAgents] = useState<{ id: string }[]>([])
+  const { selectedEndpoint, authToken } = useStore()
+  const [agents, setAgents] = useState<{ agent_id: string; name?: string }[]>([])
   const [form, setForm] = useState({
     agent_id: '',
     eval_type: 'accuracy' as EvalType,
@@ -155,11 +156,17 @@ const RunEvalModal = ({
 
   useEffect(() => {
     if (!selectedEndpoint) return
-    fetch(APIRoutes.GetAgents(selectedEndpoint))
+    const headers: HeadersInit = { 'Content-Type': 'application/json' }
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+    fetch(APIRoutes.GetAgents(selectedEndpoint), { headers })
       .then((r) => r.json())
-      .then((d) => setAgents(d?.agents ?? d?.data ?? []))
+      .then((d) => {
+        // API may return a plain array or { agents: [...] } or { data: [...] }
+        const list = Array.isArray(d) ? d : (d?.agents ?? d?.data ?? [])
+        setAgents(list)
+      })
       .catch(() => {})
-  }, [selectedEndpoint])
+  }, [selectedEndpoint, authToken])
 
   const handleSubmit = async () => {
     if (!form.input.trim()) { toast.error('Input is required'); return }
@@ -198,7 +205,11 @@ const RunEvalModal = ({
               className="w-full rounded-xl border border-accent bg-primaryAccent px-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
             >
               <option value="">— any / pipeline —</option>
-              {agents.map((a) => <option key={a.id} value={a.id}>{a.id}</option>)}
+              {agents.map((a) => {
+                const key = (a as any).agent_id ?? (a as any).id ?? ''
+                const label = (a as any).name ? `${(a as any).name} (${key})` : key
+                return <option key={key} value={key}>{label}</option>
+              })}
             </select>
           </div>
 
@@ -345,7 +356,7 @@ export default function EvalsPage() {
   const uniqueTypes = Array.from(new Set(runs.map((r) => r.eval_type)))
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       <div className="mx-auto max-w-4xl space-y-6">
 
         <div className="flex items-start justify-between">
@@ -421,6 +432,6 @@ export default function EvalsPage() {
       {showModal && (
         <RunEvalModal onClose={() => setShowModal(false)} onSubmit={handleRunEval} />
       )}
-    </div>
+    </motion.div>
   )
 }

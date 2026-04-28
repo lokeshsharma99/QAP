@@ -1378,30 +1378,96 @@ or placeholder templates. Give a brief refusal with no examples.
 
 ---
 
-## XV. Agent UI Integration
+## XV. Control Plane UI (Quality Autopilot Dashboard)
 
-The `agent-ui` (Next.js) connects to the Quality Autopilot AgentOS at `http://localhost:8000`.
+The **Control Plane** (`control-plane/`) is the built-in Next.js 15 dashboard for Quality Autopilot. It is NOT the generic `agno-agi/agent-ui` — it is a purpose-built control surface.
 
 ### Connection Setup
 
-1. Start AgentOS: `docker compose up -d`
-2. Start Agent UI: `cd agent-ui && pnpm dev`
-3. In Agent UI, set endpoint to `http://localhost:8000`
+1. Start the full stack: `docker compose up -d`
+2. Control Plane is served on **port 3000** by the `qap-ui` Docker service.
+3. Set the API endpoint in Settings (top-right) to `http://localhost:8000`.
 
-### Extending Agent UI for QA Features
+### Implemented Pages
 
-Future UI work should add:
+| Route | Page | Purpose |
+|-------|------|---------|
+| `/chat` | Chat | Multi-agent chat with markdown, Mermaid diagrams, code highlighting |
+| `/sessions` | Sessions | View / resume past agent sessions |
+| `/memory` | Memory | Browse, search, delete agent memories; User Stats; Optimize button |
+| `/knowledge` | Knowledge | Browse and manage PgVector knowledge base documents |
+| `/traces` | Traces | Execution trace viewer with DSL search; step-level drill-down |
+| `/evals` | Evals | Run accuracy / performance / reliability / agent-as-judge evals |
+| `/metrics` | Metrics | Agent performance metrics and aggregated stats |
+| `/registry` | Registry | Browse registered agents, teams, and workflows |
+| `/approvals` | Approvals | Human-in-the-Loop (HITL) approval queue for Judge-flagged artifacts |
+| `/scheduler` | Scheduler | Schedule recurring agent runs / cron workflows |
+| `/settings` | Settings | API endpoint, auth token, theme |
+| `/spec-review` | Spec Review | Review generated Gherkin specs with approve/reject |
+| `/healing` | Healing | RCA reports and healing patch diff viewer |
+| `/workflows` | Workflows | Workflow runs and step-level status |
+| `/guide` | Guide | In-app architecture guide rendered from markdown |
+| `/dashboard` | Dashboard | Live regression pass/fail metrics summary |
 
-- **Spec Review Panel:** Display generated Gherkin specs with approve/reject buttons.
-- **Trace Viewer:** Embed Playwright trace viewer for failure inspection.
-- **Healing Dashboard:** Show RCA reports and healing patches with diff viewer.
-- **Regression Dashboard:** Live pass/fail metrics from the test runner.
+### Technology Stack
 
-The Agent UI uses:
+- **Framework:** Next.js 15 (App Router), TypeScript
 - **State:** Zustand (`src/store.ts`)
-- **Components:** Radix UI + Tailwind CSS
-- **Framework:** Next.js 15 with TypeScript
-- **Animations:** Framer Motion
+- **Components:** Radix UI + Tailwind CSS (`bg-accent`, `text-primary`, dark-mode safe)
+- **Animations:** Framer Motion 12 (page-entry: `opacity 0→1, y 8→0, duration 0.2`)
+- **Markdown:** `react-markdown` + `remark-gfm` + `rehype-raw` (no `rehype-sanitize`)
+- **Diagrams:** Mermaid v11 (lazy-loaded; error SVGs fall back to `<pre>` code block)
+- **Code blocks:** DM Mono font; language-tagged blocks show label bar; single-line bare blocks render as inline `<code>`
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/store.ts` | Zustand store: `selectedEndpoint`, `authToken`, `agents`, `sessions` |
+| `src/api/routes.ts` | Centralized API URL builders (`GetAgents`, `OptimizeMemories`, etc.) |
+| `src/api/os.ts` | Typed fetch helpers that return `AgentDetails[]`, etc. |
+| `src/types/os.ts` | `AgentDetails`, `TeamDetails`, `WorkflowDetails`, session types |
+| `src/components/chat/ChatPage.tsx` | Full chat UI with streaming, mermaid, markdown |
+| `src/components/evals/EvalsPage.tsx` | Eval history list + Run Eval modal |
+| `src/components/memory/MemoryPage.tsx` | Memory CRUD + optimize endpoint |
+| `src/components/traces/TracesPage.tsx` | DSL-search trace list + detail view |
+
+### Control Plane Conventions
+
+- All page components wrap their root element in `<motion.div>` with `initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}`.
+- Never use bezier arrays for `ease` — framer-motion v12 requires named strings (`'easeOut'`, `'linear'`) or `EasingFunction`.
+- All agent dropdowns must handle a direct-array response from `/agents` (`Array.isArray(d) ? d : d?.agents ?? d?.data ?? []`) and must send `Authorization: Bearer ${authToken}` headers.
+
+### Additional Agents (beyond the core 9)
+
+The following agents are implemented but not in the original squad plan:
+
+| Agent | ID | Primary Skill | Notes |
+|-------|----|--------------|-------|
+| CI Log Analyzer | `ci_log_analyzer` | `rca_analysis` | Analyzes Azure DevOps pipeline logs; creates ADO tickets after HITL approval |
+| Healing Judge | `healing_judge` | `healing_validation` | Adversarial review of Medic patches before application |
+| Technical Tester | `technical_tester` | `test_generation` | Playwright Test Agent planner/generator/healer for rapid exploratory tests |
+| Impact Analyst | `impact_analyst` | `impact_analysis` | Analyzes change impact across Page Objects and Step Defs |
+| Pipeline Analyst | `pipeline_analyst` | `pipeline_analysis` | CI/CD pipeline trend analysis and flakiness scoring |
+| Curator | `curator` | `kb_maintenance` | Manages knowledge base pruning and obsolescence detection |
+
+### Additional Teams (beyond the core 4 squads)
+
+| Team | Members | Purpose |
+|------|---------|---------|
+| `diagnostics` | CI Log Analyzer + Detective | CI failure triage with log + trace correlation |
+| `grooming` | Architect + Scribe + Impact Analyst | Backlog grooming and spec refinement |
+
+### Additional Workflows (beyond the original 3)
+
+| Workflow | Pipeline | Purpose |
+|----------|----------|---------|
+| `automation_scaffold` | Engineer + Data Agent | BDD+POM framework scaffolding from scratch |
+| `full_lifecycle` | All squads | End-to-end: requirement → spec → code → verify → PR |
+| `full_regression` | Engineer + Technical Tester | Full regression suite execution |
+| `grooming` | Grooming team | Backlog grooming → Gherkin spec batch |
+| `regression_maintenance` | Operations team | Scheduled locator health checks + auto-heal |
+| `technical_testing` | Technical Tester | Rapid exploratory test generation via Playwright agents |
 
 ---
 
