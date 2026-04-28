@@ -14,6 +14,7 @@ try:
     from semantica.context import AgentContext, ContextGraph
     from semantica.vector_store import VectorStore
     from semantica.graph_store import GraphStore
+    from integrations.agno import AgnoSharedContext  # type: ignore[import]
     SEMANTICA_AVAILABLE = True
 except ImportError:
     SEMANTICA_AVAILABLE = False
@@ -21,8 +22,10 @@ except ImportError:
     ContextGraph = None
     VectorStore = None
     GraphStore = None
+    AgnoSharedContext = None
 
 from app.settings import agent_db
+from db.url import db_url
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,7 @@ logger = logging.getLogger(__name__)
 _judge_context: Optional[AgentContext] = None
 _detective_context: Optional[AgentContext] = None
 _librarian_context: Optional[AgentContext] = None
+_shared_context: Optional["AgnoSharedContext"] = None
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +67,7 @@ def get_judge_context() -> Optional[AgentContext]:
             vector_store = VectorStore(
                 backend="pgvector",
                 dimension=384,  # text-embedding-3-small dimension
-                connection_string=str(agent_db.engine.url)
+                connection_string=db_url
             )
             
             # Initialize context graph for decision tracking
@@ -122,7 +126,7 @@ def get_detective_context() -> Optional[AgentContext]:
             vector_store = VectorStore(
                 backend="pgvector",
                 dimension=384,
-                connection_string=str(agent_db.engine.url)
+                connection_string=db_url
             )
             
             _detective_context = AgentContext(
@@ -168,7 +172,7 @@ def get_librarian_context() -> Optional[AgentContext]:
             vector_store = VectorStore(
                 backend="pgvector",
                 dimension=384,
-                connection_string=str(agent_db.engine.url)
+                connection_string=db_url
             )
             
             knowledge_graph = ContextGraph(
@@ -196,10 +200,66 @@ def get_librarian_context() -> Optional[AgentContext]:
     return _librarian_context
 
 
+def get_shared_context() -> Optional["AgnoSharedContext"]:
+    """
+    Get or initialize the QAP-wide shared context graph (AgnoSharedContext).
+
+    This is the cross-agent decision graph — every agent that calls
+    ``shared_ctx.bind_agent(agent_id)`` contributes decisions, RCA findings,
+    and healing patches into ONE queryable graph.  The Judge can then search
+    across ALL agent decisions when looking for precedents.
+
+    Architecture:
+    - One global ContextGraph backed by PgVector (with FAISS fallback)
+    - Each agent gets a role-scoped view via bind_agent()
+    - Decision categories are tagged: "approval:judge", "rca:detective", etc.
+
+    Returns None if Semantica is not installed.
+    """
+    global _shared_context
+
+    if not SEMANTICA_AVAILABLE:
+        return None
+
+    if _shared_context is None:
+        try:
+            vector_store = VectorStore(
+                backend="pgvector",
+                dimension=2560,  # matches OllamaEmbedder qwen3-embedding:4b
+                connection_string=db_url,
+            )
+            knowledge_graph = ContextGraph(
+                advanced_analytics=True,
+                centrality_analysis=True,
+                community_detection=True,
+                node_embeddings=True,
+            )
+            _shared_context = AgnoSharedContext(
+                vector_store=vector_store,
+                knowledge_graph=knowledge_graph,
+                decision_tracking=True,
+                graph_expansion=True,
+            )
+            logger.info("Semantica shared context initialized (pgvector backend)")
+        except Exception as e:
+            logger.error("Failed to initialize shared context with pgvector: %s", e)
+            try:
+                _shared_context = AgnoSharedContext(
+                    decision_tracking=True,
+                )
+                logger.warning("Shared context initialized with in-memory (faiss) fallback")
+            except Exception as e2:
+                logger.error("Failed to initialize shared context fallback: %s", e2)
+                return None
+
+    return _shared_context
+
+
 def reset_contexts():
     """Reset all Semantica contexts (useful for testing)."""
-    global _judge_context, _detective_context, _librarian_context
+    global _judge_context, _detective_context, _librarian_context, _shared_context
     _judge_context = None
     _detective_context = None
     _librarian_context = None
+    _shared_context = None
     logger.info("All Semantica contexts reset")

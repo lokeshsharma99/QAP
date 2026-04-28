@@ -15,6 +15,25 @@ from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb
 
 # ---------------------------------------------------------------------------
+# Semantica KG Toolkit (optional — activated via SEMANTICA_ENABLED)
+# AgnoKGToolkit adds 7 KG pipeline tools: build, query, enrich, export, dedup.
+# Librarian uses it to detect contradictions when two sources define the same
+# locator differently (e.g., Discovery says data-testid="submit" but an old POM
+# uses role="button" with text "Submit" — Semantica's conflict module flags it).
+# ---------------------------------------------------------------------------
+_kg_tools: list = []
+try:
+    from app.semantica_config import SemanticaContext
+    if SemanticaContext.is_enabled():
+        from integrations.agno import AgnoKGToolkit  # type: ignore[import]
+        from app.semantica_context import get_shared_context
+        _shared_ctx = get_shared_context()
+        if _shared_ctx is not None:
+            _kg_tools = [AgnoKGToolkit(context=_shared_ctx)]
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: automation_kb — Librarian is the WRITER of this KB
 # Shared:  qap_learnings — Librarian records indexing patterns and conventions
@@ -42,6 +61,7 @@ librarian = Agent(
         CodingTools(),
         KnowledgeTools(knowledge=automation_knowledge),
         KnowledgeTools(knowledge=qap_learnings_kb),
+        *_kg_tools,
     ],
     # Instructions
     instructions=INSTRUCTIONS,

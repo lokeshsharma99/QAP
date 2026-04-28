@@ -16,6 +16,23 @@ from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
+# Semantica Decision Intelligence (optional — activated via SEMANTICA_ENABLED)
+# Records every healing patch decision so Healing Judge can check precedents
+# ("was this exact locator already healed 3x this sprint?")
+# ---------------------------------------------------------------------------
+_decision_tools: list = []
+try:
+    from app.semantica_config import SemanticaContext
+    if SemanticaContext.is_agent_enabled("medic"):
+        from integrations.agno import AgnoDecisionKit  # type: ignore[import]
+        from app.semantica_context import get_shared_context
+        _shared_ctx = get_shared_context()
+        if _shared_ctx is not None:
+            _decision_tools = [AgnoDecisionKit(context=_shared_ctx)]
+except Exception:
+    pass
+
+# ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: qap_learnings (shared)
 # Domain:  rca_kb       — Medic reads Detective's RCA to know what to patch
@@ -49,6 +66,7 @@ medic = Agent(
         KnowledgeTools(knowledge=rca_kb),
         KnowledgeTools(knowledge=automation_kb),
         KnowledgeTools(knowledge=site_manifesto_kb),
+        *_decision_tools,
     ],
     # Instructions
     instructions=INSTRUCTIONS,
