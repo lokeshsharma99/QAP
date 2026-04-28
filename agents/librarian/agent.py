@@ -8,18 +8,20 @@ Role: Index Page Objects and Step Definitions into PgVector KB.
 
 from agno.agent import Agent
 from agno.tools.coding import CodingTools
+from agno.tools.knowledge import KnowledgeTools
 
 from agents.librarian.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
-from db import create_knowledge
+from db import get_automation_kb, get_qap_learnings_kb
 
 # ---------------------------------------------------------------------------
-# Knowledge Base
+# Knowledge Bases
+# Primary: automation_kb — Librarian is the WRITER of this KB
+# Shared:  qap_learnings — Librarian records indexing patterns and conventions
+# Note: automation_knowledge is imported by Engineer — keep the same object name
 # ---------------------------------------------------------------------------
-automation_knowledge = create_knowledge(
-    name="Automation KB",
-    table_name="codebase_vectors",
-)
+automation_knowledge = get_automation_kb()
+qap_learnings_kb = get_qap_learnings_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -36,7 +38,11 @@ librarian = Agent(
     knowledge=automation_knowledge,
     search_knowledge=True,
     # Capabilities
-    tools=[CodingTools()],
+    tools=[
+        CodingTools(),
+        KnowledgeTools(knowledge=automation_knowledge),
+        KnowledgeTools(knowledge=qap_learnings_kb),
+    ],
     # Instructions
     instructions=INSTRUCTIONS,
     # Feature-specific

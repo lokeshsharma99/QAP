@@ -9,9 +9,23 @@ Role: Patch only the specific locator line in the Page Object.
 from agno.agent import Agent
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
+from agno.tools.knowledge import KnowledgeTools
 
 from agents.medic.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
+from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
+
+# ---------------------------------------------------------------------------
+# Knowledge Bases
+# Primary: qap_learnings (shared)
+# Domain:  rca_kb       — Medic reads Detective's RCA to know what to patch
+#          automation_kb — Medic reads the actual POM file to make surgical edit
+#          site_manifesto — Medic looks up the new correct locator from live AUT map
+# ---------------------------------------------------------------------------
+qap_learnings_kb = get_qap_learnings_kb()
+rca_kb = get_rca_kb()
+automation_kb = get_automation_kb()
+site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -25,8 +39,17 @@ medic = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    knowledge=qap_learnings_kb,
+    search_knowledge=True,
     # Capabilities
-    tools=[CodingTools(), FileTools()],
+    tools=[
+        CodingTools(),
+        FileTools(),
+        KnowledgeTools(knowledge=qap_learnings_kb),
+        KnowledgeTools(knowledge=rca_kb),
+        KnowledgeTools(knowledge=automation_kb),
+        KnowledgeTools(knowledge=site_manifesto_kb),
+    ],
     # Instructions
     instructions=INSTRUCTIONS,
     # Feature-specific

@@ -13,15 +13,15 @@ from agno.tools.reasoning import ReasoningTools
 from agents.discovery.instructions import INSTRUCTIONS
 from agents.discovery.tools import fetch_html, parse_dom_tree, save_learning, ui_crawler
 from app.settings import MODEL, agent_db
-from db import create_knowledge
+from db import get_qap_learnings_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
-# Knowledge Base
+# Knowledge Bases
+# Primary: qap_learnings (shared collective intelligence)
+# Domain:  site_manifesto — Discovery is the WRITER of this KB
 # ---------------------------------------------------------------------------
-discovery_knowledge = create_knowledge(
-    name="Discovery Knowledge",
-    table_name="discovery_knowledge",
-)
+qap_learnings_kb = get_qap_learnings_kb()
+site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -35,12 +35,13 @@ discovery = Agent(
     model=MODEL,
     # Data
     db=agent_db,
-    knowledge=discovery_knowledge,
+    knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
     tools=[
         ReasoningTools(add_instructions=True),
-        KnowledgeTools(knowledge=discovery_knowledge),
+        KnowledgeTools(knowledge=qap_learnings_kb),
+        KnowledgeTools(knowledge=site_manifesto_kb),
         fetch_html,
         parse_dom_tree,
         save_learning,

@@ -8,9 +8,17 @@ Role: Provision test users, seed data, produce RunContext for test scenarios.
 
 from agno.agent import Agent
 from agno.tools.coding import CodingTools
+from agno.tools.knowledge import KnowledgeTools
 
 from agents.data_agent.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
+from db import get_qap_learnings_kb
+
+# ---------------------------------------------------------------------------
+# Knowledge Bases
+# Primary: qap_learnings — Data Agent reads prior data patterns, writes PII/seed conventions
+# ---------------------------------------------------------------------------
+qap_learnings_kb = get_qap_learnings_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -24,8 +32,13 @@ data_agent = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    knowledge=qap_learnings_kb,
+    search_knowledge=True,
     # Capabilities
-    tools=[CodingTools()],
+    tools=[
+        CodingTools(),
+        KnowledgeTools(knowledge=qap_learnings_kb),
+    ],
     # Instructions
     instructions=INSTRUCTIONS,
     # Feature-specific
