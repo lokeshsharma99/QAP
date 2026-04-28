@@ -32,7 +32,7 @@ services:
       - generated_code:/app/generated
     environment:
       - RUNTIME_ENV=dev
-      - AGNO_DEBUG=True
+      - AGNO_DEBUG=False
       - PYTHONPATH=/app
       - AGENTOS_URL=http://127.0.0.1:8000
       # Database
