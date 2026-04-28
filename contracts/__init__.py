@@ -5,6 +5,7 @@ from contracts.automation_scaffold import AutomationScaffold
 from contracts.execution_result import ExecutionResult, ScenarioResult
 from contracts.gherkin_spec import DataRequirement, GherkinSpec
 from contracts.healing_patch import HealingPatch
+from contracts.impact_report import ImpactReport, TestGap
 from contracts.judge_verdict import JudgeVerdict
 from contracts.rca_report import RCAReport
 from contracts.requirement_context import AcceptanceCriterion, RequirementContext
@@ -31,4 +32,7 @@ __all__ = [
     # Phase 4
     "RCAReport",
     "HealingPatch",
+    # Phase 5 — Impact Analysis
+    "ImpactReport",
+    "TestGap",
 ]
