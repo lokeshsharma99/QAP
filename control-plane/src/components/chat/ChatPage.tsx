@@ -490,20 +490,24 @@ const StepTree = ({ steps, depth = 0 }: { steps: WorkflowStep[]; depth?: number 
 
 const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: string | null; teamId: string | null; workflowId: string | null; sessionId: string | null }) => {
   const { mode, chatEvents, isStreaming, selectedEndpoint, authToken } = useStore()
-  const [tab, setTab] = useState<'details' | 'config'>('details')
+  const [tab, setTab] = useState<'details' | 'config' | 'memory'>('details')
   const [agentDetail, setAgentDetail] = useState<AgentFullDetail | null>(null)
   const [teamDetail, setTeamDetail] = useState<TeamFullDetail | null>(null)
   const [workflowDetail, setWorkflowDetail] = useState<WorkflowFullDetail | null>(null)
   const [loading, setLoading] = useState(false)
+  const [memories, setMemories] = useState<Array<{id: string; memory?: string; summary?: string; topics?: string[]; agent_id?: string; created_at?: string; updated_at?: string}>>([])  
+  const [memoriesLoading, setMemoriesLoading] = useState(false)
 
   const endpointUrl = constructEndpointUrl(selectedEndpoint)
 
   useEffect(() => {
     if (mode === 'agent' && agentId) {
       setLoading(true)
+      setTab((t) => (t === 'memory' ? 'details' : t))
       getAgentDetailAPI(endpointUrl, agentId, authToken).then((d) => { setAgentDetail(d); setLoading(false) })
     } else if (mode === 'team' && teamId) {
       setLoading(true)
+      setTab((t) => (t === 'memory' ? 'details' : t))
       getTeamDetailAPI(endpointUrl, teamId, authToken).then((d) => { setTeamDetail(d); setLoading(false) })
     } else if (mode === 'workflow' && workflowId) {
       setLoading(true)
@@ -512,10 +516,25 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentId, teamId, workflowId, mode])
 
+  const currentEntityId = agentId || teamId || null
+
+  useEffect(() => {
+    if (tab !== 'memory' || !currentEntityId) return
+    setMemoriesLoading(true)
+    setMemories([])
+    const url = mode === 'agent'
+      ? `${endpointUrl}/memories?agent_id=${currentEntityId}`
+      : `${endpointUrl}/memories?team_id=${currentEntityId}`
+    fetch(url, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} })
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => { setMemories(Array.isArray(data) ? data : (data.memories ?? [])); setMemoriesLoading(false) })
+      .catch(() => setMemoriesLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, currentEntityId, mode])
+
   const entityLabel = mode === 'team' ? 'Team' : mode === 'workflow' ? 'Workflow' : 'Agent'
   const EntityIcon = mode === 'workflow' ? GitBranch : mode === 'team' ? Users : Bot
 
-  const currentEntityId = agentId || teamId || null
   const isConfigurable = (mode === 'agent' || mode === 'team') && !!currentEntityId
 
   return (
@@ -545,6 +564,13 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
                   tab === 'config' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'
                 )}
               >Config</button>
+              <button
+                onClick={() => setTab('memory')}
+                className={cn(
+                  'rounded-lg px-2.5 py-1 text-[10px] font-medium transition-colors',
+                  tab === 'memory' ? 'bg-background text-primary shadow-sm' : 'text-muted hover:text-primary'
+                )}
+              >Memory</button>
             </div>
           )}
         </div>
@@ -563,6 +589,58 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
       {tab === 'config' && isConfigurable && !currentEntityId && (
         <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted/40">
           Select an agent or team to configure
+        </div>
+      )}
+
+      {/* Memory tab */}
+      {tab === 'memory' && isConfigurable && (
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold uppercase text-muted">Stored Memories</span>
+            <button
+              onClick={() => {
+                if (!currentEntityId) return
+                setMemoriesLoading(true)
+                setMemories([])
+                const url = mode === 'agent'
+                  ? `${endpointUrl}/memories?agent_id=${currentEntityId}`
+                  : `${endpointUrl}/memories?team_id=${currentEntityId}`
+                fetch(url, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} })
+                  .then((r) => r.ok ? r.json() : [])
+                  .then((data) => { setMemories(Array.isArray(data) ? data : (data.memories ?? [])); setMemoriesLoading(false) })
+                  .catch(() => setMemoriesLoading(false))
+              }}
+              className="rounded-lg p-1 text-muted hover:bg-accent hover:text-primary"
+              title="Refresh memories"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+            </button>
+          </div>
+          {memoriesLoading ? (
+            <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}</div>
+          ) : memories.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <MemoryStick className="size-8 text-muted/20" />
+              <p className="mt-2 text-xs text-muted/50">No memories yet</p>
+              <p className="text-xs text-muted/30">Memories accumulate as the {mode} converses</p>
+            </div>
+          ) : (
+            memories.map((mem, i) => (
+              <div key={mem.id || i} className="rounded-xl border border-accent bg-background p-3">
+                <p className="text-xs text-primary leading-relaxed">{mem.memory || mem.summary || '—'}</p>
+                {mem.topics && mem.topics.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {mem.topics.map((t) => (
+                      <span key={t} className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-muted">{t}</span>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-1 text-[10px] text-muted/40">
+                  {mem.updated_at ? dayjs(mem.updated_at).format('MMM D, HH:mm') : mem.created_at ? dayjs(mem.created_at).format('MMM D, HH:mm') : ''}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
@@ -661,13 +739,6 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
               <Card>
                 {teamDetail.memory.enable_agentic_memory !== undefined && <KV label="enable_agentic_memory" value={String(teamDetail.memory.enable_agentic_memory)} />}
                 {teamDetail.memory.enable_user_memories !== undefined && <KV label="enable_user_memories" value={String(teamDetail.memory.enable_user_memories)} />}
-                {teamDetail.memory.model && (
-                  <>
-                    <KV label="model" value={teamDetail.memory.model.model} />
-                    <KV label="name" value={teamDetail.memory.model.name} />
-                    <KV label="provider" value={teamDetail.memory.model.provider} />
-                  </>
-                )}
               </Card>
             </Section>
           )}
@@ -761,13 +832,6 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
               <Card>
                 {agentDetail.memory.enable_agentic_memory !== undefined && <KV label="enable_agentic_memory" value={String(agentDetail.memory.enable_agentic_memory)} />}
                 {agentDetail.memory.enable_user_memories !== undefined && <KV label="enable_user_memories" value={String(agentDetail.memory.enable_user_memories)} />}
-                {agentDetail.memory.model && (
-                  <>
-                    <KV label="model" value={agentDetail.memory.model.model} />
-                    <KV label="name" value={agentDetail.memory.model.name} />
-                    <KV label="provider" value={agentDetail.memory.model.provider} />
-                  </>
-                )}
               </Card>
             </Section>
           )}
@@ -866,6 +930,7 @@ export default function ChatPage() {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showActivity, setShowActivity] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const { messages, isStreaming, sessionsData, isSessionsLoading, isEndpointLoading, isEndpointActive, rightPanelOpen, setRightPanelOpen, chatEvents } = useStore()
   const { handleStreamResponse } = useAIChatStreamHandler()
   const { clearChat } = useChatActions()
@@ -966,7 +1031,37 @@ export default function ChatPage() {
       </aside>
 
       {/* Chat area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div
+        className="relative flex flex-1 flex-col overflow-hidden"
+        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+        onDragEnter={(e) => { e.preventDefault(); setIsDragOver(true) }}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false) }}
+        onDrop={(e) => {
+          e.preventDefault()
+          setIsDragOver(false)
+          const droppedFiles = Array.from(e.dataTransfer.files)
+          if (droppedFiles.length > 0) {
+            const accepted = droppedFiles.filter((f) =>
+              f.type.startsWith('image/') ||
+              ['application/pdf', 'text/plain', 'text/markdown', 'text/csv', 'application/json'].includes(f.type) ||
+              /\.(md|txt|csv|json|pdf)$/i.test(f.name)
+            )
+            if (accepted.length > 0) setAttachedFiles((prev) => [...prev, ...accepted])
+          } else {
+            const text = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
+            if (text && /^https?:\/\//i.test(text.trim())) {
+              setInputMessage((prev) => prev ? `${prev}\n${text.trim()}` : text.trim())
+            }
+          }
+        }}
+      >
+        {isDragOver && (
+          <div className="pointer-events-none absolute inset-0 z-50 flex flex-col items-center justify-center gap-2 rounded-none border-2 border-dashed border-brand bg-brand/5 backdrop-blur-sm">
+            <Paperclip className="size-10 text-brand/60" />
+            <p className="text-sm font-semibold text-brand">Drop files or a URL here</p>
+            <p className="text-xs text-brand/60">Images · PDF · TXT · CSV · JSON · URLs</p>
+          </div>
+        )}
         {/* Toolbar */}
         <div className="flex items-center justify-between border-b border-accent/50 px-4 py-2">
           <div className="text-xs text-muted/60">
