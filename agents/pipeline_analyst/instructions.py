@@ -70,9 +70,15 @@ not in the raw text log.  Always download the appropriate artifact:
 2. If `playwright-traces` is present:
    ```
    result = download_ci_artifact(run_id, "playwright-traces")
-   # result["junit_xml"] → path to e2e-junit.xml
-   # result["trace_zips"] → list of *-trace.zip paths for the Detective
-   parse_junit_xml(result["junit_xml"])   # → exact error + stack trace per test
+   # result["trace_zips"] → list of trace.zip paths (e.g. FR-02-01-chromium/trace.zip)
+   #                         Pass these to the Detective for trace-level analysis.
+   # result["junit_xml"]  → path to e2e-junit.xml, or "" if not present
+   if result["junit_xml"]:
+       parse_junit_xml(result["junit_xml"])   # → exact error + stack trace per test
+   else:
+       # junit_xml missing means the test runner crashed before writing results;
+       # read the error from the raw CI log (Step 2) and classify as SCRIPT_ERROR
+       # or TEST_INFRA depending on the log content.
    ```
 3. If `playwright-traces` is NOT present (tests passed or artifacts expired):
    - This means the E2E job did NOT fail — the CI failure is from another job
