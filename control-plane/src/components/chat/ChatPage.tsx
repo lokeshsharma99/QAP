@@ -64,6 +64,44 @@ const ToolCallItem = ({ toolCall }: { toolCall: NonNullable<ChatMessage['tool_ca
   )
 }
 
+// ---------------------------------------------------------------------------
+// Robust message timestamp formatter
+// ---------------------------------------------------------------------------
+const fmtMsgTime = (ts: number | undefined | null): string => {
+  if (!ts) return ''
+  // distinguish unix-seconds (10 digits) from unix-milliseconds (13 digits)
+  const d = ts > 9_999_999_999 ? dayjs(ts) : dayjs.unix(ts)
+  return d.isValid() ? d.format('HH:mm') : ''
+}
+
+// ---------------------------------------------------------------------------
+// Mermaid diagram renderer (browser-only, lazy-loaded)
+// ---------------------------------------------------------------------------
+const MermaidBlock = ({ code }: { code: string }) => {
+  const ref = useRef<HTMLDivElement>(null)
+  const idRef = useRef(`mermaid-${Math.random().toString(36).slice(2)}`)
+
+  useEffect(() => {
+    let cancelled = false
+    import('mermaid').then((m) => {
+      if (cancelled) return
+      m.default.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' })
+      m.default.render(idRef.current, code)
+        .then(({ svg }) => {
+          if (!cancelled && ref.current) ref.current.innerHTML = svg
+        })
+        .catch(() => {
+          if (!cancelled && ref.current) {
+            ref.current.innerHTML = `<pre class="text-xs text-muted/60 whitespace-pre-wrap p-2">${code}</pre>`
+          }
+        })
+    })
+    return () => { cancelled = true }
+  }, [code])
+
+  return <div ref={ref} className="my-3 flex justify-center overflow-x-auto [&>svg]:max-w-full [&>svg]:h-auto" />
+}
+
 const ReasoningBlock = ({ steps }: { steps: NonNullable<ChatMessage['extra_data']>['reasoning_steps'] }) => {
   const [open, setOpen] = useState(false)
   if (!steps || steps.length === 0) return null
@@ -100,7 +138,7 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
       <div className="flex items-center gap-2">
         <Icon type={isUser ? 'user' : 'agent'} size="xs" />
         <span className="text-xs font-medium uppercase text-muted">{isUser ? 'You' : 'Agent'}</span>
-        <span className="text-xs text-muted/50">{dayjs.unix(msg.created_at).format('HH:mm')}</span>
+        <span className="text-xs text-muted/50">{fmtMsgTime(msg.created_at)}</span>
       </div>
       {msg.extra_data?.reasoning_steps && <ReasoningBlock steps={msg.extra_data.reasoning_steps} />}
       {msg.tool_calls && msg.tool_calls.length > 0 && (
@@ -153,6 +191,9 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
                     )
                   }
                   const lang = className?.replace('language-', '') || ''
+                  if (lang === 'mermaid') {
+                    return <MermaidBlock code={String(children).trim()} />
+                  }
                   return (
                     <div className="rounded-md overflow-hidden border border-border/50 mb-3">
                       {lang && (
@@ -1080,6 +1121,7 @@ export default function ChatPage() {
   const [inputMessage, setInputMessage] = useState('')
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showActivity, setShowActivity] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const { messages, isStreaming, sessionsData, isSessionsLoading, isEndpointLoading, isEndpointActive, rightPanelOpen, setRightPanelOpen, chatEvents } = useStore()
@@ -1105,6 +1147,14 @@ export default function ChatPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
+
+  // Auto-resize textarea as content grows
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 213)}px`
+  }, [inputMessage])
 
   const handleSubmit = async () => {
     if ((!inputMessage.trim() && attachedFiles.length === 0) || isStreaming) return
@@ -1373,6 +1423,7 @@ export default function ChatPage() {
             />
             <div className="rounded-lg bg-background/30">
               <TextArea
+                ref={textareaRef}
                 placeholder="Ask anything..."
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
@@ -1388,7 +1439,7 @@ export default function ChatPage() {
 
             {/* Bottom toolbar */}
             <div className="flex w-full items-center justify-between gap-2 px-1 pb-1">
-              {/* Left: attach + model switcher */}
+              {/* Left: attach */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1399,29 +1450,16 @@ export default function ChatPage() {
                 >
                   <Paperclip className="size-4" />
                 </button>
-                <ModelSwitcher />
               </div>
 
-              {/* Right: entity chip + send */}
-              <div className="flex items-center gap-2">
-                {(agentId || teamId || workflowId) && (
-                  <div className="flex h-8 max-w-[220px] items-center gap-2 rounded-md border border-accent/60 px-3">
-                    <span className="truncate text-[0.75rem] uppercase tracking-[-0.02em] text-primary font-medium">
-                      {agentId ?? teamId ?? workflowId}
-                    </span>
-                    <div className="shrink-0 rounded-[6px] border border-accent/60 p-[2px]">
-                      <Icon type="agno" size="xxs" />
-                    </div>
-                  </div>
-                )}
-                <button
-                  onClick={handleSubmit}
-                  disabled={(!inputMessage.trim() && attachedFiles.length === 0) || isStreaming || !hasEntity}
-                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-background shadow-sm transition-colors hover:bg-primary/80 disabled:pointer-events-none disabled:opacity-50"
-                >
-                  <ArrowUp className="size-[10.67px]" />
-                </button>
-              </div>
+              {/* Right: send */}
+              <button
+                onClick={handleSubmit}
+                disabled={(!inputMessage.trim() && attachedFiles.length === 0) || isStreaming || !hasEntity}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-background shadow-sm transition-colors hover:bg-primary/80 disabled:pointer-events-none disabled:opacity-50"
+              >
+                <ArrowUp className="size-[10.67px]" />
+              </button>
             </div>
           </div>
         </div>
