@@ -15,6 +15,13 @@ from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
+# GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
+# Architect reads GitHub Issues as requirement source + Wiki for domain context
+# ---------------------------------------------------------------------------
+from app.github_mcp import get_github_mcp_for_architect
+_github_tools = get_github_mcp_for_architect()
+
+# ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: qap_learnings (shared collective intelligence — all agents)
 # Domain:  site_manifesto + automation (read-only — Architect queries existing POMs)
@@ -42,6 +49,7 @@ architect = Agent(
         ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=site_manifesto_kb),
         KnowledgeTools(knowledge=automation_kb),
+        *_github_tools,
     ],
     # Instructions
     instructions=INSTRUCTIONS,

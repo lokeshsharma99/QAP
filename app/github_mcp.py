@@ -1,0 +1,183 @@
+"""
+app/github_mcp.py
+=================
+
+Factory functions that return pre-configured Agno MCPTools instances wired
+to the official GitHub MCP server (@modelcontextprotocol/server-github).
+
+The GitHub MCP server is invoked via `npx` (stdio transport) — no separate
+container needed.  It reads GITHUB_TOKEN from the environment.
+
+GitHub MCP Toolsets (controlled via GITHUB_TOOLSETS env var):
+  repos         — repo contents, file reads, branch listing, code search
+  issues        — create/read/list issues
+  pull_requests — create/read/list PRs, reviews
+  actions       — workflow runs, job logs, pipeline status
+  discussions   — repo discussions
+  search        — cross-repo code/user/repo search
+  contexts      — meta: current repo/user context
+
+AUT (GDS-Demo-App) Resources:
+  Repo:         https://github.com/lokeshsharma99/GDS-Demo-App
+  Production:   https://lokeshsharma99.github.io/GDS-Demo-App/
+  Allure:       https://lokeshsharma99.github.io/GDS-Demo-App/allure-report/
+  GitHub Project: https://github.com/users/lokeshsharma99/projects/6/views/1
+  Wiki:         https://github.com/lokeshsharma99/GDS-Demo-App/wiki/
+  SonarCloud:   https://sonarcloud.io/summary/overall?id=lokeshsharma99_GDS-Demo-App
+  Pipeline:     GitHub Actions on GDS-Demo-App repo
+
+Usage by agent
+--------------
+  Architect  — repos, issues, wiki (domain knowledge for requirement parsing)
+  Discovery  — repos, wiki (wireframes + domain knowledge for AUT context)
+  Engineer   — repos, pull_requests (create PRs, read existing code structure)
+  Detective  — actions, repos (workflow runs, CI logs, test result artifacts)
+"""
+
+import os
+from functools import lru_cache
+
+from agno.tools.mcp import MCPTools
+from mcp.client.stdio import StdioServerParameters
+
+# ---------------------------------------------------------------------------
+# AUT Constants — GDS Demo App
+# ---------------------------------------------------------------------------
+AUT_GITHUB_OWNER = os.getenv("AUT_GITHUB_OWNER", "lokeshsharma99")
+AUT_GITHUB_REPO = os.getenv("AUT_GITHUB_REPO", "GDS-Demo-App")
+AUT_GITHUB_REF = os.getenv("AUT_GITHUB_REPO_DEFAULT_BRANCH", "main")
+AUT_GITHUB_REPO_FULL = f"{AUT_GITHUB_OWNER}/{AUT_GITHUB_REPO}"
+
+
+def _make_github_mcp(toolsets: list[str], tool_name_prefix: str) -> MCPTools:
+    """
+    Build an MCPTools instance connecting to the GitHub MCP server via stdio.
+
+    Parameters
+    ----------
+    toolsets:
+        List of GitHub MCP toolset names to enable.
+        Options: repos, issues, pull_requests, actions, discussions, search, contexts
+    tool_name_prefix:
+        Short prefix added to every tool name to avoid collisions when multiple
+        MCPTools instances are added to the same agent (e.g. "gh_repo_", "gh_ci_").
+    """
+    github_token = os.getenv("GITHUB_TOKEN", "")
+    if not github_token:
+        # Non-fatal: GitHub MCP will work for public repos without a token
+        # but will hit rate limits quickly.  Log a warning at import time.
+        import logging
+        logging.getLogger(__name__).warning(
+            "GITHUB_TOKEN is not set — GitHub MCP will run unauthenticated. "
+            "Set GITHUB_TOKEN in .env for full access and higher rate limits."
+        )
+
+    env = {
+        **os.environ,
+        "GITHUB_PERSONAL_ACCESS_TOKEN": github_token,
+        # Restrict to only the toolsets this agent needs
+        "GITHUB_TOOLSETS": ",".join(toolsets),
+    }
+
+    server_params = StdioServerParameters(
+        command="npx",
+        args=["-y", "@modelcontextprotocol/server-github"],
+        env=env,
+    )
+
+    return MCPTools(
+        server_params=server_params,
+        transport="stdio",
+        tool_name_prefix=tool_name_prefix,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Per-agent factory functions
+# Each function returns a list so agents can do: tools=[..., *get_github_mcp_for_X()]
+# The list is empty if GITHUB_TOKEN is not set AND the repo is private (safe default).
+# ---------------------------------------------------------------------------
+
+def get_github_mcp_for_architect() -> list:
+    """
+    GitHub MCP tools for the Architect agent.
+
+    Toolsets: repos (read wiki + file contents), issues (read Jira-equivalent
+    GitHub Issues for requirement parsing), contexts (current repo info).
+
+    Architect uses these to:
+    - Read Domain Knowledge wiki page before parsing requirements
+    - Read Wireframes wiki page to understand intended UI flows
+    - Fetch open GitHub Issues as the requirement source of truth
+    - Read CHANGELOG / ADRs stored in the repo
+    """
+    try:
+        return [_make_github_mcp(
+            toolsets=["repos", "issues", "contexts"],
+            tool_name_prefix="gh_arch_",
+        )]
+    except Exception:
+        return []
+
+
+def get_github_mcp_for_discovery() -> list:
+    """
+    GitHub MCP tools for the Discovery agent.
+
+    Toolsets: repos (wiki pages, existing page structure).
+
+    Discovery uses these to:
+    - Read the Domain Knowledge wiki (business context before crawling)
+    - Read the Wireframes wiki (expected page structure to validate against)
+    - Fetch existing Site Manifesto files committed to the repo
+    """
+    try:
+        return [_make_github_mcp(
+            toolsets=["repos", "contexts"],
+            tool_name_prefix="gh_disc_",
+        )]
+    except Exception:
+        return []
+
+
+def get_github_mcp_for_engineer() -> list:
+    """
+    GitHub MCP tools for the Engineer agent.
+
+    Toolsets: repos (read codebase structure), pull_requests (create PRs).
+
+    Engineer uses these to:
+    - Read existing automation files directly from GitHub (Look-Before-You-Leap)
+    - Create feature branches and pull requests after code generation
+    - Read open PRs to avoid duplicating work
+    - Verify merged code matches expected structure
+    """
+    try:
+        return [_make_github_mcp(
+            toolsets=["repos", "pull_requests", "contexts"],
+            tool_name_prefix="gh_eng_",
+        )]
+    except Exception:
+        return []
+
+
+def get_github_mcp_for_detective() -> list:
+    """
+    GitHub MCP tools for the Detective agent.
+
+    Toolsets: actions (workflow runs, CI logs), repos (read test result artifacts).
+
+    Detective uses these to:
+    - Fetch the latest GitHub Actions workflow run for GDS-Demo-App
+    - Read CI job logs to identify failure steps
+    - Download Allure report artifacts from the pipeline run
+    - Read SonarCloud quality gate status (via repo badge/status API)
+    - Correlate test failure timestamps with recent commits
+    """
+    try:
+        return [_make_github_mcp(
+            toolsets=["actions", "repos", "contexts"],
+            tool_name_prefix="gh_det_",
+        )]
+    except Exception:
+        return []

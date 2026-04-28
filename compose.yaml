@@ -50,12 +50,19 @@ services:
       - KILO_API_URL=${KILO_API_URL:-https://api.kilo.ai}
       # Ollama (local embeddings via host machine)
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
-      # GitHub (Engineer agent — PR creation)
+      # GitHub (Engineer agent — PR creation + GitHub MCP tools)
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-      # AUT (Application Under Test)
-      - AUT_BASE_URL=${AUT_BASE_URL:-https://gds-demo-app.vercel.app/}
+      # AUT (Application Under Test — GDS Demo App)
+      - AUT_BASE_URL=${AUT_BASE_URL:-https://lokeshsharma99.github.io/GDS-Demo-App/}
       - AUT_AUTH_USER=${AUT_AUTH_USER:-}
       - AUT_AUTH_PASS=${AUT_AUTH_PASS:-}
+      # AUT GitHub repo — used by GitHub MCP tools
+      - AUT_GITHUB_OWNER=${AUT_GITHUB_OWNER:-lokeshsharma99}
+      - AUT_GITHUB_REPO=${AUT_GITHUB_REPO:-GDS-Demo-App}
+      - AUT_PRODUCTION_URL=${AUT_PRODUCTION_URL:-https://lokeshsharma99.github.io/GDS-Demo-App/}
+      - AUT_ALLURE_REPORT_URL=${AUT_ALLURE_REPORT_URL:-https://lokeshsharma99.github.io/GDS-Demo-App/allure-report/}
+      - AUT_GITHUB_PROJECT_URL=${AUT_GITHUB_PROJECT_URL:-https://github.com/users/lokeshsharma99/projects/6/views/1}
+      - AUT_SONARCLOUD_URL=${AUT_SONARCLOUD_URL:-https://sonarcloud.io/summary/overall?id=lokeshsharma99_GDS-Demo-App&branch=main}
       # Jira (Architect agent — ticket parsing)
       - JIRA_URL=${JIRA_URL:-}
       - JIRA_USERNAME=${JIRA_USERNAME:-}
