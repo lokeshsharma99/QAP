@@ -61,7 +61,12 @@ AZURE_DEVOPS_PAT = getenv("AZURE_DEVOPS_PAT", "")
 # ---------------------------------------------------------------------------
 # Optional tools
 # ---------------------------------------------------------------------------
-PARALLEL_API_KEY = getenv("PARALLEL_API_KEY", "")
+PARALLEL_API_KEY = getenv("PARALLEL_API_KEY", "cV5e6HkHA61snK9NIHqBybVfgGnVKSyODOP-yjqB")
+
+# ---------------------------------------------------------------------------
+# Agentic Judge Quality Gate
+# ---------------------------------------------------------------------------
+AUTO_APPROVE_CONFIDENCE_THRESHOLD: float = 0.90  # Judge auto-approves at ≥ 90%
 
 
 def get_parallel_tools(**kwargs) -> list:  # type: ignore[type-arg]

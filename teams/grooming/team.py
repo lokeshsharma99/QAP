@@ -2,16 +2,17 @@
 Grooming Team
 =============
 
-Coordinates Architect, Judge, and Engineer agents for 3 Amigos user story review.
+The Curators — keeps the regression suite clean via HITL-gated deletions.
+Members: Curator + Librarian
+Goal: Detect and safely remove obsolete/duplicate tests, re-index after cleanup.
 """
 
 from agno.team import Team, TeamMode
 
-from agents.architect import architect
-from agents.engineer import engineer
-from agents.judge import judge
+from agents.curator import curator
+from agents.librarian import librarian
+from app.settings import MODEL, agent_db
 from teams.grooming.instructions import INSTRUCTIONS
-from app.settings import MODEL
 
 # ---------------------------------------------------------------------------
 # Create Team
@@ -19,7 +20,7 @@ from app.settings import MODEL
 grooming_team = Team(
     # Identity
     id="grooming_team",
-    name="Grooming Team",
+    name="The Curators",
     mode=TeamMode.coordinate,
 
     # Model
@@ -27,10 +28,12 @@ grooming_team = Team(
 
     # Members
     members=[
-        architect,
-        judge,
-        engineer,
+        curator,
+        librarian,
     ],
+
+    # Data
+    db=agent_db,
 
     # Instructions
     instructions=INSTRUCTIONS,

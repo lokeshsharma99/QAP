@@ -25,7 +25,7 @@ from agents.curator.tools import (
     request_deletion_approval,
 )
 from app.settings import MODEL, agent_db
-from db.session import get_automation_knowledge
+from db.session import get_automation_kb
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 # Knowledge Base
 # ---------------------------------------------------------------------------
 try:
-    automation_knowledge = get_automation_knowledge()
+    automation_knowledge = get_automation_kb()
 except Exception:
     automation_knowledge = None
 

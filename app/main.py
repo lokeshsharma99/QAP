@@ -13,6 +13,7 @@ from pathlib import Path
 from agno.os import AgentOS
 
 from agents.architect import architect
+from agents.curator import curator
 from agents.data_agent import data_agent
 from agents.detective import detective
 from agents.discovery import discovery
@@ -23,11 +24,15 @@ from agents.librarian import librarian
 from agents.medic import medic
 from agents.pipeline_analyst import pipeline_analyst
 from agents.scribe import scribe
+from app.endpoints.agent_config import router as agent_config_router
+from app.endpoints.model import router as model_router
+from app.endpoints.settings import router as settings_router
 from app.registry import registry
 from app.settings import RUNTIME_ENV, agent_db
 from teams.context import context_team
 from teams.diagnostics import diagnostics_team
 from teams.engineering import engineering_team
+from teams.grooming import grooming_team
 from teams.operations import operations_team
 from teams.strategy import strategy_team
 from workflows.discovery_onboard import discovery_onboard
@@ -42,6 +47,8 @@ agent_os = AgentOS(
     tracing=True,
     authorization=RUNTIME_ENV == "prd",
     db=agent_db,
+    scheduler=True,
+    scheduler_poll_interval=15,
     agents=[
         discovery,
         librarian,
@@ -52,6 +59,7 @@ agent_os = AgentOS(
         data_agent,
         detective,
         medic,
+        curator,
         impact_analyst,
         pipeline_analyst,
     ],
@@ -61,6 +69,7 @@ agent_os = AgentOS(
         engineering_team,
         operations_team,
         diagnostics_team,
+        grooming_team,
     ],
     workflows=[
         discovery_onboard,
@@ -72,6 +81,9 @@ agent_os = AgentOS(
 )
 
 app = agent_os.get_app()
+app.include_router(settings_router)
+app.include_router(model_router)
+app.include_router(agent_config_router)
 
 if __name__ == "__main__":
     agent_os.serve(
