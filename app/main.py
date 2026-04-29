@@ -142,12 +142,13 @@ app.routes.clear()
 app.routes.extend(new_routes + other_routes)
 
 app.include_router(eval_runs_router)
-# Move our /eval-runs override to the front too
-eval_routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/eval-runs"
-               and r.operation_id == "run_eval_kilo"]
-other_routes = [r for r in app.routes if r not in eval_routes]
-app.routes.clear()
-app.routes.extend(eval_routes + other_routes)
+# Explicitly remove Agno's built-in /eval-runs handler (operation_id="run_eval")
+# so only our kilo override (operation_id="run_eval_kilo") is matched.
+app.routes[:] = [
+    r for r in app.routes
+    if not (isinstance(r, APIRoute) and r.path == "/eval-runs"
+            and getattr(r, "operation_id", None) == "run_eval")
+]
 
 app.include_router(settings_router)
 app.include_router(model_router)

@@ -5,15 +5,21 @@ Eval Runs Endpoint Override
 Replaces AgentOS's default /eval-runs handler with one that always uses
 MODEL from app.settings (kilo-auto/free via Kilo AI) as the evaluator/judge
 model, instead of the Agno default (o4-mini / OPENAI_API_KEY).
+
+NOTE: AccuracyEval is NOT used for accuracy evals because it requires JSON
+structured-output mode which kilo-auto/free (SiliconFlow) does not support.
+Instead, accuracy scoring is done via a plain-text prompt parsed with regex.
 """
 
 import logging
+import re
+import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from agno.agent import Agent
 from agno.db.schemas.evals import EvalType
-from agno.eval.accuracy import AccuracyEval
 from agno.eval.agent_as_judge import AgentAsJudgeEval
 from agno.eval.performance import PerformanceEval
 from agno.eval.reliability import ReliabilityEval
@@ -138,25 +144,68 @@ async def _run_accuracy(
     agent: Optional[Agent],
     team: Optional[Team],
 ) -> EvalSchema:
+    """Custom accuracy eval — avoids AccuracyEval which requires JSON mode (unsupported by kilo-auto/free).
+
+    Runs the agent/team, then asks MODEL to score the output 0-10 via plain text prompt.
+    """
     if not ei.expected_output:
         raise HTTPException(status_code=400, detail="expected_output is required for accuracy evaluation")
 
-    accuracy_eval = AccuracyEval(
-        db=agent_db,
-        agent=agent,
-        team=team,
-        input=ei.input,
-        expected_output=ei.expected_output,
-        additional_guidelines=ei.additional_guidelines,
-        additional_context=ei.additional_context,
-        num_iterations=ei.num_iterations or 1,
-        name=ei.name,
-        model=MODEL,  # kilo-auto/free
+    # Step 1: Run the component under test
+    if agent:
+        resp = await agent.arun(ei.input, stream=False)
+        actual_output = str(resp.content) if resp.content else ""
+        component_id = agent.id
+        model_id = agent.model.id if agent.model else None
+        model_provider = agent.model.provider if agent.model else None
+    elif team:
+        resp = await team.arun(ei.input, stream=False)
+        actual_output = str(resp.content) if resp.content else ""
+        component_id = team.id
+        model_id = team.model.id if team.model else None
+        model_provider = team.model.provider if team.model else None
+    else:
+        raise HTTPException(status_code=400, detail="Either agent_id or team_id must be provided")
+
+    # Step 2: Score with MODEL using plain text (no JSON / response_model)
+    guidelines_section = f"\n\nAdditional guidelines: {ei.additional_guidelines}" if ei.additional_guidelines else ""
+    score_prompt = (
+        f"You are an accuracy evaluator. Compare the actual output to the expected output and rate accuracy "
+        f"on a scale from 0 to 10 (0=completely wrong, 10=perfect match).{guidelines_section}\n\n"
+        f"Input: {ei.input}\n\n"
+        f"Expected output: {ei.expected_output}\n\n"
+        f"Actual output: {actual_output}\n\n"
+        f"Reply with ONLY a single number from 0 to 10 and a one-sentence reason, e.g.: '8 - The answer is mostly correct but missing details.'"
     )
-    result = await accuracy_eval.arun(print_results=False, print_summary=False)
-    if not result:
-        raise HTTPException(status_code=500, detail="Accuracy evaluation returned no result")
-    return EvalSchema.from_accuracy_eval(accuracy_eval=accuracy_eval, result=result)
+    evaluator = Agent(model=MODEL, markdown=False)
+    score_resp = await evaluator.arun(score_prompt, stream=False)
+    reasoning = str(score_resp.content or "").strip()
+
+    # Parse the first number found in the response
+    match = re.search(r"\b(\d+(?:\.\d+)?)\b", reasoning)
+    score = float(match.group(1)) if match else 5.0
+    score = max(0.0, min(10.0, score))
+
+    # Step 3: Build EvalSchema directly (bypass the broken AccuracyEval.arun path)
+    return EvalSchema(
+        id=uuid.uuid4().hex,
+        name=ei.name or f"accuracy-{component_id}",
+        agent_id=agent.id if agent else None,
+        team_id=team.id if team else None,
+        model_id=model_id,
+        model_provider=model_provider,
+        eval_type=EvalType.ACCURACY,
+        eval_data={
+            "score": score,
+            "avg_score": score,
+            "num_iterations": 1,
+            "input": ei.input,
+            "expected_output": ei.expected_output,
+            "actual_output": actual_output,
+            "reasoning": reasoning,
+        },
+        created_at=datetime.now(timezone.utc),
+    )
 
 
 async def _run_agent_as_judge(
