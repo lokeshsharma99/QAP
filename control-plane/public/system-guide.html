@@ -484,7 +484,65 @@
       .stat-grid { grid-template-columns: 1fr 1fr; }
       .main { padding: 24px 20px; }
     }
+
+    /* ── Light Theme ─────────────────────────────────────────────────────── */
+    :root[data-theme="light"] {
+      --bg:       #ffffff;
+      --surface:  #f6f8fa;
+      --surface2: #eaeef2;
+      --border:   #d0d7de;
+      --text:     #1f2328;
+      --muted:    #636c76;
+      --accent:   #0969da;
+      --green:    #1a7f37;
+      --yellow:   #9a6700;
+      --red:      #cf222e;
+      --purple:   #8250df;
+      --orange:   #bc4c00;
+      --teal:     #116329;
+      --pink:     #a40e26;
+    }
+    :root[data-theme="light"] body { background: var(--bg); color: var(--text); }
+    :root[data-theme="light"] ::-webkit-scrollbar-track { background: var(--surface); }
+    :root[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--border); }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --bg:       #ffffff;
+        --surface:  #f6f8fa;
+        --surface2: #eaeef2;
+        --border:   #d0d7de;
+        --text:     #1f2328;
+        --muted:    #636c76;
+        --accent:   #0969da;
+        --green:    #1a7f37;
+        --yellow:   #9a6700;
+        --red:      #cf222e;
+        --purple:   #8250df;
+        --orange:   #bc4c00;
+        --teal:     #116329;
+        --pink:     #a40e26;
+      }
+    }
   </style>
+  <script>
+    // Receive theme from parent Next.js app via postMessage
+    window.addEventListener('message', function(e) {
+      var theme = e.data && e.data.theme;
+      if (theme === 'light' || theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', theme);
+      } else if (theme === 'system') {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    });
+    // Also read from URL param on initial load (?theme=light|dark|system)
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var t = params.get('theme');
+      if (t === 'light' || t === 'dark') {
+        document.documentElement.setAttribute('data-theme', t);
+      }
+    })();
+  </script>
 </head>
 <body>
 <div class="shell">

@@ -1,8 +1,27 @@
 'use client'
+import { useRef, useEffect } from 'react'
+import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
 export default function GuidePage() {
+  const { resolvedTheme } = useTheme()
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  // Push theme into the iframe whenever it changes
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const send = () => {
+      iframe.contentWindow?.postMessage({ theme: resolvedTheme ?? 'dark' }, '*')
+    }
+    // Send on load
+    iframe.addEventListener('load', send)
+    // Also send immediately if already loaded
+    send()
+    return () => iframe.removeEventListener('load', send)
+  }, [resolvedTheme])
+
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden">
       {/* Top bar with back button */}
@@ -19,6 +38,7 @@ export default function GuidePage() {
 
       {/* Full-height iframe — flex-1 + min-h-0 forces flex to own the height */}
       <iframe
+        ref={iframeRef}
         src="/system-guide.html"
         className="min-h-0 w-full flex-1 border-0"
         title="Quality Autopilot System Guide"
