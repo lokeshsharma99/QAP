@@ -26,6 +26,7 @@ from agents.pipeline_analyst import pipeline_analyst
 from agents.scribe import scribe
 from app.endpoints.agent_config import router as agent_config_router
 from app.endpoints.model import router as model_router
+from app.endpoints.eval_runs import router as eval_runs_router
 from app.endpoints.optimize_memories import router as optimize_memories_router
 from app.endpoints.settings import router as settings_router
 from app.registry import registry
@@ -96,6 +97,14 @@ new_routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/o
 other_routes = [r for r in app.routes if r not in new_routes]
 app.routes.clear()
 app.routes.extend(new_routes + other_routes)
+
+app.include_router(eval_runs_router)
+# Move our /eval-runs override to the front too
+eval_routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/eval-runs"
+               and r.operation_id == "run_eval_kilo"]
+other_routes = [r for r in app.routes if r not in eval_routes]
+app.routes.clear()
+app.routes.extend(eval_routes + other_routes)
 
 app.include_router(settings_router)
 app.include_router(model_router)
