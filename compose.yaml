@@ -78,8 +78,10 @@ services:
       - AZURE_DEVOPS_EMAIL=${AZURE_DEVOPS_EMAIL:-}
       # @azure-devops/mcp v2.7+ reads PERSONAL_ACCESS_TOKEN for PAT auth
       - PERSONAL_ACCESS_TOKEN=${AZURE_DEVOPS_EXT_PAT:-}
-      # MCP Servers
+      # MCP Servers — HTTP endpoints pointing at dedicated MCP Docker services
+      - GITHUB_MCP_URL=http://github-mcp:8080
       - PLAYWRIGHT_MCP_URL=http://playwright-mcp:8931
+      - ADO_MCP_URL=http://ado-mcp:8932/mcp
       # Docker MCP Gateway — set profile name to activate (e.g. "default")
       # Requires Docker socket mount below. Leave blank to use npx fallback.
       - DOCKER_MCP_PROFILE=${DOCKER_MCP_PROFILE:-}
@@ -88,10 +90,74 @@ services:
       - PARALLEL_API_KEY=${PARALLEL_API_KEY:-}
     depends_on:
       - qap-db
+      - github-mcp
+      - playwright-mcp
+      - ado-mcp
     networks:
       - qap-net
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # ---------------------------------------------------------------------------
+  # GitHub MCP Server  (GitHub tools for Architect, Discovery, Engineer, Detective)
+  # HTTP mode — connects to ghcr.io/github/github-mcp-server via streamable-HTTP
+  # ---------------------------------------------------------------------------
+  github-mcp:
+    image: ghcr.io/github/github-mcp-server
+    container_name: github-mcp
+    command:
+      - http
+      - --port=8080
+      - --toolsets=repos,issues,pull_requests,actions,discussions,git,users
+    environment:
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_TOKEN:-}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - qap-net
+
+  # ---------------------------------------------------------------------------
+  # Azure DevOps MCP Server  (ADO tools via supergateway SSE proxy)
+  # @azure-devops/mcp only supports stdio; supergateway wraps it as SSE on :8932
+  # PERSONAL_ACCESS_TOKEN is computed at startup: base64(email:pat)
+  # ---------------------------------------------------------------------------
+  ado-mcp:
+    image: node:22-alpine
+    container_name: ado-mcp
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        export PERSONAL_ACCESS_TOKEN=$$(printf '%s:%s' "$$AZURE_DEVOPS_EMAIL" "$$AZURE_DEVOPS_EXT_PAT" | base64 | tr -d '\n')
+        ORG=$$(echo "$$AZURE_DEVOPS_URL" | sed 's|.*dev.azure.com/||' | cut -d/ -f1)
+        ORG=$${ORG:-QEA}
+        exec npx -y supergateway \
+          --stdio "npx -y @azure-devops/mcp $$ORG --authentication pat -d core pipelines repositories work-items" \
+          --outputTransport streamableHttp \
+          --streamableHttpPath /mcp \
+          --port 8932
+    environment:
+      - AZURE_DEVOPS_URL=${AZURE_DEVOPS_URL:-}
+      - AZURE_DEVOPS_EMAIL=${AZURE_DEVOPS_EMAIL:-}
+      - AZURE_DEVOPS_EXT_PAT=${AZURE_DEVOPS_EXT_PAT:-}
+    ports:
+      - "8932:8932"
+    networks:
+      - qap-net
+
+  # ---------------------------------------------------------------------------
+  # Playwright MCP Server  (browser automation for Discovery + Medic agents)
+  # ---------------------------------------------------------------------------
+  playwright-mcp:
+    image: mcr.microsoft.com/playwright:v1.52.0-noble
+    container_name: playwright-mcp
+    command: npx -y @playwright/mcp@latest --port 8931 --host 0.0.0.0 --allowed-hosts "*"
+    restart: unless-stopped
+    ports:
+      - "8931:8931"
+    networks:
+      - qap-net
 
   # ---------------------------------------------------------------------------
   # Quality Autopilot Control Plane  (Next.js UI — port 3000)
@@ -112,22 +178,6 @@ services:
       - qap-api
     networks:
       - qap-net
-
-  # ---------------------------------------------------------------------------
-  # Playwright MCP Server  (browser automation for Discovery + Engineer agents)
-  # Start with: docker compose --profile mcp up -d
-  # ---------------------------------------------------------------------------
-  playwright-mcp:
-    image: mcr.microsoft.com/playwright:v1.52.0-noble
-    container_name: playwright-mcp
-    command: npx -y @playwright/mcp@latest --port 8931 --host 0.0.0.0
-    restart: unless-stopped
-    ports:
-      - "8931:8931"
-    networks:
-      - qap-net
-    profiles:
-      - mcp
 
   # ---------------------------------------------------------------------------
   # Playwright Test Runner  (sandboxed execution for automation/ tests)

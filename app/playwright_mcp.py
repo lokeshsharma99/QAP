@@ -99,7 +99,7 @@ def _make_playwright_mcp(tool_name_prefix: str) -> list:
             log_warning(
                 "PLAYWRIGHT_MCP_URL is set to %s but the service is not reachable. "
                 "Playwright MCP tools are unavailable. "
-                "Start the service with: docker compose --profile mcp up -d",
+                "Start the service with: docker compose up -d playwright-mcp",
                 mcp_url,
             )
             return []

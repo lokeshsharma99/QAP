@@ -37,6 +37,10 @@ Usage by agent
 import os
 from functools import lru_cache
 
+import socket
+import urllib.parse
+
+from agno.utils.log import log_warning
 from agno.tools.mcp import MCPTools
 from mcp.client.stdio import StdioServerParameters
 
@@ -49,42 +53,76 @@ AUT_GITHUB_REF = os.getenv("AUT_GITHUB_REPO_DEFAULT_BRANCH", "main")
 AUT_GITHUB_REPO_FULL = f"{AUT_GITHUB_OWNER}/{AUT_GITHUB_REPO}"
 
 
+def _github_mcp_service_reachable(url: str) -> bool:
+    """Return True if the github-mcp Docker service TCP port is open."""
+    parsed = urllib.parse.urlparse(url)
+    host = parsed.hostname or "github-mcp"
+    port = parsed.port or 8080
+    try:
+        with socket.create_connection((host, port), timeout=2):
+            return True
+    except OSError:
+        return False
+
+
 def _make_github_mcp(toolsets: list[str], tool_name_prefix: str) -> MCPTools:
     """
-    Build an MCPTools instance connecting to the GitHub MCP server via stdio.
+    Build an MCPTools instance connecting to the GitHub MCP server.
+
+    Preferred: streamable-HTTP connection to the github-mcp Docker service
+    (GITHUB_MCP_URL=http://github-mcp:8080).  Falls back to spawning the
+    legacy npx stdio server when the Docker service is not reachable.
 
     Parameters
     ----------
     toolsets:
         List of GitHub MCP toolset names to enable.
-        Options: repos, issues, pull_requests, actions, discussions, search, contexts
+        Options: repos, issues, pull_requests, actions, discussions, git, users
     tool_name_prefix:
-        Short prefix added to every tool name to avoid collisions when multiple
-        MCPTools instances are added to the same agent (e.g. "gh_repo_", "gh_ci_").
+        Short prefix added to every tool name to avoid collisions.
     """
-    github_token = os.getenv("GITHUB_TOKEN", "")
-    if not github_token:
-        # Non-fatal: GitHub MCP will work for public repos without a token
-        # but will hit rate limits quickly.  Log a warning at import time.
-        import logging
-        logging.getLogger(__name__).warning(
-            "GITHUB_TOKEN is not set — GitHub MCP will run unauthenticated. "
-            "Set GITHUB_TOKEN in .env for full access and higher rate limits."
+    mcp_url = os.getenv("GITHUB_MCP_URL", "").rstrip("/")
+
+    # ---------------------------------------------------------------------------
+    # Mode 1 — HTTP connection to the github-mcp Docker service (preferred)
+    # ghcr.io/github/github-mcp-server runs in HTTP mode on port 8080.
+    # Requires Authorization: Bearer header with the GitHub token.
+    # ---------------------------------------------------------------------------
+    if mcp_url and _github_mcp_service_reachable(mcp_url):
+        github_token = os.getenv("GITHUB_TOKEN", "")
+        from agno.tools.mcp.params import StreamableHTTPClientParams
+        return MCPTools(
+            server_params=StreamableHTTPClientParams(
+                url=mcp_url,
+                headers={"Authorization": f"Bearer {github_token}"},
+            ),
+            transport="streamable-http",
+            tool_name_prefix=tool_name_prefix,
+            timeout_seconds=30,
         )
 
+    if mcp_url:
+        log_warning(
+            "GITHUB_MCP_URL is set to %s but the service is not reachable. "
+            "Falling back to npx stdio. Start the service with: docker compose up -d github-mcp",
+            mcp_url,
+        )
+
+    # ---------------------------------------------------------------------------
+    # Mode 2 — stdio fallback: spawn @modelcontextprotocol/server-github via npx.
+    # Used in local dev when the github-mcp container is not running.
+    # ---------------------------------------------------------------------------
+    github_token = os.getenv("GITHUB_TOKEN", "")
     env = {
         **os.environ,
         "GITHUB_PERSONAL_ACCESS_TOKEN": github_token,
-        # Restrict to only the toolsets this agent needs
         "GITHUB_TOOLSETS": ",".join(toolsets),
     }
-
     server_params = StdioServerParameters(
         command="npx",
         args=["-y", "@modelcontextprotocol/server-github"],
         env=env,
     )
-
     return MCPTools(
         server_params=server_params,
         transport="stdio",

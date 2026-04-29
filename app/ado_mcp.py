@@ -37,7 +37,10 @@ Usage by agent
 import base64
 import logging
 import os
+import socket
+import urllib.parse
 
+from agno.utils.log import log_warning
 from agno.tools.mcp import MCPTools
 from mcp.client.stdio import StdioServerParameters
 
@@ -47,6 +50,18 @@ _log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _ado_mcp_service_reachable(url: str) -> bool:
+    """Return True if the ado-mcp Docker service TCP port is open."""
+    parsed = urllib.parse.urlparse(url)
+    host = parsed.hostname or "ado-mcp"
+    port = parsed.port or 8932
+    try:
+        with socket.create_connection((host, port), timeout=2):
+            return True
+    except OSError:
+        return False
+
 
 def _extract_ado_org(url: str) -> str:
     """
@@ -146,18 +161,16 @@ _ADO_MCP_SINGLETON: MCPTools | None = None
 
 
 def _get_ado_mcp_singleton() -> list:
-    """Return singleton list, empty if URL or EXT_PAT are not configured.
+    """Return singleton list.
 
-    The @azure-devops/mcp npm package reads AZURE_DEVOPS_EXT_PAT for
-    non-interactive PAT auth.  We require this variable to be set explicitly
-    (not AZURE_DEVOPS_PAT, which is a generic convention but not what the npm
-    package reads).  Without it the server falls back to browser-based
-    interactive auth which hangs and fails in headless Docker containers.
+    Priority:
+    1. HTTP — connect to the ado-mcp Docker service (ADO_MCP_URL).
+       The service wraps @azure-devops/mcp stdio via supergateway SSE.
+    2. stdio fallback — spawn npx @azure-devops/mcp locally inside qap-api.
+       Used when the ado-mcp container is not running.
+    Returns [] when neither AZURE_DEVOPS_URL nor AZURE_DEVOPS_EXT_PAT are set.
     """
     ado_url = os.getenv("AZURE_DEVOPS_URL", "").rstrip("/")
-    # @azure-devops/mcp reads AZURE_DEVOPS_EXT_PAT natively.
-    # Require it to be set explicitly; do NOT fall back to AZURE_DEVOPS_PAT so
-    # that we can detect the "PAT set but wrong variable name" misconfiguration.
     ado_ext_pat = os.getenv("AZURE_DEVOPS_EXT_PAT", "")
 
     if not ado_url:
@@ -170,18 +183,42 @@ def _get_ado_mcp_singleton() -> list:
     if not ado_ext_pat:
         _log.warning(
             "AZURE_DEVOPS_EXT_PAT not set — ADO MCP tools unavailable. "
-            "Set AZURE_DEVOPS_EXT_PAT=<your-pat> in .env. "
-            "The @azure-devops/mcp package reads this variable for non-interactive auth. "
-            "Without it the server falls back to browser auth which fails in headless Docker."
+            "Set AZURE_DEVOPS_EXT_PAT=<your-pat> in .env."
         )
         return []
 
     global _ADO_MCP_SINGLETON
-    if _ADO_MCP_SINGLETON is None:
-        _ADO_MCP_SINGLETON = _make_ado_mcp(
-            domains=["core", "pipelines", "repositories", "work-items"],
+    if _ADO_MCP_SINGLETON is not None:
+        return [_ADO_MCP_SINGLETON]
+
+    # ---------------------------------------------------------------------------
+    # Mode 1 — SSE connection to the ado-mcp Docker service (preferred).
+    # The service uses supergateway to wrap @azure-devops/mcp stdio as SSE HTTP.
+    # ---------------------------------------------------------------------------
+    ado_mcp_url = os.getenv("ADO_MCP_URL", "").rstrip("/")
+    if ado_mcp_url and _ado_mcp_service_reachable(ado_mcp_url):
+        _ADO_MCP_SINGLETON = MCPTools(
+            url=ado_mcp_url,
+            transport="streamable-http",
             tool_name_prefix="ado_",
+            timeout_seconds=60,
         )
+        return [_ADO_MCP_SINGLETON]
+
+    if ado_mcp_url:
+        log_warning(
+            "ADO_MCP_URL is set to %s but the service is not reachable. "
+            "Falling back to npx stdio. Start the service with: docker compose up -d ado-mcp",
+            ado_mcp_url,
+        )
+
+    # ---------------------------------------------------------------------------
+    # Mode 2 — stdio fallback: spawn npx @azure-devops/mcp inside qap-api.
+    # ---------------------------------------------------------------------------
+    _ADO_MCP_SINGLETON = _make_ado_mcp(
+        domains=["core", "pipelines", "repositories", "work-items"],
+        tool_name_prefix="ado_",
+    )
     return [_ADO_MCP_SINGLETON]
 
 
