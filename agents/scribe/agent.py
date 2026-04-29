@@ -38,7 +38,7 @@ scribe = Agent(
     search_knowledge=True,
     # Capabilities
     tools=[
-        CodingTools(),
+        CodingTools(requires_confirmation_tools=["run_shell"]),
         FileTools(),
         KnowledgeTools(knowledge=qap_learnings_kb),
     ],

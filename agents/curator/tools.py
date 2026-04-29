@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from agno.tools import Toolkit
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.utils.log import logger
@@ -343,3 +344,17 @@ def generate_maintenance_report(watch_path: str = "automation") -> str:
     logger.info(f"Generated maintenance report: {report_result}")
 
     return report_result
+
+
+# ---------------------------------------------------------------------------
+# Deletion Toolkit — wraps destructive tools with Agno HITL confirmation gate
+# Any call to execute_test_deletion or delete_scenario_from_feature will be
+# surfaced to the human operator for approval before the framework executes it.
+# ---------------------------------------------------------------------------
+class DeletionToolkit(Toolkit):
+    def __init__(self) -> None:
+        super().__init__(name="deletion_toolkit")
+        # Set AFTER super().__init__ to avoid premature validation warning
+        self.requires_confirmation_tools = ["execute_test_deletion", "delete_scenario_from_feature"]
+        self.register(execute_test_deletion)
+        self.register(delete_scenario_from_feature)

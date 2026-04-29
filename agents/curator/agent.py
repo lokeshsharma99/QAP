@@ -17,8 +17,7 @@ from agents.base.semantica_agent import SemanticaAgent
 from agents.curator.instructions import INSTRUCTIONS
 from agents.curator.tools import (
     approve_deletion,
-    delete_scenario_from_feature,
-    execute_test_deletion,
+    DeletionToolkit,
     generate_maintenance_report,
     log_deletion_to_audit,
     reject_deletion,
@@ -68,8 +67,7 @@ tools.extend([
     request_batch_deletion_approval,
     approve_deletion,
     reject_deletion,
-    execute_test_deletion,
-    delete_scenario_from_feature,
+    DeletionToolkit(),
     log_deletion_to_audit,
     generate_maintenance_report,
 ])
