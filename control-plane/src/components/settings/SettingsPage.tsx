@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useState, useEffect, useCallback } from 'react'
 import { useStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -749,7 +750,7 @@ export default function SettingsPage() {
   const activeNavTab = NAV_TABS.find((t) => t.id === activeTab) ?? NAV_TABS[0]
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <motion.div className="flex h-full flex-col overflow-hidden" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-accent/50 px-6 py-4">
         <div>
@@ -873,6 +874,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
