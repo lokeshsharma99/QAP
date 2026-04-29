@@ -1,5 +1,6 @@
 ﻿'use client'
 import { useEffect, useState, useCallback } from 'react'
+import { motion } from 'framer-motion'
 import { useStore } from '@/store'
 import { APIRoutes } from '@/api/routes'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -12,6 +13,8 @@ import {
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { toast } from 'sonner'
+
+const PAGE_TRANSITION = { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.2, ease: 'easeOut' as const } }
 
 dayjs.extend(relativeTime)
 
@@ -574,15 +577,15 @@ export default function TracesPage() {
   // ── Detail view ───────────────────────────────────────────────────────────
   if (selectedTrace) {
     return (
-      <div className="h-full overflow-hidden">
+      <motion.div className="h-full overflow-hidden" {...PAGE_TRANSITION}>
         <TraceDetailView traceId={selectedTrace} onBack={() => setSelectedTrace(null)} />
-      </div>
+      </motion.div>
     )
   }
 
   // ── List view ─────────────────────────────────────────────────────────────
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" {...PAGE_TRANSITION}>
       <div className="mx-auto max-w-5xl space-y-6">
 
         <div className="flex items-start justify-between">
@@ -716,6 +719,6 @@ export default function TracesPage() {
           <span className="flex items-center gap-1"><Wrench className="size-3" />TOOL</span>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
