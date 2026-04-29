@@ -25,6 +25,14 @@ from app.github_mcp import get_github_mcp_for_discovery
 _github_tools = get_github_mcp_for_discovery()
 
 # ---------------------------------------------------------------------------
+# Playwright MCP Tools (optional — uses PLAYWRIGHT_MCP_URL or npx headless)
+# Discovery uses these to crawl the AUT in a real browser, capture
+# accessibility snapshots of each page/component, and build the Site Manifesto.
+# ---------------------------------------------------------------------------
+from app.playwright_mcp import get_playwright_mcp_for_discovery
+_playwright_tools = get_playwright_mcp_for_discovery()
+
+# ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: qap_learnings (shared collective intelligence)
 # Domain:  site_manifesto — Discovery is the WRITER of this KB
@@ -52,6 +60,7 @@ discovery = Agent(
         KnowledgeTools(knowledge=qap_learnings_kb),
         KnowledgeTools(knowledge=site_manifesto_kb),
         *_github_tools,
+        *_playwright_tools,
         fetch_html,
         parse_dom_tree,
         save_learning,

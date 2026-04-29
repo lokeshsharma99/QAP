@@ -21,6 +21,12 @@ from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_man
 # Records every healing patch decision so Healing Judge can check precedents
 # ("was this exact locator already healed 3x this sprint?")
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Playwright MCP Tools (optional — verifies healed locators on live AUT)
+# ---------------------------------------------------------------------------
+from app.playwright_mcp import get_playwright_mcp_for_medic
+_playwright_tools = get_playwright_mcp_for_medic()
+
 _decision_tools: list = []
 try:
     from app.semantica_config import SemanticaContext
@@ -67,6 +73,7 @@ medic = Agent(
         KnowledgeTools(knowledge=rca_kb),
         KnowledgeTools(knowledge=automation_kb),
         KnowledgeTools(knowledge=site_manifesto_kb),
+        *_playwright_tools,
         *_decision_tools,
     ],
     # Instructions

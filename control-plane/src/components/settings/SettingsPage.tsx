@@ -151,6 +151,8 @@ const NAV_TABS: NavTab[] = [
           { key: '_mcp_info', label: 'GitHub MCP', placeholder: 'Enabled when GITHUB_TOKEN is set — uses @modelcontextprotocol/server-github via npx', description: 'Active on: Architect, Discovery, Engineer, Detective, Pipeline Analyst, Impact Analyst' },
           { key: '_ado_mcp_info', label: 'Azure DevOps MCP', placeholder: 'Enabled when AZURE_DEVOPS_URL + AZURE_DEVOPS_PAT are set — uses @azure-devops/mcp via npx', description: 'Active on: Pipeline Analyst (pipelines), CI Log Analyzer (pipelines + work-items), Architect (work-items)' },
           { key: '_atlassian_mcp_info', label: 'Atlassian Rovo MCP', placeholder: 'Enabled when ATLASSIAN_EMAIL + ATLASSIAN_API_TOKEN are set — uses mcp-remote proxy to mcp.atlassian.com', description: 'Active on: Architect (Jira), Scribe (Jira + Confluence), CI Log Analyzer (Jira bugs)' },
+          { key: '_playwright_mcp_info', label: 'Playwright MCP', placeholder: 'Auto-mode: set PLAYWRIGHT_MCP_URL for Docker service, or leave unset to spawn npx headless inline', description: 'Active on: Discovery (AUT crawling, Site Manifesto), Medic (verify healed locators on live AUT)' },
+          { key: 'PLAYWRIGHT_MCP_URL', label: 'Playwright MCP Service URL (optional)', placeholder: 'http://playwright-mcp:8931', description: 'Leave blank to use inline npx headless mode. Set to http://playwright-mcp:8931 when using: docker compose --profile mcp up -d' },
         ],
       },
     ],
