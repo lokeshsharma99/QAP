@@ -30,6 +30,9 @@ services:
       - .:/app
       # Generated code volume
       - generated_code:/app/generated
+      # Docker socket — required for `docker mcp gateway run` (Docker MCP Gateway)
+      # Only active when DOCKER_MCP_PROFILE is set in .env
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - RUNTIME_ENV=dev
       - AGNO_DEBUG=False
@@ -74,6 +77,9 @@ services:
       - AZURE_DEVOPS_EMAIL=${AZURE_DEVOPS_EMAIL:-}
       # MCP Servers
       - PLAYWRIGHT_MCP_URL=http://playwright-mcp:8931
+      # Docker MCP Gateway — set profile name to activate (e.g. "default")
+      # Requires Docker socket mount below. Leave blank to use npx fallback.
+      - DOCKER_MCP_PROFILE=${DOCKER_MCP_PROFILE:-}
       # Optional
       - EXA_API_KEY=${EXA_API_KEY:-}
       - PARALLEL_API_KEY=${PARALLEL_API_KEY:-}

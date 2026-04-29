@@ -13,11 +13,21 @@ FROM agnohq/python:3.12
 # Uses the official NodeSource setup script so the version is pinned via apt.
 # ---------------------------------------------------------------------------
 RUN apt-get update -qq && \
-    apt-get install -y --no-install-recommends curl ca-certificates && \
+    apt-get install -y --no-install-recommends curl ca-certificates gnupg lsb-release && \
+    # Node.js LTS
     curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
+    # Docker CLI (for `docker mcp gateway run` — Docker MCP Gateway support)
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+        https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
+        > /etc/apt/sources.list.d/docker.list && \
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends docker-ce-cli && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    node --version && npm --version
+    node --version && npm --version && docker --version
 
 # ---------------------------------------------------------------------------
 # Pre-install all MCP servers globally
