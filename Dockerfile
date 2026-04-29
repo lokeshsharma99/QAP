@@ -46,6 +46,17 @@ RUN sed -i \
     's/db\.get_all_memory_topics(user_id=user_id)/db.get_all_memory_topics()/g' \
     /usr/local/lib/python3.12/site-packages/agno/os/routers/memory/memory.py
 
+# ---------------------------------------------------------------------------
+# Patch agno library: MCP tool "Not Found" errors are logged as full
+# exception tracebacks (log_exception) even though they are handled
+# gracefully and the agent receives a clean error string.
+# Downgrade to log_warning so the logs are not polluted with tracebacks
+# every time a GitHub MCP tool reads a resource that does not exist yet.
+# ---------------------------------------------------------------------------
+RUN sed -i \
+    's/log_exception(f"Failed to call MCP tool/log_warning(f"MCP tool not found (non-fatal):/g' \
+    /usr/local/lib/python3.12/site-packages/agno/utils/mcp.py
+
 COPY . .
 
 # ---------------------------------------------------------------------------
