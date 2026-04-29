@@ -402,6 +402,7 @@ export default function KnowledgePage() {
           url: remoteUrl.trim(),
           loader_type: remoteLoader,
         }
+        if (uploadName.trim()) Object.assign(body, { name: uploadName.trim() })
         if (selectedKb) Object.assign(body, kbParam(selectedKb))
         const res = await fetch(APIRoutes.RemoteContent(selectedEndpoint), {
           method: 'POST',
@@ -654,7 +655,7 @@ export default function KnowledgePage() {
                   onChange={(e) => setRemoteLoader(e.target.value)}
                   className="w-full rounded-xl border border-accent bg-background px-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
                 >
-                  {['website', 'sitemap', 'pdf', 'docx', 'csv', 'arxiv', 'github', 'jira', 'confluence'].map((l) => (
+                  {['website', 'sitemap', 'youtube', 'pdf', 'docx', 'csv', 'json', 'markdown', 'docling', 'arxiv', 'github', 'jira', 'confluence'].map((l) => (
                     <option key={l} value={l}>{l}</option>
                   ))}
                 </select>
