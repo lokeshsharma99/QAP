@@ -11,7 +11,7 @@ import useChatActions from '@/hooks/useChatActions'
 import {
   Server, KeyRound, Bot, Database, Globe, Wrench,
   ShieldCheck, RefreshCw, Save, Eye, EyeOff, CheckCircle2,
-  AlertCircle, CircleDot, Cpu, Zap, Users, GitBranch
+  AlertCircle, CircleDot, Cpu, Zap, Users, GitBranch, WifiOff, Wifi
 } from 'lucide-react'
 import AgentConfigPanel from '@/components/chat/AgentConfigPanel'
 
@@ -287,6 +287,9 @@ const ModelProviderSection = ({ endpointUrl, authToken }: { endpointUrl: string;
   const [localModels, setLocalModels] = useState<Record<string, string>>({})
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({})
   const [activating, setActivating] = useState<string | null>(null)
+  // Live model lists fetched from provider APIs (keyed by provider id)
+  const [liveModelLists, setLiveModelLists] = useState<Record<string, ProviderModel[]>>({})
+  const [fetchingModels, setFetchingModels] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     fetchProviders()
@@ -312,6 +315,30 @@ const ModelProviderSection = ({ endpointUrl, authToken }: { endpointUrl: string;
         setLocalModels(init)
       }
     } catch { /* backend may not support this endpoint */ }
+  }
+
+  const fetchLiveModels = async (pid: string) => {
+    setFetchingModels((p) => ({ ...p, [pid]: true }))
+    try {
+      const res = await fetch(`${endpointUrl}/model/list/${pid}`, {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      })
+      if (res.ok) {
+        const data: { models: ProviderModel[]; source: string } = await res.json()
+        if (data.models.length > 0) {
+          setLiveModelLists((p) => ({ ...p, [pid]: data.models }))
+          // If current selection not in new list, reset to first
+          setLocalModels((prev) => {
+            const cur = prev[pid]
+            const valid = data.models.some((m) => m.id === cur)
+            return valid ? prev : { ...prev, [pid]: data.models[0].id }
+          })
+          if (data.source === 'live') toast.success(`${pid}: ${data.models.length} models loaded`)
+          else toast.info(`${pid}: using static model list`)
+        }
+      }
+    } catch { /* ignore */ }
+    setFetchingModels((p) => ({ ...p, [pid]: false }))
   }
 
   const handleActivate = async (providerId: string) => {
@@ -378,6 +405,8 @@ const ModelProviderSection = ({ endpointUrl, authToken }: { endpointUrl: string;
             const isActive = effectiveActive === pid
             const selectedModel = localModels[pid] || pInfo.default_model
             const showKey = showKeys[pid] ?? false
+            const modelList = liveModelLists[pid] ?? pInfo.models
+            const isFetching = fetchingModels[pid] ?? false
 
             return (
               <div
@@ -404,15 +433,27 @@ const ModelProviderSection = ({ endpointUrl, authToken }: { endpointUrl: string;
 
                 <p className="mb-2 text-[10px] leading-relaxed text-muted/60">{pInfo.description}</p>
 
-                {/* Model selector */}
+                {/* Model selector with live-refresh button */}
                 <div className="mb-2">
-                  <label className="mb-1 block text-[10px] font-medium text-muted/70">Model</label>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="text-[10px] font-medium text-muted/70">Model</label>
+                    <button
+                      type="button"
+                      onClick={() => fetchLiveModels(pid)}
+                      disabled={isFetching}
+                      title="Fetch live models from provider"
+                      className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] text-muted/50 hover:bg-accent hover:text-primary disabled:opacity-40"
+                    >
+                      <RefreshCw className={cn('size-2.5', isFetching && 'animate-spin')} />
+                      {liveModelLists[pid] ? 'live' : 'refresh'}
+                    </button>
+                  </div>
                   <select
                     value={selectedModel}
                     onChange={(e) => setLocalModels((p) => ({ ...p, [pid]: e.target.value }))}
                     className="w-full rounded-lg border border-primary/15 bg-accent px-2 py-1.5 text-xs text-primary outline-none focus:border-primary/40"
                   >
-                    {pInfo.models.map((m) => (
+                    {modelList.map((m) => (
                       <option key={m.id} value={m.id}>{m.label}</option>
                     ))}
                   </select>
@@ -473,6 +514,128 @@ const ModelProviderSection = ({ endpointUrl, authToken }: { endpointUrl: string;
 }
 
 const MASK = '••••••••'
+
+// ---------------------------------------------------------------------------
+// MCP Status Section
+// ---------------------------------------------------------------------------
+
+interface MCPServiceStatus {
+  name: string
+  url: string
+  reachable: boolean
+  tools: number
+  configured: boolean
+  agents: string[]
+}
+
+interface MCPStatusData {
+  services: Record<string, MCPServiceStatus>
+}
+
+const MCP_SERVICE_ORDER = ['github', 'ado', 'playwright'] as const
+
+const MCPStatusSection = ({ endpointUrl, authToken }: { endpointUrl: string; authToken: string }) => {
+  const [data, setData] = useState<MCPStatusData | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [lastChecked, setLastChecked] = useState<string | null>(null)
+
+  const check = async () => {
+    setChecking(true)
+    try {
+      const res = await fetch(`${endpointUrl}/mcp/status`, {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      })
+      if (res.ok) {
+        setData(await res.json())
+        setLastChecked(new Date().toLocaleTimeString())
+      }
+    } catch { /* backend unreachable */ }
+    setChecking(false)
+  }
+
+  useEffect(() => { check() }, [endpointUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <GitBranch className="size-4 text-brand" />
+          <h2 className="text-sm font-semibold text-primary">MCP Servers</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {lastChecked && <span className="text-[10px] text-muted/40">checked {lastChecked}</span>}
+          <button
+            onClick={check}
+            disabled={checking}
+            className="flex items-center gap-1 rounded-lg border border-primary/15 px-2 py-1 text-[10px] font-medium text-muted hover:bg-accent hover:text-primary disabled:opacity-50"
+          >
+            <RefreshCw className={cn('size-3', checking && 'animate-spin')} />
+            {checking ? 'Checking…' : 'Test All'}
+          </button>
+        </div>
+      </div>
+
+      {!data ? (
+        <div className="space-y-2">
+          {[0, 1, 2].map((i) => <div key={i} className="h-16 rounded-xl bg-accent/50 animate-pulse" />)}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {MCP_SERVICE_ORDER.map((key) => {
+            const svc = data.services[key]
+            if (!svc) return null
+            const ok = svc.reachable && svc.configured
+            const warn = svc.reachable && !svc.configured
+            return (
+              <div
+                key={key}
+                className={cn(
+                  'flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors',
+                  ok ? 'border-positive/20 bg-positive/5'
+                    : warn ? 'border-warning/20 bg-warning/5'
+                      : 'border-primary/10 bg-background'
+                )}
+              >
+                {/* Status icon */}
+                <div className="shrink-0">
+                  {ok
+                    ? <CheckCircle2 className="size-4 text-positive" />
+                    : svc.reachable
+                      ? <AlertCircle className="size-4 text-warning" />
+                      : <WifiOff className="size-4 text-muted/40" />}
+                </div>
+
+                {/* Name + URL */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-primary">{svc.name}</span>
+                    {svc.tools > 0 && (
+                      <span className="rounded-full bg-positive/15 px-1.5 py-0.5 text-[10px] font-medium text-positive">
+                        {svc.tools} tools
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-[10px] text-muted/50">{svc.url}</p>
+                </div>
+
+                {/* Status text + agents */}
+                <div className="shrink-0 text-right">
+                  <p className={cn(
+                    'text-[10px] font-medium',
+                    ok ? 'text-positive' : svc.reachable ? 'text-warning' : 'text-muted/50'
+                  )}>
+                    {ok ? 'Connected' : svc.reachable ? 'No credentials' : 'Offline'}
+                  </p>
+                  <p className="text-[10px] text-muted/40">{svc.agents.slice(0, 2).join(', ')}{svc.agents.length > 2 ? ` +${svc.agents.length - 2}` : ''}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Agent Settings Section
@@ -897,6 +1060,24 @@ export default function SettingsPage() {
                 endpointUrl={constructEndpointUrl(values['_endpoint'] ?? selectedEndpoint)}
                 authToken={values['_authToken'] ?? authToken}
               />
+            ) : activeTab === 'integrations' ? (
+              <>
+                {activeNavTab.sections
+                  .filter((s) => s.id !== 'mcp_servers')
+                  .map((section) => (
+                    <Section
+                      key={section.id}
+                      section={section}
+                      values={values}
+                      backendValues={backendValues}
+                      onChange={handleChange}
+                    />
+                  ))}
+                <MCPStatusSection
+                  endpointUrl={constructEndpointUrl(values['_endpoint'] ?? selectedEndpoint)}
+                  authToken={values['_authToken'] ?? authToken}
+                />
+              </>
             ) : (
               activeNavTab.sections.map((section) => (
                 <Section

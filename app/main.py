@@ -27,6 +27,7 @@ from agents.scribe import scribe
 from app.endpoints.agent_config import router as agent_config_router
 from app.endpoints.model import router as model_router
 from app.endpoints.eval_runs import router as eval_runs_router
+from app.endpoints.mcp_status import router as mcp_status_router
 from app.endpoints.optimize_memories import router as optimize_memories_router
 from app.endpoints.settings import router as settings_router
 from app.registry import registry
@@ -171,6 +172,7 @@ app.routes[:] = [
 
 app.include_router(settings_router)
 app.include_router(model_router)
+app.include_router(mcp_status_router)
 app.include_router(agent_config_router)
 
 if __name__ == "__main__":

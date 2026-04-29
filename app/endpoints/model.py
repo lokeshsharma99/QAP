@@ -10,6 +10,7 @@ Supports: Kilo AI, NVIDIA NIM, GitHub Copilot, OpenAI, Ollama, OpenRouter
 import os
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -215,3 +216,76 @@ def _build_model(provider: str, model_id: str, base_url: str, api_key: str = "op
     from agno.models.openrouter import OpenRouter
 
     return OpenRouter(id=model_id, base_url=base_url, api_key=api_key, max_tokens=None)
+
+
+# ---------------------------------------------------------------------------
+# Live model listing
+# ---------------------------------------------------------------------------
+
+
+@router.get("/list/{provider}")
+async def list_models(provider: str):
+    """
+    Return the available models for a provider.
+
+    For Ollama: queries GET /api/tags on the running Ollama instance.
+    For OpenRouter/Kilo: queries GET /models on the provider's API.
+    For all others: returns the static catalogue list.
+
+    Response: { provider, models: [{id, label}], source: "live"|"static" }
+    """
+    if provider not in PROVIDER_CATALOGUE:
+        raise HTTPException(status_code=404, detail=f"Unknown provider: {provider}")
+
+    info = PROVIDER_CATALOGUE[provider]
+
+    # ------------------------------------------------------------------
+    # Ollama — GET /api/tags
+    # ------------------------------------------------------------------
+    if provider == "ollama":
+        raw_base = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
+        # Strip trailing /v1 to get the root API
+        base = raw_base.rstrip("/").removesuffix("/v1")
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(f"{base}/api/tags")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    models = [{"id": m["name"], "label": m["name"]} for m in data.get("models", [])]
+                    if models:
+                        return {"provider": provider, "models": models, "source": "live"}
+        except Exception:
+            pass
+        return {"provider": provider, "models": info["models"], "source": "static"}
+
+    # ------------------------------------------------------------------
+    # OpenRouter / Kilo — GET /models (OpenAI-compatible list endpoint)
+    # ------------------------------------------------------------------
+    if provider in ("openrouter", "kilo"):
+        key_env = info.get("key_env") or ""
+        api_key = os.getenv(key_env, "") if key_env else ""
+        base_url = info["base_url"].rstrip("/")
+        headers: dict = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        try:
+            async with httpx.AsyncClient(timeout=6.0) as client:
+                resp = await client.get(f"{base_url}/models", headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    raw = data.get("data", [])
+                    models = [
+                        {"id": m["id"], "label": m.get("name", m["id"])}
+                        for m in raw
+                        if isinstance(m.get("id"), str)
+                    ]
+                    if models:
+                        return {"provider": provider, "models": models, "source": "live"}
+        except Exception:
+            pass
+        return {"provider": provider, "models": info["models"], "source": "static"}
+
+    # ------------------------------------------------------------------
+    # All other providers — return static catalogue
+    # ------------------------------------------------------------------
+    return {"provider": provider, "models": info["models"], "source": "static"}
