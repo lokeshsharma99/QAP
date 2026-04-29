@@ -7,6 +7,7 @@ Role: Run DoD checklist, auto-approve at >= 90% confidence.
 """
 
 from agno.agent import Agent
+from agno.learn import LearningMachine, LearningMode, DecisionLogConfig, UserMemoryConfig
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
@@ -81,6 +82,13 @@ judge = Agent(
     add_session_state_to_context=True,
     # Memory
     enable_agentic_memory=True,
+    learning=LearningMachine(
+        # User memory: retain preferences from AgentUI sessions
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+        # Decision Log: audit trail of every verdict (confidence, reasoning, alternatives)
+        # mode=AGENTIC — Judge decides when a decision is significant enough to log
+        decision_log=DecisionLogConfig(mode=LearningMode.AGENTIC),
+    ),
     update_memory_on_run=True,
     search_past_sessions=True,
     num_past_sessions_to_search=5,

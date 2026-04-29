@@ -10,6 +10,7 @@ Primary Skill: rca_analysis
 import logging
 
 from agno.approval import approval
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.reasoning import ReasoningTools
 
@@ -99,8 +100,13 @@ ci_log_analyzer = SemanticaAgent(
 
     # Memory
     enable_agentic_memory=True,
-    learning=True,
-    add_learnings_to_context=True,
+    learning=LearningMachine(
+        # User memory: retain user preferences across sessions
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+        # Session context with planning: tracks pipeline IDs analysed, steps remaining,
+        # and findings so long log-analysis runs survive context truncation
+        session_context=SessionContextConfig(enable_planning=True),
+    ),
     update_memory_on_run=True,
     enable_session_summaries=False,  # Disabled to reduce context window
     compress_tool_results=True,

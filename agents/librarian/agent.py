@@ -84,6 +84,7 @@ librarian = Agent(
     add_session_state_to_context=True,
     # Memory
     enable_agentic_memory=True,
+    learning=True,
     update_memory_on_run=True,
     tool_call_limit=50,
     # Context

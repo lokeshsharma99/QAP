@@ -7,6 +7,7 @@ Role: Parse Playwright traces to classify failure root cause.
 """
 
 from agno.agent import Agent
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
@@ -100,6 +101,13 @@ detective = Agent(
     add_session_state_to_context=True,
     # Memory
     enable_agentic_memory=True,
+    learning=LearningMachine(
+        # User memory: retain preferences across AgentUI sessions
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+        # Session context with planning: tracks failure IDs under analysis, next steps,
+        # and progress so long triage sessions survive context truncation
+        session_context=SessionContextConfig(enable_planning=True),
+    ),
     update_memory_on_run=True,
     enable_session_summaries=True,
     add_session_summary_to_context=True,
