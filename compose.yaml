@@ -76,6 +76,8 @@ services:
       - AZURE_DEVOPS_PAT=${AZURE_DEVOPS_PAT:-}
       - AZURE_DEVOPS_EXT_PAT=${AZURE_DEVOPS_EXT_PAT:-}
       - AZURE_DEVOPS_EMAIL=${AZURE_DEVOPS_EMAIL:-}
+      # @azure-devops/mcp v2.7+ reads PERSONAL_ACCESS_TOKEN for PAT auth
+      - PERSONAL_ACCESS_TOKEN=${AZURE_DEVOPS_EXT_PAT:-}
       # MCP Servers
       - PLAYWRIGHT_MCP_URL=http://playwright-mcp:8931
       # Docker MCP Gateway — set profile name to activate (e.g. "default")

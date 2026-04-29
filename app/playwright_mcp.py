@@ -46,22 +46,38 @@ Usage by agent
 
 import logging
 import os
+import socket
+import urllib.parse
+
+from agno.utils.log import log_warning
 
 from agno.tools.mcp import MCPTools
 
 _log = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------------
 # Internal helper
 # ---------------------------------------------------------------------------
+
+def _playwright_mcp_reachable(url: str) -> bool:
+    """Return True if the playwright-mcp service TCP port is open."""
+    parsed = urllib.parse.urlparse(url)
+    host = parsed.hostname or "playwright-mcp"
+    port = parsed.port or 8931
+    try:
+        with socket.create_connection((host, port), timeout=2):
+            return True
+    except OSError:
+        return False
+
 
 def _make_playwright_mcp(tool_name_prefix: str) -> list:
     """
     Build an MCPTools instance connecting to the Playwright MCP server.
 
-    Returns an empty list when PLAYWRIGHT_MCP_URL is not set.
-    In stdio mode, spawning a headless Chromium inside qap-api causes
-    startup timeouts — browser automation belongs in a dedicated service.
+    Returns an empty list when PLAYWRIGHT_MCP_URL is not set or the
+    service is not reachable (container not running).
 
     Start the service with:
         docker compose --profile mcp up -d
@@ -76,6 +92,17 @@ def _make_playwright_mcp(tool_name_prefix: str) -> list:
     mcp_url = os.getenv("PLAYWRIGHT_MCP_URL", "").rstrip("/")
 
     if mcp_url:
+        # Pre-flight: verify the service TCP port is open before registering tools.
+        # This avoids a "Failed to initialize MCP toolkit" error at startup when
+        # the playwright-mcp container is not running (common in dev environments).
+        if not _playwright_mcp_reachable(mcp_url):
+            log_warning(
+                "PLAYWRIGHT_MCP_URL is set to %s but the service is not reachable. "
+                "Playwright MCP tools are unavailable. "
+                "Start the service with: docker compose --profile mcp up -d",
+                mcp_url,
+            )
+            return []
         # ---------------------------------------------------------------------------
         # Mode 1 — Connect to the running playwright-mcp Docker service via HTTP.
         # This is the production path: a separate container runs the browser and

@@ -34,6 +34,7 @@ Usage by agent
   Architect         — core, work-items               (ADO work items as requirements)
 """
 
+import base64
 import logging
 import os
 
@@ -100,14 +101,22 @@ def _make_ado_mcp(domains: list[str], tool_name_prefix: str) -> MCPTools:
 
     org = _extract_ado_org(ado_url)
 
+    # @azure-devops/mcp v2.7+ requires --authentication pat and PERSONAL_ACCESS_TOKEN
+    # as base64("{email}:{pat}").  The package's auth.js decodes the value, splits on
+    # the first ':', and passes the right-hand side to getPersonalAccessTokenHandler.
+    ado_email = os.getenv("AZURE_DEVOPS_EMAIL", "")
+    b64_pat = base64.b64encode(f"{ado_email}:{ado_pat}".encode()).decode()
+
     env = {
         **os.environ,
-        # @azure-devops/mcp reads AZURE_DEVOPS_EXT_PAT for PAT-based auth
+        # Required by @azure-devops/mcp v2.7+ when --authentication pat is used
+        "PERSONAL_ACCESS_TOKEN": b64_pat,
+        # Keep legacy var for any older tooling that reads it
         "AZURE_DEVOPS_EXT_PAT": ado_pat,
     }
 
-    # Build args: npx -y @azure-devops/mcp <org> [-d <domain1> <domain2> ...]
-    args: list[str] = ["-y", "@azure-devops/mcp", org]
+    # Build args: npx -y @azure-devops/mcp <org> --authentication pat [-d <domain> ...]
+    args: list[str] = ["-y", "@azure-devops/mcp", org, "--authentication", "pat"]
     if domains:
         args += ["-d"] + domains
 
