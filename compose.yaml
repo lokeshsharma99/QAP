@@ -70,6 +70,8 @@ services:
       # Azure DevOps (optional alternative to Jira)
       - AZURE_DEVOPS_URL=${AZURE_DEVOPS_URL:-}
       - AZURE_DEVOPS_PAT=${AZURE_DEVOPS_PAT:-}
+      - AZURE_DEVOPS_EXT_PAT=${AZURE_DEVOPS_EXT_PAT:-}
+      - AZURE_DEVOPS_EMAIL=${AZURE_DEVOPS_EMAIL:-}
       # MCP Servers
       - PLAYWRIGHT_MCP_URL=http://playwright-mcp:8931
       # Optional
