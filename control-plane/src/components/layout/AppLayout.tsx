@@ -148,9 +148,6 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
           </button>
         </div>
 
-        {/* Endpoint status chip (click → /settings) */}
-        <EndpointChip collapsed={navCollapsed} />
-
         {/* Navigation — flex-1 pushes theme toggle to bottom */}
         <div className="flex-1 overflow-y-auto">
           <Nav collapsed={navCollapsed} approvalCount={approvalCount} />
