@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import {
   MessageSquare, LayoutDashboard,
   FileCheck, Wrench, Activity, BookOpen, Brain, ShieldCheck, History, Settings, Map, CalendarClock,
-  FlaskConical, Database
+  FlaskConical, Database, BarChart2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -20,6 +20,7 @@ const NAV_ITEMS: NavEntry[] = [
   { type: 'link', href: '/knowledge',   icon: BookOpen,        label: 'Knowledge' },
   { type: 'link', href: '/memory',      icon: Brain,           label: 'Memory' },
   { type: 'link', href: '/traces',      icon: Activity,        label: 'Traces' },
+  { type: 'link', href: '/metrics',     icon: BarChart2,       label: 'Metrics' },
   { type: 'link', href: '/approvals',   icon: ShieldCheck,     label: 'Approvals' },
   { type: 'link', href: '/evals',       icon: FlaskConical,    label: 'Evals' },
   { type: 'link', href: '/registry',    icon: Database,        label: 'Registry' },
