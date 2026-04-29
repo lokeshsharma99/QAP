@@ -48,7 +48,7 @@ interface MetricEntry {
 
 interface MetricsResponse {
   metrics: MetricEntry[]
-  updated_at: string
+  updated_at: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -321,20 +321,66 @@ const TokenBreakdownCard = ({ entries }: { entries: MetricEntry[] }) => {
 // ---------------------------------------------------------------------------
 export default function MetricsPage() {
   const { selectedEndpoint, authToken } = useStore()
-  const [data, setData]     = useState<MetricsResponse | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [data, setData]           = useState<MetricsResponse | null>(null)
+  const [loading, setLoading]     = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError]         = useState<string | null>(null)
 
-  const fetchMetrics = useCallback(async () => {
+  // Date range filter (YYYY-MM-DD)
+  const defaultEnd   = dayjs().format('YYYY-MM-DD')
+  const defaultStart = dayjs().subtract(29, 'day').format('YYYY-MM-DD')
+  const [startDate, setStartDate] = useState(defaultStart)
+  const [endDate, setEndDate]     = useState(defaultEnd)
+
+  const headers: Record<string, string> = {}
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+
+  // GET /metrics — read pre-computed metrics for the selected date range
+  const fetchMetrics = useCallback(async (start = startDate, end = endDate) => {
     if (!selectedEndpoint) return
     setLoading(true)
+    setError(null)
     try {
-      const res = await fetch(APIRoutes.Metrics(selectedEndpoint), {
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+      const res = await fetch(APIRoutes.Metrics(selectedEndpoint, start, end), { headers })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.detail ?? `HTTP ${res.status}`)
+      }
+      const json = await res.json()
+      // Agno returns { metrics: [...], updated_at: "..." }
+      // Guard against both shapes just in case
+      setData(Array.isArray(json) ? { metrics: json, updated_at: null } : json)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load metrics')
+    } finally {
+      setLoading(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEndpoint, authToken, startDate, endDate])
+
+  // POST /metrics/refresh — trigger recalculation, then update state from response
+  const recalculate = useCallback(async () => {
+    if (!selectedEndpoint) return
+    setRefreshing(true)
+    setError(null)
+    try {
+      const res = await fetch(APIRoutes.MetricsRefresh(selectedEndpoint), {
+        method: 'POST',
+        headers,
       })
-      if (!res.ok) throw new Error(res.statusText)
-      setData(await res.json())
-    } catch { /* silently handled */ }
-    finally { setLoading(false) }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.detail ?? `HTTP ${res.status}`)
+      }
+      // POST /metrics/refresh returns DayAggregatedMetrics[] directly
+      const fresh: MetricEntry[] = await res.json()
+      setData({ metrics: fresh, updated_at: new Date().toISOString() })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Recalculation failed')
+    } finally {
+      setRefreshing(false)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEndpoint, authToken])
 
   useEffect(() => { fetchMetrics() }, [fetchMetrics])
@@ -347,7 +393,7 @@ export default function MetricsPage() {
       <div className="mx-auto max-w-6xl space-y-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="flex items-center gap-2 text-lg font-medium text-primary">
               <BarChart2 className="size-5 text-brand" />Metrics
@@ -360,10 +406,56 @@ export default function MetricsPage() {
               )}
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={fetchMetrics} disabled={loading} className="gap-1.5">
-            <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />Refresh
-          </Button>
+
+          {/* Controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Date range */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-accent bg-primaryAccent px-2 py-1.5 text-xs text-muted">
+              <input
+                type="date"
+                value={startDate}
+                max={endDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent text-xs text-primary outline-none cursor-pointer"
+              />
+              <span className="text-muted/50">→</span>
+              <input
+                type="date"
+                value={endDate}
+                min={startDate}
+                max={dayjs().format('YYYY-MM-DD')}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent text-xs text-primary outline-none cursor-pointer"
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => fetchMetrics(startDate, endDate)}
+                disabled={loading}
+                className="h-5 px-1.5 text-xs"
+              >
+                Go
+              </Button>
+            </div>
+
+            {/* Re-fetch (GET) */}
+            <Button size="sm" variant="outline" onClick={() => fetchMetrics()} disabled={loading || refreshing} className="gap-1.5">
+              <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />Reload
+            </Button>
+
+            {/* Recalculate (POST /metrics/refresh) */}
+            <Button size="sm" variant="outline" onClick={recalculate} disabled={loading || refreshing} className="gap-1.5 border-brand/40 text-brand hover:bg-brand/10">
+              <Activity className={cn('size-3.5', refreshing && 'animate-spin')} />Recalculate
+            </Button>
+          </div>
         </div>
+
+        {/* Error banner */}
+        {error && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">
+            {error}
+          </div>
+        )}
 
         {/* Quick stat summary row */}
         {loading && !data ? (
@@ -414,13 +506,17 @@ export default function MetricsPage() {
         )}
 
         {/* Empty state */}
-        {!loading && entries.length === 0 && (
+        {!loading && !refreshing && entries.length === 0 && !error && (
           <div className="flex flex-col items-center justify-center rounded-xl border border-accent bg-primaryAccent py-20 text-center">
             <BarChart2 className="size-10 text-muted/20" />
             <p className="mt-3 text-sm font-medium text-muted">No metrics yet</p>
             <p className="mt-1 text-xs text-muted/60">
-              Metrics are written to <span className="font-mono">agno_metrics</span> as agents run.
+              Click <span className="font-semibold">Recalculate</span> to compute metrics from existing run data,
+              or metrics will appear automatically as agents run.
             </p>
+            <Button size="sm" variant="outline" onClick={recalculate} className="mt-4 gap-1.5 border-brand/40 text-brand hover:bg-brand/10">
+              <Activity className="size-3.5" />Recalculate now
+            </Button>
           </div>
         )}
       </div>

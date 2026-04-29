@@ -3,7 +3,14 @@ export const APIRoutes = {
   Status:      (base: string) => `${base}/health`,
   Info:        (base: string) => `${base}/info`,
   Models:      (base: string) => `${base}/models`,
-  Metrics:     (base: string) => `${base}/metrics`,
+  Metrics:        (base: string, start?: string, end?: string) => {
+    const p = new URLSearchParams()
+    if (start) p.set('starting_date', start)
+    if (end)   p.set('ending_date', end)
+    const qs = p.toString()
+    return qs ? `${base}/metrics?${qs}` : `${base}/metrics`
+  },
+  MetricsRefresh: (base: string) => `${base}/metrics/refresh`,
   Registry:    (base: string) => `${base}/registry`,
   Components:  (base: string) => `${base}/components`,
 
