@@ -39,6 +39,13 @@ if [[ "${WAIT_FOR_DB,,}" = true ]]; then
     echo ""
 fi
 
+# Allow the app user to access the Docker socket (needed for Docker MCP Gateway).
+# Only applied when the socket is mounted — safe because the container is already
+# trusted to run docker commands by virtue of the socket being mounted.
+if [ -S /var/run/docker.sock ]; then
+    chmod 666 /var/run/docker.sock 2>/dev/null || true
+fi
+
 case "$1" in
     chill)
         echo -e "    ${DIM}Mode: chill${NC}"
