@@ -6,7 +6,7 @@ Performs adversarial review of healing patches before application.
 Primary Skill: healing_validation
 """
 
-from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
+from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.reasoning import ReasoningTools
 
 from agents.base.semantica_agent import SemanticaAgent
@@ -44,8 +44,8 @@ healing_judge = SemanticaAgent(
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
     pre_hooks=[
-        PIIDetectionGuardrail(),
-        PromptInjectionGuardrail(),
+        pii_detection_guardrail,
+        prompt_injection_guardrail,
     ],
 
     # Memory

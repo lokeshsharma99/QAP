@@ -10,7 +10,7 @@ Role: Analyse GitHub Actions pipeline execution logs for failed test runs.
 """
 
 from agno.agent import Agent
-from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
+from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
@@ -69,8 +69,8 @@ pipeline_analyst = Agent(
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
     pre_hooks=[
-        PIIDetectionGuardrail(),
-        PromptInjectionGuardrail(),
+        pii_detection_guardrail,
+        prompt_injection_guardrail,
     ],
     # Session state — tracks analysis context within a session
     session_state={

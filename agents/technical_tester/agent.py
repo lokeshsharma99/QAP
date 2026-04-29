@@ -10,7 +10,7 @@ Primary Skill: test_generation
 import logging
 from pathlib import Path
 
-from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
+from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
@@ -88,8 +88,8 @@ technical_tester = SemanticaAgent(
 
     # Guardrails (pre-hooks for input validation)
     pre_hooks=[
-        PIIDetectionGuardrail(),
-        PromptInjectionGuardrail(),
+        pii_detection_guardrail,
+        prompt_injection_guardrail,
     ],
 
     # Memory
