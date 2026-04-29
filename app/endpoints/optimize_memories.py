@@ -83,8 +83,10 @@ async def optimize_memories(
 
         tokens_after = strategy.count_tokens(optimized_memories)
         memories_after_count = len(optimized_memories)
-        tokens_saved = tokens_before - tokens_after
-        reduction_percentage = (tokens_saved / tokens_before * 100.0) if tokens_before > 0 else 0.0
+        # Clamp to non-negative — summarization can occasionally produce longer output
+        tokens_saved = max(0, tokens_before - tokens_after)
+        raw_reduction = ((tokens_before - tokens_after) / tokens_before * 100.0) if tokens_before > 0 else 0.0
+        reduction_percentage = max(0.0, raw_reduction)
 
         optimized_memory_schemas = [
             UserMemorySchema(

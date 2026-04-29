@@ -38,18 +38,6 @@ interface KBDocument {
 }
 
 // ---------------------------------------------------------------------------
-// Known QAP Knowledge Bases — always shown even when empty
-// ---------------------------------------------------------------------------
-const QAP_KNOWN_KBS: KBConfig[] = [
-  { id: 'codebase_vectors',          name: 'Automation Codebase' },
-  { id: 'site_manifesto_vectors',    name: 'Site Manifesto' },
-  { id: 'rca_vectors',               name: 'RCA History' },
-  { id: 'qap_learnings',             name: 'QAP Learnings' },
-  { id: 'test_results_vectors',      name: 'Test Results' },
-  { id: 'document_library_vectors',  name: 'Document Library' },
-]
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 const formatSize = (bytes?: string): string => {
@@ -271,9 +259,8 @@ export default function KnowledgePage() {
   // ── fetch KBs ───────────────────────────────────────────────────────
   const fetchKbs = useCallback(async () => {
     if (!selectedEndpoint) {
-      // No endpoint — still show the known KBs
-      setKbs(QAP_KNOWN_KBS)
-      setSelectedKb(dbId || QAP_KNOWN_KBS[0].id)
+      setKbs([])
+      setSelectedKb('')
       return
     }
     const probe = dbId || undefined
@@ -305,29 +292,22 @@ export default function KnowledgePage() {
               return { id, name: `KB ${id.slice(0, 8)}` }
             })
           )
-          // Use API-discovered KBs (with inferred friendly names) — these are the real KBs.
-          // Match each UUID to a known QAP name where possible, otherwise use inferred name.
-          const finalKbs = resolved.map((r) => {
-            const known = QAP_KNOWN_KBS.find((k) => k.name === r.name)
-            return known ? { id: r.id, name: known.name } : r
-          })
-          setKbs(finalKbs)
-          setSelectedKb(dbId || finalKbs[0].id)
+          // Use only API-discovered KBs — no hardcoded fallbacks
+          setKbs(resolved)
+          setSelectedKb(probe && ids.includes(probe) ? probe : resolved[0]?.id ?? '')
           return
         }
       } else if (probe) {
-        // Probe succeeded — show known KBs plus the probed one if different
-        const merged = [...QAP_KNOWN_KBS]
-        if (!merged.some((k) => k.id === probe)) merged.push({ id: probe, name: probe })
-        setKbs(merged)
+        // Probe succeeded with a specific known ID
+        setKbs([{ id: probe, name: inferKBName([]) }])
         setKbIdIsKnowledgeId(isUUID(probe))
         setSelectedKb(probe)
         return
       }
     } catch { /* silently handled */ }
-    // Fallback: always show the known KBs
-    setKbs(QAP_KNOWN_KBS)
-    setSelectedKb(dbId || QAP_KNOWN_KBS[0].id)
+    // No KBs discovered from backend — show empty state
+    setKbs([])
+    setSelectedKb('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEndpoint, authToken, dbId])
 
@@ -523,6 +503,17 @@ export default function KnowledgePage() {
                 {kb.name}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Empty state — no KBs discovered from backend */}
+        {kbs.length === 0 && !loading && selectedEndpoint && (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-accent bg-primaryAccent py-10 text-center">
+            <BookOpen className="size-8 text-muted/20" />
+            <p className="mt-3 text-sm font-medium text-muted">No knowledge bases found</p>
+            <p className="mt-1 text-xs text-muted/60">
+              No indexed knowledge bases were returned by the backend.
+            </p>
           </div>
         )}
 
