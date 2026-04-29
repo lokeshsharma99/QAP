@@ -137,9 +137,19 @@ _ADO_MCP_SINGLETON: MCPTools | None = None
 
 
 def _get_ado_mcp_singleton() -> list:
-    """Return singleton list, empty if URL or PAT are not configured."""
+    """Return singleton list, empty if URL or EXT_PAT are not configured.
+
+    The @azure-devops/mcp npm package reads AZURE_DEVOPS_EXT_PAT for
+    non-interactive PAT auth.  We require this variable to be set explicitly
+    (not AZURE_DEVOPS_PAT, which is a generic convention but not what the npm
+    package reads).  Without it the server falls back to browser-based
+    interactive auth which hangs and fails in headless Docker containers.
+    """
     ado_url = os.getenv("AZURE_DEVOPS_URL", "").rstrip("/")
-    ado_pat = os.getenv("AZURE_DEVOPS_PAT", "") or os.getenv("AZURE_DEVOPS_EXT_PAT", "")
+    # @azure-devops/mcp reads AZURE_DEVOPS_EXT_PAT natively.
+    # Require it to be set explicitly; do NOT fall back to AZURE_DEVOPS_PAT so
+    # that we can detect the "PAT set but wrong variable name" misconfiguration.
+    ado_ext_pat = os.getenv("AZURE_DEVOPS_EXT_PAT", "")
 
     if not ado_url:
         _log.warning(
@@ -148,11 +158,12 @@ def _get_ado_mcp_singleton() -> list:
         )
         return []
 
-    if not ado_pat:
+    if not ado_ext_pat:
         _log.warning(
-            "AZURE_DEVOPS_PAT not set — ADO MCP tools unavailable. "
-            "Set AZURE_DEVOPS_PAT in .env for non-interactive Docker auth. "
-            "Without a PAT the server falls back to browser auth which fails headless."
+            "AZURE_DEVOPS_EXT_PAT not set — ADO MCP tools unavailable. "
+            "Set AZURE_DEVOPS_EXT_PAT=<your-pat> in .env. "
+            "The @azure-devops/mcp package reads this variable for non-interactive auth. "
+            "Without it the server falls back to browser auth which fails in headless Docker."
         )
         return []
 
