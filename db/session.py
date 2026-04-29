@@ -10,7 +10,7 @@ from os import getenv
 from agno.db.postgres import PostgresDb
 from agno.knowledge import Knowledge
 from agno.knowledge.embedder.ollama import OllamaEmbedder
-from agno.vectordb.pgvector import PgVector, SearchType
+from agno.vectordb.pgvector import HNSW, PgVector, SearchType
 
 from db.url import db_url
 
@@ -53,6 +53,7 @@ def create_knowledge(name: str, table_name: str) -> Knowledge:
             db_url=db_url,
             table_name=table_name,
             search_type=SearchType.hybrid,
+            vector_index=HNSW(m=16, ef_construction=200),
             embedder=OllamaEmbedder(
                 id="qwen3-embedding:4b",
                 dimensions=2560,

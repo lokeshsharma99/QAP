@@ -14,8 +14,9 @@ from pathlib import Path
 from typing import Optional
 
 from agno.tools import Toolkit, tool
-from agno.tools.file import FileTools
-from agno.tools.knowledge import KnowledgeTools
+from agno.knowledge.chunking.fixed import FixedSizeChunking
+from agno.knowledge.chunking.recursive import RecursiveChunking
+from agno.knowledge.reader.text_reader import TextReader
 from agno.utils.log import logger
 
 from contracts.test_deletion_approval import (
@@ -44,8 +45,6 @@ class AutomationFileWatcher:
         self.debounce_seconds = debounce_seconds
         self.last_modified = {}
         self.knowledge = get_automation_knowledge()
-        self.file_tools = FileTools(Path("automation"))
-        self.knowledge_tools = KnowledgeTools(knowledge=self.knowledge)
 
     def scan_directory(self) -> list[str]:
         """Scan the automation directory for all relevant files.
@@ -118,20 +117,34 @@ class AutomationFileWatcher:
     def re_index_file(self, file_path: str):
         """Re-index a single file in the knowledge base.
 
+        Chooses a chunking strategy appropriate for the file type:
+        - .ts / .py  → RecursiveChunking(1000, overlap=100) — respects code structure
+        - .feature   → RecursiveChunking(2000, overlap=200) — keeps Gherkin scenarios together
+        - .json      → FixedSizeChunking(2000) — structured data, no overlap needed
+        - other      → FixedSizeChunking(5000) — default
+
         Args:
             file_path: Path to the file to re-index
         """
         try:
-            logger.info(f"Re-indexing file: {file_path}")
-            # Read file content
-            content = self.file_tools.read_file(file_path)
-            # Add to knowledge base
-            self.knowledge_tools.add_knowledge(
-                content=content,
-                reference=f"file://{file_path}",
+            extension = Path(file_path).suffix.lower()
+
+            if extension in ('.ts', '.py'):
+                chunking: FixedSizeChunking | RecursiveChunking = RecursiveChunking(chunk_size=1000, overlap=100)
+            elif extension == '.feature':
+                chunking = RecursiveChunking(chunk_size=2000, overlap=200)
+            elif extension == '.json':
+                chunking = FixedSizeChunking(chunk_size=2000, overlap=0)
+            else:
+                chunking = FixedSizeChunking(chunk_size=5000, overlap=0)
+
+            logger.info(f"Re-indexing {file_path} with {type(chunking).__name__}")
+            self.knowledge.insert(
+                path=file_path,
+                reader=TextReader(chunking_strategy=chunking),
                 metadata={
                     "file_path": file_path,
-                    "file_type": Path(file_path).suffix,
+                    "file_type": extension,
                     "last_modified": self.get_file_modification_time(file_path),
                 },
             )
