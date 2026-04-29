@@ -31,6 +31,7 @@ from app.endpoints.optimize_memories import router as optimize_memories_router
 from app.endpoints.settings import router as settings_router
 from app.registry import registry
 from app.settings import RUNTIME_ENV, agent_db
+from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
 from teams.context import context_team
 from teams.diagnostics import diagnostics_team
 from teams.engineering import engineering_team
@@ -42,6 +43,17 @@ from workflows.spec_to_code import spec_to_code
 from workflows.triage_heal import triage_heal
 
 # ---------------------------------------------------------------------------
+# Knowledge bases — passed directly to AgentOS so they are browsable in the
+# /knowledge UI page without requiring an active agent session.
+# ---------------------------------------------------------------------------
+_kb_list = []
+for _kb_factory in [get_qap_learnings_kb, get_automation_kb, get_site_manifesto_kb, get_rca_kb]:
+    try:
+        _kb_list.append(_kb_factory())
+    except Exception:
+        pass
+
+# ---------------------------------------------------------------------------
 # Create AgentOS
 # ---------------------------------------------------------------------------
 agent_os = AgentOS(
@@ -51,6 +63,10 @@ agent_os = AgentOS(
     db=agent_db,
     scheduler=True,
     scheduler_poll_interval=15,
+    # run_hooks_in_background: post-hooks (logging, telemetry) run as FastAPI
+    # background tasks so they never block the streaming response to the UI.
+    # Guardrails in pre_hooks are always synchronous regardless of this flag.
+    run_hooks_in_background=True,
     agents=[
         discovery,
         librarian,
@@ -78,6 +94,7 @@ agent_os = AgentOS(
         spec_to_code,
         triage_heal,
     ],
+    knowledge=_kb_list if _kb_list else None,
     registry=registry,
     config=str(Path(__file__).parent / "config.yaml"),
 )

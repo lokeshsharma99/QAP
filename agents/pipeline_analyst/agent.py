@@ -13,6 +13,7 @@ from agno.agent import Agent
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
+from agno.tools.scheduler import SchedulerTools
 
 from agents.pipeline_analyst.instructions import INSTRUCTIONS
 from agents.pipeline_analyst.tools import download_ci_artifact, parse_allure_results, parse_junit_xml
@@ -56,6 +57,10 @@ pipeline_analyst = Agent(
     # Capabilities
     tools=[
         ReasoningTools(add_instructions=True),
+        SchedulerTools(
+            db=agent_db,
+            default_endpoint="/agents/pipeline-analyst/runs",
+        ),
         KnowledgeTools(knowledge=rca_kb),
         KnowledgeTools(knowledge=automation_kb),
         *_github_tools,
@@ -84,6 +89,13 @@ pipeline_analyst = Agent(
     add_session_state_to_context=True,
     # Memory — learns failure patterns across sessions
     enable_agentic_memory=True,
+    update_memory_on_run=True,
+    enable_session_summaries=True,
+    add_session_summary_to_context=True,
+    search_past_sessions=True,
+    num_past_sessions_to_search=5,
+    compress_tool_results=True,
+    tool_call_limit=50,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

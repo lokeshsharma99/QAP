@@ -10,6 +10,7 @@ from agno.agent import Agent
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
+from agno.tools.user_feedback import UserFeedbackTools
 
 from agents.judge.instructions import INSTRUCTIONS
 from agents.judge.tools import check_code_quality, lint_gherkin, score_confidence
@@ -56,6 +57,7 @@ judge = Agent(
     # Capabilities
     tools=[
         ReasoningTools(add_instructions=True),
+        UserFeedbackTools(),
         KnowledgeTools(knowledge=qap_learnings_kb),
         KnowledgeTools(knowledge=rca_kb),
         *_decision_tools,
@@ -81,8 +83,15 @@ judge = Agent(
     add_session_state_to_context=True,
     # Memory
     enable_agentic_memory=True,
+    update_memory_on_run=True,
+    search_past_sessions=True,
+    num_past_sessions_to_search=5,
+    tool_call_limit=30,
     # Context
     add_datetime_to_context=True,
+    add_history_to_context=True,
+    read_chat_history=True,
+    num_history_runs=5,
     # Output
     markdown=True,
 )

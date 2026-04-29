@@ -80,6 +80,12 @@ engineer = Agent(
     add_session_state_to_context=True,
     # Memory
     enable_agentic_memory=True,
+    update_memory_on_run=True,
+    enable_session_summaries=True,
+    add_session_summary_to_context=True,
+    search_past_sessions=True,
+    num_past_sessions_to_search=3,
+    tool_call_limit=50,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

@@ -58,6 +58,8 @@ data_agent = Agent(
     add_session_state_to_context=True,
     # Memory
     enable_agentic_memory=True,
+    update_memory_on_run=True,
+    tool_call_limit=30,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

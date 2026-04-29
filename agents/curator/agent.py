@@ -12,6 +12,7 @@ from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
+from agno.tools.user_feedback import UserFeedbackTools
 
 from agents.base.semantica_agent import SemanticaAgent
 from agents.curator.instructions import INSTRUCTIONS
@@ -52,6 +53,7 @@ tools = [
         add_instructions=True,
         add_few_shot=True,
     ),
+    UserFeedbackTools(),
     FileTools(Path("automation")),
 ]
 
