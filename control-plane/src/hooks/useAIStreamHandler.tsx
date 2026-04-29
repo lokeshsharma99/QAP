@@ -147,8 +147,16 @@ const useAIChatStreamHandler = () => {
         }
 
         if (!RunUrl) {
-          updateMessagesWithErrorState()
-          setStreamingErrorMessage('Please select an agent, team, or workflow first.')
+          const noAgentMsg = 'Please select an agent, team, or workflow first.'
+          setMessages((prevMessages) => {
+            const newMessages = [...prevMessages]
+            const lastMessage = newMessages[newMessages.length - 1]
+            if (lastMessage && lastMessage.role === 'agent') {
+              newMessages[newMessages.length - 1] = { ...lastMessage, streamingError: true, content: noAgentMsg }
+            }
+            return newMessages
+          })
+          setStreamingErrorMessage(noAgentMsg)
           setIsStreaming(false)
           return
         }
@@ -321,11 +329,23 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.TeamRunError ||
               chunk.event === RunEvent.TeamRunCancelled
             ) {
-              updateMessagesWithErrorState()
               const rawError = (chunk.content as string) || (chunk.event === RunEvent.TeamRunCancelled ? 'Run cancelled' : 'Error during run')
               const errorContent = /VLM|Vision Language Model|not a vlm/i.test(rawError)
                 ? 'The current model does not support image/file attachments. Either use a vision-capable model or attach text/code files only.'
                 : rawError
+              // Populate the agent message content so the error bubble renders in the chat UI
+              setMessages((prevMessages) => {
+                const newMessages = [...prevMessages]
+                const lastMessage = newMessages[newMessages.length - 1]
+                if (lastMessage && lastMessage.role === 'agent') {
+                  newMessages[newMessages.length - 1] = {
+                    ...lastMessage,
+                    streamingError: true,
+                    content: lastMessage.content || errorContent,
+                  }
+                }
+                return newMessages
+              })
               addChatEvent({ type: 'error', label: `Error: ${String(errorContent).slice(0, 80)}`, ts: Date.now() })
               setStreamingErrorMessage(errorContent)
               if (newSessionId) {
@@ -398,8 +418,15 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.WorkflowError ||
               chunk.event === RunEvent.StepError
             ) {
-              updateMessagesWithErrorState()
               const rawError = (chunk.content as string) || 'Workflow error'
+              setMessages((prevMessages) => {
+                const newMessages = [...prevMessages]
+                const lastMessage = newMessages[newMessages.length - 1]
+                if (lastMessage && lastMessage.role === 'agent') {
+                  newMessages[newMessages.length - 1] = { ...lastMessage, streamingError: true, content: lastMessage.content || rawError }
+                }
+                return newMessages
+              })
               addChatEvent({ type: 'error', label: `Error: ${String(rawError).slice(0, 80)}`, ts: Date.now() })
               setStreamingErrorMessage(rawError)
               if (newSessionId) {
@@ -411,15 +438,31 @@ const useAIChatStreamHandler = () => {
             } else if (
               chunk.event === RunEvent.WorkflowCancelled
             ) {
-              updateMessagesWithErrorState()
+              const cancelMsg = 'Workflow was cancelled'
+              setMessages((prevMessages) => {
+                const newMessages = [...prevMessages]
+                const lastMessage = newMessages[newMessages.length - 1]
+                if (lastMessage && lastMessage.role === 'agent') {
+                  newMessages[newMessages.length - 1] = { ...lastMessage, streamingError: true, content: lastMessage.content || cancelMsg }
+                }
+                return newMessages
+              })
               addChatEvent({ type: 'error', label: 'Workflow cancelled', ts: Date.now() })
-              setStreamingErrorMessage('Workflow was cancelled')
+              setStreamingErrorMessage(cancelMsg)
             }
           },
           onError: (error) => {
-            updateMessagesWithErrorState()
-            addChatEvent({ type: 'error', label: `Error: ${error.message.slice(0, 80)}`, ts: Date.now() })
-            setStreamingErrorMessage(error.message)
+            const errMsg = error.message
+            setMessages((prevMessages) => {
+              const newMessages = [...prevMessages]
+              const lastMessage = newMessages[newMessages.length - 1]
+              if (lastMessage && lastMessage.role === 'agent') {
+                newMessages[newMessages.length - 1] = { ...lastMessage, streamingError: true, content: lastMessage.content || errMsg }
+              }
+              return newMessages
+            })
+            addChatEvent({ type: 'error', label: `Error: ${errMsg.slice(0, 80)}`, ts: Date.now() })
+            setStreamingErrorMessage(errMsg)
             if (newSessionId) {
               setSessionsData(
                 (prevSessionsData) =>
@@ -430,8 +473,15 @@ const useAIChatStreamHandler = () => {
           onComplete: () => {}
         })
       } catch (error) {
-        updateMessagesWithErrorState()
         const errMsg = error instanceof Error ? error.message : String(error)
+        setMessages((prevMessages) => {
+          const newMessages = [...prevMessages]
+          const lastMessage = newMessages[newMessages.length - 1]
+          if (lastMessage && lastMessage.role === 'agent') {
+            newMessages[newMessages.length - 1] = { ...lastMessage, streamingError: true, content: lastMessage.content || errMsg }
+          }
+          return newMessages
+        })
         addChatEvent({ type: 'error', label: `Error: ${errMsg.slice(0, 80)}`, ts: Date.now() })
         setStreamingErrorMessage(errMsg)
         if (newSessionId) {
@@ -448,7 +498,6 @@ const useAIChatStreamHandler = () => {
     [
       setMessages,
       addMessage,
-      updateMessagesWithErrorState,
       selectedEndpoint,
       authToken,
       streamResponse,
