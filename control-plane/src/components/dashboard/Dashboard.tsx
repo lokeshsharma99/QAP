@@ -49,7 +49,7 @@ const RecentTracesCard = ({ endpoint, authToken }: { endpoint: string; authToken
       })
       if (res.ok) {
         const data = await res.json()
-        setTraces(Array.isArray(data) ? data.slice(0, 6) : (data.traces ?? []).slice(0, 6))
+        setTraces(Array.isArray(data) ? data.slice(0, 6) : (data.data ?? data.traces ?? []).slice(0, 6))
       }
     } catch { /* offline */ }
     finally { setLoading(false) }
