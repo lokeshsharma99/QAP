@@ -164,16 +164,17 @@ export class UniversalCreditPersonalDetailsPage {
 
     const formSection = page.locator('form');
 
-    // First Name - label near input pattern
-    this.firstNameField = page.locator('input').near(page.locator('label:has-text("First name")'));
+    // First Name - label associated input pattern
+    this.firstNameField = page.locator('label:has-text("First name")').locator('..').locator('input');
 
-    // Last Name - label near input pattern
-    this.lastNameField = page.locator('input').near(page.locator('label:has-text("Last name")'));
+    // Last Name - label associated input pattern
+    this.lastNameField = page.locator('label:has-text("Last name")').locator('..').locator('input');
 
-    // National Insurance Number - label near input pattern
+    // National Insurance Number - label associated input pattern
     this.nationalInsuranceNumberField = page
-      .locator('input')
-      .near(page.locator('label:has-text("National Insurance number")'));
+      .locator('label:has-text("National Insurance number")')
+      .locator('..')
+      .locator('input');
 
     // Date of Birth fields - use legend/nfieldset context for proper association
     // Day field
@@ -191,12 +192,12 @@ export class UniversalCreditPersonalDetailsPage {
       .locator('#dateOfBirth-year, input[name="dateOfBirth-year"], [data-testid="dob-year"]')
       .first();
 
-    // Alternative: Try 'near' pattern with legend containing "Date of birth"
+    // Alternative: Try with legend containing "Date of birth"
     const dobLegend = page.locator('legend:has-text("Date of birth")');
     if (dobLegend.count() > 0) {
-      this.dateOfBirthDayField = page.locator('input').near(dobLegend).first();
-      this.dateOfBirthMonthField = page.locator('input').near(dobLegend).nth(1);
-      this.dateOfBirthYearField = page.locator('input').near(dobLegend).nth(2);
+      this.dateOfBirthDayField = dobLegend.locator('..').locator('input[name*="day"]').first();
+      this.dateOfBirthMonthField = dobLegend.locator('..').locator('input[name*="month"]').first();
+      this.dateOfBirthYearField = dobLegend.locator('..').locator('input[name*="year"]').first();
     }
 
     // ==========================================================================
@@ -207,21 +208,16 @@ export class UniversalCreditPersonalDetailsPage {
     // ==========================================================================
 
     // First Name error
-    this.firstNameError = page.locator('[data-testid="first-name-error"], [id$="-error"]')
-      .near(page.locator('label:has-text("First name")'));
+    this.firstNameError = page.locator('label:has-text("First name")').locator('..').locator('[data-testid="first-name-error"], [id$="-error"]');
 
     // Last Name error
-    this.lastNameError = page.locator('[data-testid="last-name-error"], [id$="-error"]')
-      .near(page.locator('label:has-text("Last name")'));
+    this.lastNameError = page.locator('label:has-text("Last name")').locator('..').locator('[data-testid="last-name-error"], [id$="-error"]');
 
     // Date of Birth error
-    this.dateOfBirthError = page.locator('[data-testid="dob-error"], [id$="-error"]')
-      .near(page.locator('legend:has-text("Date of birth")'));
+    this.dateOfBirthError = page.locator('legend:has-text("Date of birth")').locator('..').locator('[data-testid="dob-error"], [id$="-error"]');
 
     // National Insurance Number error
-    this.nationalInsuranceNumberError = page.locator(
-      '[data-testid="national-insurance-number-error"], [id$="-error"]'
-    ).near(page.locator('label:has-text("National Insurance number")'));
+    this.nationalInsuranceNumberError = page.locator('label:has-text("National Insurance number")').locator('..').locator('[data-testid="national-insurance-number-error"], [id$="-error"]');
 
     // Page heading
     this.pageHeading = page.locator('h1');

@@ -209,19 +209,26 @@ const MermaidBlock = ({ code }: { code: string }) => {
 
   useEffect(() => {
     let cancelled = false
+    const showFallback = () => {
+      if (!cancelled && ref.current) {
+        ref.current.innerHTML = `<pre class="text-xs text-muted/60 whitespace-pre-wrap p-3 rounded-xl bg-background border border-border/30">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`
+      }
+    }
     import('mermaid').then((m) => {
       if (cancelled) return
       m.default.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' })
       m.default.render(idRef.current, code)
         .then(({ svg }) => {
-          if (!cancelled && ref.current) ref.current.innerHTML = svg
-        })
-        .catch(() => {
-          if (!cancelled && ref.current) {
-            ref.current.innerHTML = `<pre class="text-xs text-muted/60 whitespace-pre-wrap p-2">${code}</pre>`
+          if (cancelled) return
+          // Mermaid resolves (not rejects) with an error SVG on syntax errors
+          if (svg.includes('class="error-icon"') || svg.includes('Syntax error in text')) {
+            showFallback()
+          } else if (ref.current) {
+            ref.current.innerHTML = svg
           }
         })
-    })
+        .catch(showFallback)
+    }).catch(showFallback)
     return () => { cancelled = true }
   }, [code])
 
@@ -260,7 +267,7 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
       className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}
       initial={{ opacity: 0, y: 16, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1], delay: Math.min(index * 0.04, 0.3) }}
+      transition={{ duration: 0.25, ease: 'easeOut', delay: Math.min(index * 0.04, 0.3) }}
     >
       <div className="flex items-center gap-2">
         <Icon type={isUser ? 'user' : 'agent'} size="xs" />
@@ -329,14 +336,26 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
                 ),
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 code: ({ inline, children, className }: any) => {
-                  if (inline) {
+                  // Inline detection: use the `inline` prop when available (react-markdown <9),
+                  // but also fall back to checking className — fenced code blocks always have
+                  // a `language-*` class; bare backtick inline code never does.
+                  const isBlock = Boolean(className?.startsWith('language-'))
+                  if (inline || !isBlock) {
                     return (
-                      <code className="relative rounded-sm bg-secondary px-1 py-0.5 font-dmmono text-[0.8rem]">{children}</code>
+                      <code className="rounded bg-accent px-1.5 py-0.5 font-dmmono text-[0.8rem] text-primary/90">{children}</code>
                     )
                   }
                   const lang = className?.replace('language-', '') || ''
                   if (lang === 'mermaid') {
                     return <MermaidBlock code={String(children).trim()} />
+                  }
+                  // Single-line no-lang blocks (e.g. ```\nSIMPLE_ID\n```) → render as
+                  // enhanced inline rather than a full dark code box
+                  const text = String(children).trim()
+                  if (!lang && !text.includes('\n')) {
+                    return (
+                      <code className="rounded bg-accent px-1.5 py-0.5 font-dmmono text-[0.8rem] text-primary/90">{text}</code>
+                    )
                   }
                   return (
                     <div className="rounded-md overflow-hidden border border-border/50 mb-3">

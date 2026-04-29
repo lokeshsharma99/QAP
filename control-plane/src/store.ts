@@ -174,6 +174,23 @@ export const useStore = create<Store>()(
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated()
+        // If the UI is accessed from a non-localhost host (e.g. 192.168.x.x)
+        // but localStorage still holds the default localhost URL, update it
+        // automatically so the backend URL matches the current access host.
+        if (
+          state &&
+          typeof window !== 'undefined' &&
+          window.location.hostname !== 'localhost' &&
+          window.location.hostname !== '127.0.0.1'
+        ) {
+          const stored = state.selectedEndpoint
+          if (stored.includes('localhost') || stored.includes('127.0.0.1')) {
+            const port = new URL(stored).port || '8000'
+            state.setSelectedEndpoint(
+              `http://${window.location.hostname}:${port}`
+            )
+          }
+        }
       },
       partialize: (state) => ({
         selectedEndpoint: state.selectedEndpoint,

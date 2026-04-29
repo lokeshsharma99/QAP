@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useStore } from '@/store'
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   BookOpen, RefreshCw, Search, ChevronDown, ChevronUp, Plus, Trash2,
-  FileText, Link2, Upload, X, AlertCircle
+  FileText, Link2, Upload, X, AlertCircle, Globe
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { toast } from 'sonner'
@@ -35,18 +36,6 @@ interface KBDocument {
   content?: string
   score?: number
 }
-
-// ---------------------------------------------------------------------------
-// Known QAP Knowledge Bases — always shown even when empty
-// ---------------------------------------------------------------------------
-const QAP_KNOWN_KBS: KBConfig[] = [
-  { id: 'codebase_vectors',          name: 'Automation Codebase' },
-  { id: 'site_manifesto_vectors',    name: 'Site Manifesto' },
-  { id: 'rca_vectors',               name: 'RCA History' },
-  { id: 'qap_learnings',             name: 'QAP Learnings' },
-  { id: 'test_results_vectors',      name: 'Test Results' },
-  { id: 'document_library_vectors',  name: 'Document Library' },
-]
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -224,7 +213,7 @@ const SearchResultCard = ({ doc }: { doc: KBDocument & { score?: number } }) => 
 // ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
-type UploadTab = 'text' | 'file' | 'url'
+type UploadTab = 'text' | 'file' | 'url' | 'remote'
 
 export default function KnowledgePage() {
   const { selectedEndpoint, authToken } = useStore()
@@ -250,6 +239,8 @@ export default function KnowledgePage() {
   const [uploadName, setUploadName]   = useState('')
   const [textContent, setTextContent] = useState('')
   const [urlInput, setUrlInput]       = useState('')
+  const [remoteUrl, setRemoteUrl]     = useState('')
+  const [remoteLoader, setRemoteLoader] = useState('website')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading]     = useState(false)
 
@@ -268,9 +259,8 @@ export default function KnowledgePage() {
   // ── fetch KBs ───────────────────────────────────────────────────────
   const fetchKbs = useCallback(async () => {
     if (!selectedEndpoint) {
-      // No endpoint — still show the known KBs
-      setKbs(QAP_KNOWN_KBS)
-      setSelectedKb(dbId || QAP_KNOWN_KBS[0].id)
+      setKbs([])
+      setSelectedKb('')
       return
     }
     const probe = dbId || undefined
@@ -302,30 +292,22 @@ export default function KnowledgePage() {
               return { id, name: `KB ${id.slice(0, 8)}` }
             })
           )
-          // Merge API-discovered KBs with the known QAP KBs (db_id based)
-          // Deduplicate by both id and name — avoids showing the same KB twice
-          // when the API discovers a UUID for a KB already in the static list
-          const merged = [...QAP_KNOWN_KBS]
-          resolved.forEach((r) => {
-            if (!merged.some((k) => k.id === r.id || k.name === r.name)) merged.push(r)
-          })
-          setKbs(merged)
-          setSelectedKb(dbId || merged[0].id)
+          // Use only API-discovered KBs — no hardcoded fallbacks
+          setKbs(resolved)
+          setSelectedKb(probe && ids.includes(probe) ? probe : resolved[0]?.id ?? '')
           return
         }
       } else if (probe) {
-        // Probe succeeded — show known KBs plus the probed one if different
-        const merged = [...QAP_KNOWN_KBS]
-        if (!merged.some((k) => k.id === probe)) merged.push({ id: probe, name: probe })
-        setKbs(merged)
+        // Probe succeeded with a specific known ID
+        setKbs([{ id: probe, name: inferKBName([]) }])
         setKbIdIsKnowledgeId(isUUID(probe))
         setSelectedKb(probe)
         return
       }
     } catch { /* silently handled */ }
-    // Fallback: always show the known KBs
-    setKbs(QAP_KNOWN_KBS)
-    setSelectedKb(dbId || QAP_KNOWN_KBS[0].id)
+    // No KBs discovered from backend — show empty state
+    setKbs([])
+    setSelectedKb('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEndpoint, authToken, dbId])
 
@@ -410,9 +392,27 @@ export default function KnowledgePage() {
     if (uploadTab === 'text' && !textContent.trim()) return
     if (uploadTab === 'url'  && !urlInput.trim())    return
     if (uploadTab === 'file' && !selectedFile)        return
+    if (uploadTab === 'remote' && !remoteUrl.trim())  return
 
     setUploading(true)
     try {
+      if (uploadTab === 'remote') {
+        const body: Record<string, unknown> = {
+          url: remoteUrl.trim(),
+          loader_type: remoteLoader,
+        }
+        if (selectedKb) Object.assign(body, kbParam(selectedKb))
+        const res = await fetch(APIRoutes.RemoteContent(selectedEndpoint), {
+          method: 'POST',
+          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        if (!res.ok) throw new Error(await res.text())
+        toast.success('Remote source queued for indexing')
+        setRemoteUrl('')
+        setTimeout(() => fetchDocs(selectedKb), 2000)
+        return
+      }
       const resolvedId = selectedKb
       const uploadUrl = new URL(APIRoutes.KnowledgeContent(selectedEndpoint))
       if (resolvedId) {
@@ -464,14 +464,15 @@ export default function KnowledgePage() {
   useEffect(() => { if (selectedKb) fetchDocs(selectedKb) }, [selectedKb, fetchDocs])
 
   const canUpload =
-    (uploadTab === 'text' && textContent.trim()) ||
-    (uploadTab === 'url'  && urlInput.trim()) ||
-    (uploadTab === 'file' && !!selectedFile)
+    (uploadTab === 'text'   && textContent.trim().length > 0) ||
+    (uploadTab === 'url'    && urlInput.trim().length > 0) ||
+    (uploadTab === 'file'   && !!selectedFile) ||
+    (uploadTab === 'remote' && remoteUrl.trim().length > 0)
 
   const displayDocs = searchResults !== null ? searchResults : docs
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       <div className="mx-auto max-w-4xl space-y-6">
 
         {/* Header */}
@@ -505,6 +506,17 @@ export default function KnowledgePage() {
           </div>
         )}
 
+        {/* Empty state — no KBs discovered from backend */}
+        {kbs.length === 0 && !loading && selectedEndpoint && (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-accent bg-primaryAccent py-10 text-center">
+            <BookOpen className="size-8 text-muted/20" />
+            <p className="mt-3 text-sm font-medium text-muted">No knowledge bases found</p>
+            <p className="mt-1 text-xs text-muted/60">
+              No indexed knowledge bases were returned by the backend.
+            </p>
+          </div>
+        )}
+
         {/* Search */}
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -532,9 +544,10 @@ export default function KnowledgePage() {
           {/* Tab bar */}
           <div className="flex border-b border-accent">
             {([
-              { id: 'text' as UploadTab, icon: FileText,  label: 'Text' },
-              { id: 'file' as UploadTab, icon: Upload,    label: 'Upload File' },
-              { id: 'url'  as UploadTab, icon: Link2,     label: 'Add URL' },
+              { id: 'text'   as UploadTab, icon: FileText, label: 'Text' },
+              { id: 'file'   as UploadTab, icon: Upload,   label: 'Upload File' },
+              { id: 'url'    as UploadTab, icon: Link2,    label: 'Add URL' },
+              { id: 'remote' as UploadTab, icon: Globe,    label: 'Remote Source' },
             ] as const).map(({ id, icon: Icon, label }) => (
               <button
                 key={id}
@@ -619,6 +632,29 @@ export default function KnowledgePage() {
               </div>
             )}
 
+            {uploadTab === 'remote' && (
+              <div className="space-y-2">
+                <input
+                  value={remoteUrl}
+                  onChange={(e) => setRemoteUrl(e.target.value)}
+                  placeholder="https://example.com/ — crawl and index via Agno loader"
+                  className="w-full rounded-xl border border-accent bg-background px-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
+                />
+                <select
+                  value={remoteLoader}
+                  onChange={(e) => setRemoteLoader(e.target.value)}
+                  className="w-full rounded-xl border border-accent bg-background px-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
+                >
+                  {['website', 'sitemap', 'pdf', 'docx', 'github', 'jira', 'confluence'].map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted/60">
+                  Uses Agno&apos;s remote content loader — crawls and vectorizes the target source.
+                </p>
+              </div>
+            )}
+
             <Button
               size="sm"
               onClick={handleUpload}
@@ -630,7 +666,7 @@ export default function KnowledgePage() {
               ) : (
                 <Plus className="size-3.5" />
               )}
-              {uploading ? 'Uploading…' : 'Add to Knowledge Base'}
+              {uploading ? 'Uploading…' : uploadTab === 'remote' ? 'Index Remote Source' : 'Add to Knowledge Base'}
             </Button>
           </div>
         </div>
@@ -669,7 +705,7 @@ export default function KnowledgePage() {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 

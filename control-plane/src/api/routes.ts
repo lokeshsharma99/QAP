@@ -19,8 +19,9 @@ export const APIRoutes = {
   DeleteTeamSession: (base: string, tid: string, sid: string) => `${base}/v1/teams/${tid}/sessions/${sid}`,
 
   // ── Sessions ─────────────────────────────────────────────────────────────
-  GetSessions: (base: string) => `${base}/sessions`,
-  GetSession:  (base: string, sid: string) => `${base}/sessions/${sid}/runs`,
+  GetSessions:   (base: string) => `${base}/sessions`,
+  CreateSession: (base: string) => `${base}/sessions`,
+  GetSession:    (base: string, sid: string) => `${base}/sessions/${sid}/runs`,
   GetSessionRun: (base: string, sid: string, rid: string) => `${base}/sessions/${sid}/runs/${rid}`,
   DeleteSession: (base: string, sid: string) => `${base}/sessions/${sid}`,
 
@@ -31,10 +32,13 @@ export const APIRoutes = {
   TraceStats:     (base: string) => `${base}/trace_session_stats`,
 
   // ── Knowledge ────────────────────────────────────────────────────────────
-  KnowledgeConfig:  (base: string) => `${base}/knowledge/config`,
-  KnowledgeContent: (base: string) => `${base}/knowledge/content`,
-  KnowledgeSearch:  (base: string) => `${base}/knowledge/search`,
+  KnowledgeConfig:      (base: string) => `${base}/knowledge/config`,
+  KnowledgeContent:     (base: string) => `${base}/knowledge/content`,
+  KnowledgeSearch:      (base: string) => `${base}/knowledge/search`,
   KnowledgeContentById: (base: string, id: string) => `${base}/knowledge/content/${id}`,
+  KnowledgeSources:     (base: string, kid: string) => `${base}/knowledge/${kid}/sources`,
+  KnowledgeSourceFiles: (base: string, kid: string, sid: string) => `${base}/knowledge/${kid}/sources/${sid}/files`,
+  RemoteContent:        (base: string) => `${base}/knowledge/remote-content`,
 
   // ── Memory ───────────────────────────────────────────────────────────────
   GetMemories:    (base: string) => `${base}/memories`,
@@ -51,10 +55,13 @@ export const APIRoutes = {
   ApprovalStatus:  (base: string, id: string) => `${base}/approvals/${id}/status`,
 
   // ── Workflows ────────────────────────────────────────────────────────────
-  GetWorkflows:    (base: string) => `${base}/workflows`,
-  GetWorkflow:     (base: string, id: string) => `${base}/workflows/${id}`,
-  WorkflowRun:     (base: string, id: string) => `${base}/workflows/${id}/runs`,
+  GetWorkflows:         (base: string) => `${base}/workflows`,
+  GetWorkflow:          (base: string, id: string) => `${base}/workflows/${id}`,
+  WorkflowRun:          (base: string, id: string) => `${base}/workflows/${id}/runs`,
+  GetWorkflowRuns:      (base: string, id: string) => `${base}/workflows/${id}/runs`,
   GetWorkflowRunStatus: (base: string, wid: string, rid: string) => `${base}/workflows/${wid}/runs/${rid}`,
+  ContinueWorkflowRun:  (base: string, wid: string, rid: string) => `${base}/workflows/${wid}/runs/${rid}/continue`,
+  CancelWorkflowRun:    (base: string, wid: string, rid: string) => `${base}/workflows/${wid}/runs/${rid}/cancel`,
 
   // ── Agent / Team Config ───────────────────────────────────────────────────
   GetAgentConfig:   (base: string, id: string) => `${base}/agents/${id}/config`,
@@ -75,4 +82,14 @@ export const APIRoutes = {
   DisableSchedule:  (base: string, id: string) => `${base}/schedules/${id}/disable`,
   TriggerSchedule:  (base: string, id: string) => `${base}/schedules/${id}/trigger`,
   GetScheduleRuns:  (base: string, id: string) => `${base}/schedules/${id}/runs`,
+
+  // ── Evals ────────────────────────────────────────────────────────────────
+  GetEvalRuns:    (base: string) => `${base}/eval-runs`,
+  GetEvalRun:     (base: string, id: string) => `${base}/eval-runs/${id}`,
+  CreateEvalRun:  (base: string) => `${base}/eval-runs`,
+  DeleteEvalRun:  (base: string, id: string) => `${base}/eval-runs/${id}`,
+
+  // ── Traces (extended) ────────────────────────────────────────────────────
+  TraceFilterSchema: (base: string) => `${base}/traces/filter-schema`,
+  SearchTracesDSL:   (base: string) => `${base}/traces/search`,
 }

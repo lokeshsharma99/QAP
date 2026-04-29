@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useStore } from '@/store'
 import { APIRoutes } from '@/api/routes'
@@ -344,7 +345,7 @@ export default function ApprovalsPage() {
   const total         = meta?.total_count ?? approvals.length
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       <div className="mx-auto max-w-4xl space-y-6">
 
         {/* Header */}
@@ -454,7 +455,7 @@ export default function ApprovalsPage() {
           </p>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 

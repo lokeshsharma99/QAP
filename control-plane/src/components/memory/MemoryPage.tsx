@@ -1,16 +1,18 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useEffect, useState, useCallback } from 'react'
 import { useStore } from '@/store'
 import { APIRoutes } from '@/api/routes'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Brain, RefreshCw, Search, Trash2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
+import { Brain, RefreshCw, Search, Trash2, ChevronDown, ChevronUp, Sparkles, BarChart3 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { toast } from 'sonner'
 
 interface Memory {
-  id: string
+  id?: string
+  memory_id?: string
   memory?: string
   summary?: string
   topics?: string[]
@@ -21,13 +23,12 @@ interface Memory {
   score?: number
 }
 
-interface MemoryTopic {
-  topic: string
-  count: number
-}
+// API returns either string[] or {topic, count}[]
+type MemoryTopic = string | { topic: string; count: number }
 
 const MemoryCard = ({ mem, onDelete }: { mem: Memory; onDelete: (id: string) => void }) => {
   const [expanded, setExpanded] = useState(false)
+  const memId = mem.memory_id || mem.id || ''
   const text = mem.memory || mem.summary || ''
 
   return (
@@ -52,7 +53,7 @@ const MemoryCard = ({ mem, onDelete }: { mem: Memory; onDelete: (id: string) => 
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => onDelete(mem.id)} className="rounded-lg p-1.5 text-muted hover:bg-destructive/10 hover:text-destructive">
+          <button onClick={() => onDelete(memId)} className="rounded-lg p-1.5 text-muted hover:bg-destructive/10 hover:text-destructive">
             <Trash2 className="size-3.5" />
           </button>
           {text.length > 100 && (
@@ -65,18 +66,33 @@ const MemoryCard = ({ mem, onDelete }: { mem: Memory; onDelete: (id: string) => 
       {expanded && (
         <div className="border-t border-accent px-4 pb-4">
           <div className="mt-3 rounded-xl bg-background p-3 text-xs text-primary leading-relaxed whitespace-pre-wrap">{text}</div>
-          {mem.id && <div className="mt-2 font-mono text-xs text-muted/50">ID: {mem.id}</div>}
+          {memId && <div className="mt-2 font-mono text-xs text-muted/50">ID: {memId}</div>}
         </div>
       )}
     </div>
   )
 }
 
+interface MemoryUserStats {
+  user_id?: string
+  total_memories: number
+  last_memory_updated_at?: string
+  // extended fields (may not be present in all API versions)
+  total_agents?: number
+  memories_by_agent?: Record<string, number>
+  memories_by_topic?: Record<string, number>
+  oldest_memory?: string
+  newest_memory?: string
+}
+
 export default function MemoryPage() {
   const { selectedEndpoint, authToken } = useStore()
+  const [tab, setTab] = useState<'memories' | 'stats'>('memories')
   const [memories, setMemories] = useState<Memory[]>([])
   const [topics, setTopics] = useState<MemoryTopic[]>([])
+  const [userStats, setUserStats] = useState<MemoryUserStats | null>(null)
   const [loading, setLoading] = useState(false)
+  const [statsLoading, setStatsLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [optimizing, setOptimizing] = useState(false)
 
@@ -114,23 +130,61 @@ export default function MemoryPage() {
     if (!selectedEndpoint) return
     setOptimizing(true)
     try {
-      const res = await fetch(APIRoutes.OptimizeMemories(selectedEndpoint), { method: 'POST', headers })
-      if (!res.ok) throw new Error(res.statusText)
+      const userId = memories[0]?.user_id ?? 'default'
+      const res = await fetch(APIRoutes.OptimizeMemories(selectedEndpoint), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ user_id: userId }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        const detail = String(err?.detail ?? err?.message ?? res.statusText)
+        if (detail.toLowerCase().includes('openai') || detail.toLowerCase().includes('api key')) {
+          toast.error('Optimize failed: OpenAI API key not configured')
+        } else {
+          toast.error(`Optimize failed: ${detail.slice(0, 80)}`)
+        }
+        return
+      }
       toast.success('Memory optimization started')
       setTimeout(fetchAll, 2000)
     } catch { toast.error('Optimize failed') }
     finally { setOptimizing(false) }
   }
 
+  const fetchStats = useCallback(async () => {
+    if (!selectedEndpoint) return
+    setStatsLoading(true)
+    try {
+      const res = await fetch(APIRoutes.UserMemoryStats(selectedEndpoint), { headers })
+      if (res.ok) {
+        const d = await res.json()
+        // API returns { data: [{user_id, total_memories, last_memory_updated_at}] }
+        // or a plain object — handle both
+        const raw = Array.isArray(d?.data) ? d.data[0] : (d?.data ?? d)
+        setUserStats(raw ?? null)
+      }
+    } catch { /* silent */ }
+    finally { setStatsLoading(false) }
+  }, [selectedEndpoint, authToken])
+
   useEffect(() => { fetchAll() }, [fetchAll])
+  useEffect(() => { if (tab === 'stats') fetchStats() }, [tab, fetchStats])
 
   const filtered = search
-    ? memories.filter((m) => (m.memory || m.summary || '').toLowerCase().includes(search.toLowerCase()) ||
-        m.topics?.some((t) => t.toLowerCase().includes(search.toLowerCase())))
+    ? memories.filter((m) =>
+        (m.memory || m.summary || '').toLowerCase().includes(search.toLowerCase()) ||
+        m.topics?.some((t) => t.toLowerCase().includes(search.toLowerCase()))
+      )
     : memories
 
+  // Normalise topics — API returns either string[] or {topic,count}[]
+  const normalisedTopics = topics.map((t) =>
+    typeof t === 'string' ? { topic: t, count: undefined as number | undefined } : t as { topic: string; count: number | undefined }
+  )
+
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-start justify-between">
           <div>
@@ -149,6 +203,85 @@ export default function MemoryPage() {
           </div>
         </div>
 
+        {/* Tab switcher */}
+        <div className="flex gap-1 rounded-xl border border-accent bg-primaryAccent p-1">
+          <button
+            onClick={() => setTab('memories')}
+            className={cn(
+              'flex-1 rounded-lg py-1.5 text-xs font-medium uppercase transition-colors',
+              tab === 'memories' ? 'bg-accent text-primary' : 'text-muted hover:text-primary'
+            )}
+          >
+            <span className="flex items-center justify-center gap-1.5"><Brain className="size-3.5" />Memories</span>
+          </button>
+          <button
+            onClick={() => setTab('stats')}
+            className={cn(
+              'flex-1 rounded-lg py-1.5 text-xs font-medium uppercase transition-colors',
+              tab === 'stats' ? 'bg-accent text-primary' : 'text-muted hover:text-primary'
+            )}
+          >
+            <span className="flex items-center justify-center gap-1.5"><BarChart3 className="size-3.5" />User Stats</span>
+          </button>
+        </div>
+
+        {tab === 'stats' ? (
+          statsLoading ? (
+            <div className="space-y-3">{Array.from({length:4}).map((_,i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
+          ) : !userStats ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-accent bg-primaryAccent py-16 text-center">
+              <BarChart3 className="size-10 text-muted/20" />
+              <p className="mt-3 text-sm font-medium text-muted">No stats available</p>
+              <Button size="sm" variant="outline" onClick={fetchStats} className="mt-4">Load Stats</Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                {[['Total Memories', userStats.total_memories], ['Total Agents', userStats.total_agents ?? memories.length], ['Topics', Object.keys(userStats.memories_by_topic ?? {}).length || normalisedTopics.length]].map(([label, val]) => (
+                  <div key={String(label)} className="rounded-xl border border-accent bg-primaryAccent p-4 text-center">
+                    <div className="text-2xl font-semibold text-primary">{val}</div>
+                    <div className="mt-1 text-xs text-muted uppercase">{label}</div>
+                  </div>
+                ))}
+              </div>
+              {userStats.memories_by_agent && Object.keys(userStats.memories_by_agent ?? {}).length > 0 && (
+                <div className="rounded-xl border border-accent bg-primaryAccent p-4">
+                  <div className="mb-3 text-xs font-medium uppercase text-muted">Memories by Agent</div>
+                  <div className="space-y-2">
+                    {Object.entries(userStats.memories_by_agent).sort((a,b) => b[1]-a[1]).map(([agent, count]) => (
+                      <div key={agent} className="flex items-center gap-3">
+                        <div className="w-28 truncate text-xs text-primary">{agent}</div>
+                        <div className="flex-1 rounded-full bg-accent h-1.5 overflow-hidden">
+                          <div className="h-full rounded-full bg-brand" style={{ width: `${Math.round((count / userStats.total_memories) * 100)}%` }} />
+                        </div>
+                        <div className="w-8 text-right text-xs text-muted">{count}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {userStats.memories_by_topic && Object.keys(userStats.memories_by_topic ?? {}).length > 0 && (
+                <div className="rounded-xl border border-accent bg-primaryAccent p-4">
+                  <div className="mb-3 text-xs font-medium uppercase text-muted">Top Topics</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(userStats.memories_by_topic).sort((a,b) => b[1]-a[1]).slice(0,20).map(([topic, count]) => (
+                      <span key={topic} className="rounded-full bg-accent px-2 py-0.5 text-xs text-muted">{topic} <span className="text-muted/50">({count})</span></span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="rounded-xl border border-accent bg-primaryAccent p-4">
+                <div className="space-y-1 text-xs text-muted">
+                  {userStats.oldest_memory && <div>Oldest: {dayjs(userStats.oldest_memory).format('MMM D YYYY, HH:mm')}</div>}
+                  {userStats.newest_memory && <div>Newest: {dayjs(userStats.newest_memory).format('MMM D YYYY, HH:mm')}</div>}
+                  {userStats.last_memory_updated_at && !userStats.newest_memory && <div>Last updated: {dayjs(userStats.last_memory_updated_at).format('MMM D YYYY, HH:mm')}</div>}
+                  {userStats.user_id && <div>User: {userStats.user_id}</div>}
+                </div>
+              </div>
+            </div>
+          )
+        ) : (
+          <>
         {/* Stats + topics */}
         {loading ? (
           <Skeleton className="h-16 rounded-xl" />
@@ -159,12 +292,12 @@ export default function MemoryPage() {
                 {memories.length} {memories.length === 1 ? 'memory' : 'memories'}
               </span>
             </div>
-            {topics.length > 0 && (
+            {normalisedTopics.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {topics.slice(0, 20).map((t) => (
+                {normalisedTopics.slice(0, 20).map((t) => (
                   <button key={t.topic} onClick={() => setSearch(t.topic)} className="flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs text-muted hover:text-primary">
                     {t.topic}
-                    <span className="text-muted/50">({t.count})</span>
+                    {t.count !== undefined && <span className="text-muted/50">({t.count})</span>}
                   </button>
                 ))}
               </div>
@@ -194,11 +327,13 @@ export default function MemoryPage() {
               <p className="mt-1 text-xs text-muted/60">Memories are created when agents run with <code>enable_agentic_memory=True</code>.</p>
             </div>
           ) : (
-            filtered.map((mem) => <MemoryCard key={mem.id} mem={mem} onDelete={handleDelete} />)
+            filtered.map((mem) => <MemoryCard key={mem.memory_id || mem.id} mem={mem} onDelete={handleDelete} />)
           )}
         </div>
+          </>
+        )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 

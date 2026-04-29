@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useTheme } from 'next-themes'
 import { useStore } from '@/store'
 import useChatActions from '@/hooks/useChatActions'
@@ -8,6 +8,7 @@ import Icon from '@/components/ui/icon'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor } from 'lucide-react'
+import { APIRoutes } from '@/api/routes'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -85,8 +86,21 @@ const EndpointChip = ({ collapsed }: { collapsed: boolean }) => {
 // AppLayout
 // ---------------------------------------------------------------------------
 const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutProps) => {
-  const { setAuthToken, authToken, navCollapsed, setNavCollapsed } = useStore()
+  const { setAuthToken, authToken, navCollapsed, setNavCollapsed, selectedEndpoint } = useStore()
   const { initialize } = useChatActions()
+  const [approvalCount, setApprovalCount] = useState(0)
+
+  const pollApprovals = useCallback(async () => {
+    if (!selectedEndpoint) return
+    try {
+      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {}
+      const res = await fetch(APIRoutes.ApprovalCount(selectedEndpoint), { headers })
+      if (res.ok) {
+        const data = await res.json()
+        setApprovalCount(data?.pending ?? data?.count ?? 0)
+      }
+    } catch { /* silent */ }
+  }, [selectedEndpoint, authToken])
 
   useEffect(() => {
     if (hasEnvToken && envToken && !authToken) {
@@ -95,6 +109,12 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
     initialize()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    pollApprovals()
+    const timer = setInterval(pollApprovals, 30_000)
+    return () => clearInterval(timer)
+  }, [pollApprovals])
 
   return (
     <div className="flex h-screen overflow-hidden bg-background/80">
@@ -133,7 +153,7 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
 
         {/* Navigation — flex-1 pushes theme toggle to bottom */}
         <div className="flex-1 overflow-y-auto">
-          <Nav collapsed={navCollapsed} />
+          <Nav collapsed={navCollapsed} approvalCount={approvalCount} />
         </div>
 
         {/* Theme toggle — pinned to sidebar bottom */}

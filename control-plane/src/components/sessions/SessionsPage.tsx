@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useStore } from '@/store'
 import { fetchSessionsPageAPI, deleteSessionAPI, getSessionAPI } from '@/api/os'
@@ -619,7 +620,7 @@ const SessionsPage = () => {
   const totalPages = meta?.total_pages ?? 1
 
   return (
-    <div className="flex h-full overflow-hidden bg-background">
+    <motion.div className="flex h-full overflow-hidden bg-background" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       {/* ── Left: list ── */}
       <div className={cn('flex flex-col overflow-hidden transition-all duration-200', selectedSession ? 'w-[55%]' : 'flex-1')}>
       {/* Header */}
@@ -775,7 +776,7 @@ const SessionsPage = () => {
           onClose={() => setSelectedSession(null)}
         />
       )}
-    </div>
+    </motion.div>
   )
 }
 

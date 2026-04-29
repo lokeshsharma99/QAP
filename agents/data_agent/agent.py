@@ -7,6 +7,7 @@ Role: Provision test users, seed data, produce RunContext for test scenarios.
 """
 
 from agno.agent import Agent
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.coding import CodingTools
 from agno.tools.knowledge import KnowledgeTools
 
@@ -41,6 +42,11 @@ data_agent = Agent(
     ],
     # Instructions
     instructions=INSTRUCTIONS,
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
     # Feature-specific
     session_state={
         "generated_test_users": [],

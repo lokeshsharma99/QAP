@@ -1,0 +1,214 @@
+{
+  "personal_info_data_table": {
+    "description": "Test data for Universal Credit application Personal Details section",
+    "generated_at": "2026-04-28T16:44:19.938005Z",
+    "test_categories": ["valid", "invalid", "edge_cases", "security"],
+    "data_sets": {
+      "valid": {
+        "description": "Happy path - valid personal information",
+        "records": [
+          {
+            "id": "PERS_VAL_001",
+            "first_name": "John",
+            "last_name": "Smith",
+            "date_of_birth": "1990-05-15",
+            "nino": "AB123456C",
+            "address_line1": "123 Main Street",
+            "address_line2": "",
+            "town": "London",
+            "county": "Greater London",
+            "postcode": "SW1A 1AA",
+            "phone_number": "+447700900123",
+            "email": "john.smith.valid.001@qap.test"
+          },
+          {
+            "id": "PERS_VAL_002",
+            "first_name": "Emma",
+            "last_name": "Johnson",
+            "date_of_birth": "1985-12-30",
+            "nino": "CD987654A",
+            "address_line1": "456 Oak Avenue",
+            "address_line2": "Flat 2",
+            "town": "Manchester",
+            "county": "Greater Manchester",
+            "postcode": "M1 1AA",
+            "phone_number": "+447700900456",
+            "email": "emma.johnson.valid.002@qap.test"
+          },
+          {
+            "id": "PERS_VAL_003",
+            "first_name": "Mohammed",
+            "last_name": "Ali",
+            "date_of_birth": "1993-07-22",
+            "nino": "EF112233D",
+            "address_line1": "789 High Road",
+            "address_line2": "",
+            "town": "Birmingham",
+            "county": "West Midlands",
+            "postcode": "B1 1AA",
+            "phone_number": "+447700900789",
+            "email": "mohammed.ali.valid.003@qap.test"
+          }
+        ]
+      },
+      "invalid": {
+        "description": "Test data that should trigger validation errors",
+        "records": [
+          {
+            "id": "PERS_INV_001",
+            "field": "first_name",
+            "value": "",
+            "expected_error": "First name is required",
+            "test_scenario": "empty_first_name"
+          },
+          {
+            "id": "PERS_INV_002",
+            "field": "first_name",
+            "value": "A",
+            "expected_error": "First name must be at least 2 characters",
+            "test_scenario": "first_name_too_short"
+          },
+          {
+            "id": "PERS_INV_003",
+            "field": "first_name",
+            "value": "John123",
+            "expected_error": "First name contains invalid characters",
+            "test_scenario": "first_name_contains_numbers"
+          },
+          {
+            "id": "PERS_INV_004",
+            "field": "last_name",
+            "value": "",
+            "expected_error": "Last name is required",
+            "test_scenario": "empty_last_name"
+          },
+          {
+            "id": "PERS_INV_005",
+            "field": "date_of_birth",
+            "value": "2025-01-01",
+            "expected_error": "Date of birth cannot be in the future",
+            "test_scenario": "dob_in_future"
+          },
+          {
+            "id": "PERS_INV_006",
+            "field": "date_of_birth",
+            "value": "1850-01-01",
+            "expected_error": "Date of birth is unrealistically old",
+            "test_scenario": "dob_too_old"
+          },
+          {
+            "id": "PERS_INV_007",
+            "field": "date_of_birth",
+            "value": "invalid-date",
+            "expected_error": "Date of birth must be in valid format (YYYY-MM-DD)",
+            "test_scenario": "dob_invalid_format"
+          },
+          {
+            "id": "PERS_INV_008",
+            "field": "nino",
+            "value": "INVALID123",
+            "expected_error": "National Insurance number format is invalid",
+            "test_scenario": "nino_invalid_format"
+          },
+          {
+            "id": "PERS_INV_009",
+            "field": "nino",
+            "value": "AB123456C",
+            "expected_error": "National Insurance number must be unique",
+            "test_scenario": "nino_duplicate",
+            "note": "Used with valid record PERS_VAL_001 to test duplicate detection"
+          },
+          {
+            "id": "PERS_INV_010",
+            "field": "postcode",
+            "value": "INVALID",
+            "expected_error": "Postcode format is invalid",
+            "test_scenario": "postcode_invalid_format"
+          },
+          {
+            "id": "PERS_INV_011",
+            "field": "email",
+            "value": "invalid-email",
+            "expected_error": "Email format is invalid",
+            "test_scenario": "email_invalid_format"
+          },
+          {
+            "id": "PERS_INV_012",
+            "field": "phone_number",
+            "value": "12345",
+            "expected_error": "Phone number format is invalid",
+            "test_scenario": "phone_invalid_format"
+          }
+        ]
+      },
+      "edge_cases": {
+        "description": "Boundary and special case testing",
+        "records": [
+          {
+            "id": "PERS_EDGE_001",
+            "field": "first_name",
+            "value": "A" * 100,
+            "expected_error": "First name exceeds maximum length",
+            "test_scenario": "first_name_max_length"
+          },
+          {
+            "id": "PERS_EDGE_002",
+            "field": "nino",
+            "value": "AB123456C",
+            "expected_error": null,
+            "test_scenario": "nino_valid_edge_case",
+            "note": "Valid NINO with mixed case"
+          },
+          {
+            "id": "PERS_EDGE_003",
+            "field": "postcode",
+            "value": "EC1A 1BB",
+            "expected_error": null,
+            "test_scenario": "postcode_valid_with_space"
+          },
+          {
+            "id": "PERS_EDGE_004",
+            "field": "address_line2",
+            "value": "A" * 50,
+            "expected_error": null,
+            "test_scenario": "address_line2_max_valid_length"
+          },
+          {
+            "id": "PERS_EDGE_005",
+            "field": "date_of_birth",
+            "value": "2007-04-28",
+            "expected_error": null,
+            "test_scenario": "dob_on_minor_age_threshold",
+            "note": "18 years old as of 2025-04-28"
+          }
+        ]
+      },
+      "security": {
+        "description": "Security and injection testing",
+        "records": [
+          {
+            "id": "PERS_SEC_001",
+            "field": "first_name",
+            "value": "<script>alert('xss')</script>",
+            "expected_error": "Input contains potentially dangerous characters",
+            "test_scenario": "xss_attempt_first_name"
+          },
+          {
+            "id": "PERS_SEC_002",
+            "field": "last_name",
+            "value": "'; DROP TABLE users; --",
+            "expected_error": "Input contains potentially dangerous characters",
+            "test_scenario": "sql_injection_attempt_last_name"
+          },
+          {
+            "id": "PERS_SEC_003",
+            "field": "nino",
+            "value": "AB123456C' OR '1'='1",
+            "expected_error": "Input contains potentially dangerous characters",
+            "test_scenario": "sql_injection_attempt_nino"
+          }
+        ]
+      }
+    }
+  }
+}

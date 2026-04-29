@@ -7,6 +7,7 @@ Role: Index Page Objects and Step Definitions into PgVector KB.
 """
 
 from agno.agent import Agent
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.coding import CodingTools
 from agno.tools.knowledge import KnowledgeTools
 
@@ -24,7 +25,7 @@ from db import get_automation_kb, get_qap_learnings_kb
 _kg_tools: list = []
 try:
     from app.semantica_config import SemanticaContext
-    if SemanticaContext.is_enabled():
+    if SemanticaContext.is_agent_enabled("librarian"):
         from integrations.agno import AgnoKGToolkit  # type: ignore[import]
         from app.semantica_context import get_shared_context
         _shared_ctx = get_shared_context()
@@ -65,6 +66,11 @@ librarian = Agent(
     ],
     # Instructions
     instructions=INSTRUCTIONS,
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
     # Feature-specific
     session_state={
         "indexed_files": [],

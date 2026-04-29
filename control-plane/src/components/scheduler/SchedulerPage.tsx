@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useState, useEffect, useCallback } from 'react'
 import { useStore } from '@/store'
 import { APIRoutes } from '@/api/routes'
@@ -539,7 +540,7 @@ export default function SchedulerPage() {
   const isEmpty = !loading && schedules.length === 0
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <motion.div className="flex h-full overflow-hidden" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       {/* Main panel */}
       <div className={cn('flex flex-col flex-1 overflow-hidden', selectedSchedule && 'border-r border-accent')}>
         {/* Header */}
@@ -716,6 +717,6 @@ export default function SchedulerPage() {
           onSave={handleUpdate}
         />
       )}
-    </div>
+    </motion.div>
   )
 }

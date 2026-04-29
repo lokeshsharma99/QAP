@@ -8,6 +8,7 @@ Agent for regression suite curation and maintenance.
 import logging
 from pathlib import Path
 
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
@@ -86,6 +87,11 @@ curator = SemanticaAgent(
     search_knowledge=automation_knowledge is not None,
     tools=tools,
     instructions=INSTRUCTIONS,
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
     enable_agentic_memory=True,
     add_learnings_to_context=True,
     add_datetime_to_context=True,

@@ -7,6 +7,7 @@ Role: Parse requirements, query KB for impact, produce RequirementContext (Execu
 """
 
 from agno.agent import Agent
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
@@ -20,6 +21,25 @@ from db import get_automation_kb, get_qap_learnings_kb, get_site_manifesto_kb
 # ---------------------------------------------------------------------------
 from app.github_mcp import get_github_mcp_for_architect
 _github_tools = get_github_mcp_for_architect()
+
+# ---------------------------------------------------------------------------
+# Semantica Context Graph Toolkit (optional — activated via SEMANTICA_ENABLED)
+# Architect uses context graphs to build requirement-to-POM traceability:
+# - Node: Jira ticket → links to affected PageObjects → links to Gherkin specs
+# - Traceability graph shows which tests cover which acceptance criteria
+# - KG dedup ensures the same POM isn't listed twice under different names
+# ---------------------------------------------------------------------------
+_kg_tools: list = []
+try:
+    from app.semantica_config import SemanticaContext
+    if SemanticaContext.is_agent_enabled("architect"):
+        from integrations.agno import AgnoKGToolkit  # type: ignore[import]
+        from app.semantica_context import get_shared_context
+        _shared_ctx = get_shared_context()
+        if _shared_ctx is not None:
+            _kg_tools = [AgnoKGToolkit(context=_shared_ctx)]
+except Exception:
+    pass
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
@@ -49,10 +69,16 @@ architect = Agent(
         ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=site_manifesto_kb),
         KnowledgeTools(knowledge=automation_kb),
+        *_kg_tools,
         *_github_tools,
     ],
     # Instructions
     instructions=INSTRUCTIONS,
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
     # Feature-specific
     session_state={
         "analyzed_requirements": [],
