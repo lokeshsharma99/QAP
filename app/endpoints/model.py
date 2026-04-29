@@ -79,13 +79,12 @@ PROVIDER_CATALOGUE: dict = {
     },
     "ollama": {
         "name": "Ollama",
-        "description": "Local Ollama instance (host.docker.internal:11434)",
+        "description": "Local Ollama instance — also serves cloud models via local daemon (sign in with 'ollama signin')",
         "base_url": os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434/v1"),
         "models": [
-            {"id": "llama3.2", "label": "Llama 3.2"},
-            {"id": "llama3.1:8b", "label": "Llama 3.1 8B"},
-            {"id": "qwen2.5:7b", "label": "Qwen 2.5 7B"},
-            {"id": "deepseek-r1:7b", "label": "DeepSeek R1 7B"},
+            {"id": m.strip(), "label": m.strip()}
+            for m in os.getenv("OLLAMA_MODELS", "llama3.2,llama3.1:8b,qwen2.5:7b,deepseek-r1:7b").split(",")
+            if m.strip()
         ],
         "default_model": os.getenv("OLLAMA_MODEL", "llama3.2"),
         "requires_key": False,
@@ -104,6 +103,22 @@ PROVIDER_CATALOGUE: dict = {
         "default_model": "openai/gpt-4o",
         "requires_key": True,
         "key_env": "OPENROUTER_API_KEY",
+    },
+    "ollama_cloud": {
+        "name": "Ollama Cloud",
+        "description": "Direct access to ollama.com cloud models via API key (OLLAMA_API_KEY)",
+        "base_url": "https://ollama.com/v1",
+        "models": [
+            {"id": m.strip(), "label": m.strip()}
+            for m in os.getenv(
+                "OLLAMA_MODELS",
+                "minimax-m2.7:cloud,glm-5.1:cloud,qwen3-coder-next,gpt-oss:120b-cloud",
+            ).split(",")
+            if m.strip()
+        ],
+        "default_model": os.getenv("OLLAMA_MODEL", "minimax-m2.7:cloud"),
+        "requires_key": True,
+        "key_env": "OLLAMA_API_KEY",
     },
 }
 
@@ -164,12 +179,27 @@ async def switch_model(req: ModelSwitchRequest):
 
     # Persist API key to the provider-specific env var
     key_env = provider_info.get("key_env")
+    requires_key = provider_info.get("requires_key", False)
     effective_key: str = "optional"
-    if req.api_key and key_env:
-        os.environ[key_env] = req.api_key
-        effective_key = req.api_key
+
+    if req.api_key and req.api_key.strip():
+        # Explicit key supplied in the request — always trust it
+        effective_key = req.api_key.strip()
+        if key_env:
+            os.environ[key_env] = effective_key
     elif key_env:
-        effective_key = os.getenv(key_env, "optional")
+        env_val = os.getenv(key_env, "")
+        if env_val:
+            effective_key = env_val
+        elif requires_key:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"API key required for provider '{req.provider}'. "
+                    f"Set the {key_env} environment variable or supply api_key in the request."
+                ),
+            )
+        # requires_key=False → keep "optional" (agno/OpenAI client needs a non-empty string)
 
     # Build the new Agno model instance
     new_model = _build_model(req.provider, req.model_id, effective_base_url, effective_key)
@@ -240,7 +270,8 @@ async def list_models(provider: str):
     info = PROVIDER_CATALOGUE[provider]
 
     # ------------------------------------------------------------------
-    # Ollama — GET /api/tags
+    # Ollama (local) — GET /api/tags  (no auth)
+    # Ollama Cloud    — GET https://ollama.com/api/tags  (Bearer key)
     # ------------------------------------------------------------------
     if provider == "ollama":
         raw_base = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
@@ -249,6 +280,21 @@ async def list_models(provider: str):
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
                 resp = await client.get(f"{base}/api/tags")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    models = [{"id": m["name"], "label": m["name"]} for m in data.get("models", [])]
+                    if models:
+                        return {"provider": provider, "models": models, "source": "live"}
+        except Exception:
+            pass
+        return {"provider": provider, "models": info["models"], "source": "static"}
+
+    if provider == "ollama_cloud":
+        api_key = os.getenv("OLLAMA_API_KEY", "")
+        headers: dict = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        try:
+            async with httpx.AsyncClient(timeout=6.0) as client:
+                resp = await client.get("https://ollama.com/api/tags", headers=headers)
                 if resp.status_code == 200:
                     data = resp.json()
                     models = [{"id": m["name"], "label": m["name"]} for m in data.get("models", [])]
