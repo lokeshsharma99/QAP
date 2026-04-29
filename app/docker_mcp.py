@@ -38,6 +38,7 @@ import logging
 import os
 
 from agno.tools.mcp import MCPTools
+from agno.utils.log import log_warning
 from mcp.client.stdio import StdioServerParameters
 
 _log = logging.getLogger(__name__)
@@ -48,11 +49,39 @@ _log = logging.getLogger(__name__)
 _DOCKER_MCP_SINGLETON: MCPTools | None = None
 
 
+def _docker_mcp_gateway_available() -> bool:
+    """Check if the docker-mcp CLI plugin binary is installed.
+
+    `docker mcp` is a Docker Desktop CLI plugin stored as a binary named
+    `docker-mcp` in one of Docker's standard plugin directories.  The
+    `docker mcp gateway --help` trick does NOT work because docker silently
+    falls back to its own generic help (exit 0) when the plugin is missing.
+    Checking the binary directly is reliable and avoids a subprocess fork.
+    """
+    plugin_dirs = [
+        "/usr/local/lib/docker/cli-plugins",
+        "/usr/lib/docker/cli-plugins",
+        os.path.expanduser("~/.docker/cli-plugins"),
+    ]
+    return any(
+        os.path.isfile(os.path.join(d, "docker-mcp"))
+        for d in plugin_dirs
+    )
+
+
 def _get_docker_mcp_singleton() -> list:
     """Return [singleton], or [] when DOCKER_MCP_PROFILE is not set."""
     profile = os.getenv("DOCKER_MCP_PROFILE", "").strip()
 
     if not profile:
+        return []
+
+    if not _docker_mcp_gateway_available():
+        log_warning(
+            "DOCKER_MCP_PROFILE is set but the docker-mcp CLI plugin is not installed. "
+            "The plugin ships with Docker Desktop ≥ 4.40 (MCP Toolkit). "
+            "Docker MCP Gateway is disabled — individual npx MCP servers are used instead."
+        )
         return []
 
     global _DOCKER_MCP_SINGLETON
