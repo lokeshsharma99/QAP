@@ -169,6 +169,7 @@ const RunEvalModal = ({
   }, [selectedEndpoint, authToken])
 
   const handleSubmit = async () => {
+    if (!form.agent_id) { toast.error('Please select an agent'); return }
     if (!form.input.trim()) { toast.error('Input is required'); return }
     const body: Record<string, unknown> = {
       eval_type: form.eval_type,
@@ -198,13 +199,13 @@ const RunEvalModal = ({
         <div className="space-y-3">
           {/* Agent */}
           <div>
-            <label className="mb-1 block text-xs text-muted uppercase">Agent</label>
+            <label className="mb-1 block text-xs text-muted uppercase">Agent *</label>
             <select
               value={form.agent_id}
               onChange={(e) => setForm({ ...form, agent_id: e.target.value })}
               className="w-full rounded-xl border border-accent bg-primaryAccent px-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
             >
-              <option value="">— any / pipeline —</option>
+              <option value="">— select an agent —</option>
               {agents.map((a) => {
                 const key = (a as any).agent_id ?? (a as any).id ?? ''
                 const label = (a as any).name ? `${(a as any).name} (${key})` : key
