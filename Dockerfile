@@ -9,7 +9,7 @@
 FROM agnohq/python:3.12
 
 # ---------------------------------------------------------------------------
-# Node.js LTS — required for GitHub MCP server (npx @modelcontextprotocol/server-github)
+# Node.js LTS — required for MCP servers (GitHub, ADO, Atlassian, Playwright)
 # Uses the official NodeSource setup script so the version is pinned via apt.
 # ---------------------------------------------------------------------------
 RUN apt-get update -qq && \
@@ -18,6 +18,30 @@ RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     node --version && npm --version
+
+# ---------------------------------------------------------------------------
+# Pre-install all MCP servers globally
+# Eliminates first-run npx download latency and pins versions at build time.
+#
+#   @modelcontextprotocol/server-github  — GitHub MCP (Architect, Discovery, Engineer, Detective …)
+#   @azure-devops/mcp                    — Azure DevOps MCP (Pipeline Analyst, CI Log Analyzer, Architect)
+#   mcp-remote                           — Atlassian Rovo MCP proxy (Architect, Scribe, CI Log Analyzer)
+#   @playwright/mcp                      — Playwright MCP (Discovery, Medic)
+#
+# Playwright Chromium is also installed with its system-level dependencies so
+# the headless npx stdio mode works inside the container without a separate
+# playwright-mcp service.  Browser binaries land in PLAYWRIGHT_BROWSERS_PATH.
+# ---------------------------------------------------------------------------
+ENV PLAYWRIGHT_BROWSERS_PATH=/usr/local/ms-playwright
+
+RUN npm install -g \
+        @modelcontextprotocol/server-github \
+        @azure-devops/mcp \
+        mcp-remote \
+        @playwright/mcp@latest && \
+    npx playwright install chromium --with-deps && \
+    chmod -R 755 /usr/local/ms-playwright && \
+    npm cache clean --force
 
 # ---------------------------------------------------------------------------
 # Environment
