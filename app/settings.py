@@ -19,10 +19,16 @@ agent_db = get_postgres_db()
 
 # ---------------------------------------------------------------------------
 # Models
+# Use kilo-auto/balanced when a real KILO_API_KEY is set; free otherwise.
+# Mirrors the logic in demos/kilo.py.
 # ---------------------------------------------------------------------------
+_KILO_KEY = getenv("KILO_API_KEY", "anonymous")
+_KILO_MODEL_ID = "kilo-auto/free" if _KILO_KEY == "anonymous" else "kilo-auto/balanced"
+
 MODEL = OpenRouter(
-    id="kilo-auto/free",
+    id=_KILO_MODEL_ID,
     base_url="https://api.kilo.ai/api/openrouter/v1",
+    api_key=_KILO_KEY,
     max_tokens=None,
 )
 

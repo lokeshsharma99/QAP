@@ -28,7 +28,8 @@ interface EvalRunData {
 }
 
 interface EvalRun {
-  eval_id: string
+  id: string          // EvalSchema uses 'id'; older DB rows may use 'eval_id'
+  eval_id?: string    // kept for backward compat
   agent_id?: string
   team_id?: string
   model_id?: string
@@ -48,6 +49,7 @@ type EvalType = typeof EVAL_TYPES[number]
 // ---------------------------------------------------------------------------
 const EvalCard = ({ run, onDelete }: { run: EvalRun; onDelete: (id: string) => void }) => {
   const [expanded, setExpanded] = useState(false)
+  const runId = run.id ?? run.eval_id ?? ''
   const passed = run.eval_data?.eval_status === 'passed'
   const score  = run.eval_data?.score
 
@@ -74,11 +76,11 @@ const EvalCard = ({ run, onDelete }: { run: EvalRun; onDelete: (id: string) => v
             {run.model_id && <span className="rounded-full bg-accent px-2 py-0.5 text-xs text-muted/60">{run.model_id}</span>}
           </div>
           <div className="mt-0.5 text-xs text-muted/50">
-            {run.eval_id.slice(0, 12)}… · {dayjs(run.created_at).fromNow()}
+            {runId.slice(0, 12)}… · {dayjs(run.created_at).fromNow()}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => onDelete(run.eval_id)} className="rounded-lg p-1.5 text-muted hover:bg-destructive/10 hover:text-destructive">
+          <button onClick={() => onDelete(runId)} className="rounded-lg p-1.5 text-muted hover:bg-destructive/10 hover:text-destructive">
             <Trash2 className="size-3.5" />
           </button>
           <button onClick={() => setExpanded(!expanded)} className="rounded-lg p-1.5 text-muted hover:bg-accent hover:text-primary">
@@ -326,7 +328,7 @@ export default function EvalsPage() {
     if (!selectedEndpoint) return
     try {
       await fetch(APIRoutes.DeleteEvalRun(selectedEndpoint, id), { method: 'DELETE', headers })
-      setRuns((prev) => prev.filter((r) => r.eval_id !== id))
+      setRuns((prev) => prev.filter((r) => (r.id ?? r.eval_id) !== id))
       toast.success('Eval run deleted')
     } catch { toast.error('Delete failed') }
   }
