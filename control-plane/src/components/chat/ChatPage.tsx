@@ -46,7 +46,7 @@ const ToolCallAccordionItem = ({ toolCall }: { toolCall: NonNullable<ChatMessage
     : null
 
   return (
-    <div className="w-full rounded-lg border border-border p-4">
+    <div className="w-full rounded-lg border border-border bg-primaryAccent p-4">
       <h3 className="flex">
         <button
           type="button"
@@ -65,7 +65,7 @@ const ToolCallAccordionItem = ({ toolCall }: { toolCall: NonNullable<ChatMessage
           </div>
           <ChevronDown
             className={cn(
-              'shrink-0 transition-transform duration-200 text-primary bg-secondary size-6 rounded-sm p-1',
+              'shrink-0 transition-transform duration-200 text-muted bg-accent border border-border/50 size-6 rounded-sm p-1',
               open && 'rotate-180'
             )}
           />
@@ -280,12 +280,12 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
           {/* chip — click to open sidebar */}
           <div className="flex flex-wrap items-center gap-2 pl-9">
             <div className="cursor-pointer bg-transparent py-1" onClick={() => setToolCallsOpen(true)}>
-              <div className="flex items-center justify-between gap-x-2 rounded-sm bg-secondary px-2 py-1">
-                <Hammer className="text-primary size-4" />
-                <p className="font-dmmono text-xs font-normal tracking-[0.02em] leading-[1rem] space-x-2 uppercase">
+              <div className="flex items-center justify-between gap-x-2 rounded-sm bg-accent border border-border/50 px-2 py-1">
+                <Hammer className="text-brand size-4" />
+                <p className="font-dmmono text-xs font-normal tracking-[0.02em] leading-[1rem] space-x-2 uppercase text-primary">
                   <span className="text-muted">{msg.tool_calls.length} </span>Tools Called
                 </p>
-                <ChevronRight className="text-primary size-4" />
+                <ChevronRight className="text-muted size-4" />
               </div>
             </div>
           </div>
