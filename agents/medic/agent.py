@@ -7,6 +7,7 @@ Role: Patch only the specific locator line in the Page Object.
 """
 
 from agno.agent import Agent
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
@@ -70,6 +71,11 @@ medic = Agent(
     ],
     # Instructions
     instructions=INSTRUCTIONS,
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
     # Feature-specific
     session_state={
         "applied_edits": [],

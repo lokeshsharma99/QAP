@@ -7,6 +7,7 @@ Role: Index Page Objects and Step Definitions into PgVector KB.
 """
 
 from agno.agent import Agent
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.coding import CodingTools
 from agno.tools.knowledge import KnowledgeTools
 
@@ -65,6 +66,11 @@ librarian = Agent(
     ],
     # Instructions
     instructions=INSTRUCTIONS,
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
     # Feature-specific
     session_state={
         "indexed_files": [],

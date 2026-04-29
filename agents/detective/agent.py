@@ -7,6 +7,7 @@ Role: Parse Playwright traces to classify failure root cause.
 """
 
 from agno.agent import Agent
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
@@ -81,6 +82,11 @@ detective = Agent(
     ],
     # Instructions
     instructions=INSTRUCTIONS,
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
     # Feature-specific
     session_state={
         "analyzed_failures": [],

@@ -7,6 +7,7 @@ Role: Author BDD Gherkin specs from RequirementContext.
 """
 
 from agno.agent import Agent
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
@@ -43,6 +44,11 @@ scribe = Agent(
     ],
     # Instructions
     instructions=INSTRUCTIONS,
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
     # Feature-specific
     session_state={
         "created_features": [],

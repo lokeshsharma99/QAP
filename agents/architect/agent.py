@@ -7,6 +7,7 @@ Role: Parse requirements, query KB for impact, produce RequirementContext (Execu
 """
 
 from agno.agent import Agent
+from agno.guardrails import PIIDetectionGuardrail, PromptInjectionGuardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
@@ -73,6 +74,11 @@ architect = Agent(
     ],
     # Instructions
     instructions=INSTRUCTIONS,
+    # Guardrails (pre-hooks for input validation)
+    pre_hooks=[
+        PIIDetectionGuardrail(),
+        PromptInjectionGuardrail(),
+    ],
     # Feature-specific
     session_state={
         "analyzed_requirements": [],
