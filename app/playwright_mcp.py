@@ -117,6 +117,22 @@ def _make_playwright_mcp(tool_name_prefix: str) -> list:
 
 
 # ---------------------------------------------------------------------------
+# Singleton — one shared Playwright MCP process for all agents.
+# Using a single instance avoids spawning multiple headless browser processes
+# at startup (which caused simultaneous connection timeouts).
+# ---------------------------------------------------------------------------
+_PLAYWRIGHT_MCP_SINGLETON: list | None = None
+
+
+def _get_playwright_mcp_singleton() -> list:
+    """Return the module-level singleton list, creating it on first call."""
+    global _PLAYWRIGHT_MCP_SINGLETON
+    if _PLAYWRIGHT_MCP_SINGLETON is None:
+        _PLAYWRIGHT_MCP_SINGLETON = _make_playwright_mcp(tool_name_prefix="pw_")
+    return _PLAYWRIGHT_MCP_SINGLETON
+
+
+# ---------------------------------------------------------------------------
 # Per-agent factory functions
 # ---------------------------------------------------------------------------
 
@@ -128,7 +144,7 @@ def get_playwright_mcp_for_discovery() -> list:
     accessibility snapshots of each page/component, and build the Site Manifesto.
     Full read-write access: navigate, click, snapshot, screenshot.
     """
-    return _make_playwright_mcp(tool_name_prefix="pw_disc_")
+    return _get_playwright_mcp_singleton()
 
 
 def get_playwright_mcp_for_medic() -> list:
@@ -139,4 +155,4 @@ def get_playwright_mcp_for_medic() -> list:
     resolves correctly on the live AUT.
     Primarily read-only: navigate + snapshot.
     """
-    return _make_playwright_mcp(tool_name_prefix="pw_med_")
+    return _get_playwright_mcp_singleton()

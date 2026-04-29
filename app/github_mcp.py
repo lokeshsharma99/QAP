@@ -94,6 +94,26 @@ def _make_github_mcp(toolsets: list[str], tool_name_prefix: str) -> MCPTools:
 
 
 # ---------------------------------------------------------------------------
+# Singleton — one shared GitHub MCP process for all agents.
+# Using a single instance avoids spawning multiple npx processes at startup
+# (which caused simultaneous connection timeouts during AgentOS lifespan).
+# All toolsets needed by any agent are included in the superset.
+# ---------------------------------------------------------------------------
+_GITHUB_MCP_SINGLETON: MCPTools | None = None
+
+
+def _get_github_mcp_singleton() -> MCPTools:
+    """Return the module-level singleton, creating it on first call."""
+    global _GITHUB_MCP_SINGLETON
+    if _GITHUB_MCP_SINGLETON is None:
+        _GITHUB_MCP_SINGLETON = _make_github_mcp(
+            toolsets=["repos", "issues", "pull_requests", "actions", "contexts"],
+            tool_name_prefix="gh_",
+        )
+    return _GITHUB_MCP_SINGLETON
+
+
+# ---------------------------------------------------------------------------
 # Per-agent factory functions
 # Each function returns a list so agents can do: tools=[..., *get_github_mcp_for_X()]
 # The list is empty if GITHUB_TOKEN is not set AND the repo is private (safe default).
@@ -113,10 +133,7 @@ def get_github_mcp_for_architect() -> list:
     - Read CHANGELOG / ADRs stored in the repo
     """
     try:
-        return [_make_github_mcp(
-            toolsets=["repos", "issues", "contexts"],
-            tool_name_prefix="gh_arch_",
-        )]
+        return [_get_github_mcp_singleton()]
     except Exception:
         return []
 
@@ -133,10 +150,7 @@ def get_github_mcp_for_discovery() -> list:
     - Fetch existing Site Manifesto files committed to the repo
     """
     try:
-        return [_make_github_mcp(
-            toolsets=["repos", "contexts"],
-            tool_name_prefix="gh_disc_",
-        )]
+        return [_get_github_mcp_singleton()]
     except Exception:
         return []
 
@@ -154,10 +168,7 @@ def get_github_mcp_for_engineer() -> list:
     - Verify merged code matches expected structure
     """
     try:
-        return [_make_github_mcp(
-            toolsets=["repos", "pull_requests", "contexts"],
-            tool_name_prefix="gh_eng_",
-        )]
+        return [_get_github_mcp_singleton()]
     except Exception:
         return []
 
@@ -176,10 +187,7 @@ def get_github_mcp_for_detective() -> list:
     - Correlate test failure timestamps with recent commits
     """
     try:
-        return [_make_github_mcp(
-            toolsets=["actions", "repos", "contexts"],
-            tool_name_prefix="gh_det_",
-        )]
+        return [_get_github_mcp_singleton()]
     except Exception:
         return []
 
@@ -200,10 +208,7 @@ def get_github_mcp_for_impact_analyst() -> list:
     - Read source files to understand what was added/removed/renamed
     """
     try:
-        return [_make_github_mcp(
-            toolsets=["repos", "pull_requests", "issues", "contexts"],
-            tool_name_prefix="gh_ia_",
-        )]
+        return [_get_github_mcp_singleton()]
     except Exception:
         return []
 
@@ -225,9 +230,6 @@ def get_github_mcp_for_pipeline_analyst() -> list:
     - Compare current run with previous passing run to identify regressions
     """
     try:
-        return [_make_github_mcp(
-            toolsets=["actions", "repos", "pull_requests", "contexts"],
-            tool_name_prefix="gh_pa_",
-        )]
+        return [_get_github_mcp_singleton()]
     except Exception:
         return []

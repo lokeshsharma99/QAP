@@ -126,6 +126,25 @@ def _make_ado_mcp(domains: list[str], tool_name_prefix: str) -> MCPTools:
 
 
 # ---------------------------------------------------------------------------
+# Singleton — one shared ADO MCP process for all agents.
+# Using a single instance avoids spawning multiple npx processes at startup.
+# All domains needed by any agent are included in the superset.
+# ---------------------------------------------------------------------------
+_ADO_MCP_SINGLETON: MCPTools | None = None
+
+
+def _get_ado_mcp_singleton() -> MCPTools:
+    """Return the module-level singleton, creating it on first call."""
+    global _ADO_MCP_SINGLETON
+    if _ADO_MCP_SINGLETON is None:
+        _ADO_MCP_SINGLETON = _make_ado_mcp(
+            domains=["core", "pipelines", "repositories", "work-items"],
+            tool_name_prefix="ado_",
+        )
+    return _ADO_MCP_SINGLETON
+
+
+# ---------------------------------------------------------------------------
 # Per-agent factory functions
 # Each returns a list so agents can unpack: tools=[..., *get_ado_mcp_for_X()]
 # Returns [] when AZURE_DEVOPS_URL / AZURE_DEVOPS_PAT are not configured.
@@ -145,10 +164,7 @@ def get_ado_mcp_for_pipeline_analyst() -> list:
     - Compare the current run against the last passing run
     """
     try:
-        return [_make_ado_mcp(
-            domains=["core", "pipelines", "repositories"],
-            tool_name_prefix="ado_pa_",
-        )]
+        return [_get_ado_mcp_singleton()]
     except Exception:
         return []
 
@@ -167,10 +183,7 @@ def get_ado_mcp_for_ci_log_analyzer() -> list:
     - Search for duplicate open bugs before creating new ones
     """
     try:
-        return [_make_ado_mcp(
-            domains=["core", "pipelines", "work-items"],
-            tool_name_prefix="ado_ci_",
-        )]
+        return [_get_ado_mcp_singleton()]
     except Exception:
         return []
 
@@ -188,9 +201,6 @@ def get_ado_mcp_for_architect() -> list:
     - Query sprint / backlog for priority context before producing Execution Plan
     """
     try:
-        return [_make_ado_mcp(
-            domains=["core", "work-items"],
-            tool_name_prefix="ado_arch_",
-        )]
+        return [_get_ado_mcp_singleton()]
     except Exception:
         return []

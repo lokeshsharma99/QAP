@@ -109,6 +109,22 @@ def _make_atlassian_mcp(tool_name_prefix: str) -> MCPTools:
 # Returns [] when ATLASSIAN_EMAIL / ATLASSIAN_API_TOKEN are not configured.
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Singleton — one shared Atlassian MCP process for all agents.
+# Using a single instance avoids spawning multiple npx/mcp-remote processes
+# at startup (which caused simultaneous connection timeouts).
+# ---------------------------------------------------------------------------
+_ATLASSIAN_MCP_SINGLETON: MCPTools | None = None
+
+
+def _get_atlassian_mcp_singleton() -> MCPTools:
+    """Return the module-level singleton, creating it on first call."""
+    global _ATLASSIAN_MCP_SINGLETON
+    if _ATLASSIAN_MCP_SINGLETON is None:
+        _ATLASSIAN_MCP_SINGLETON = _make_atlassian_mcp(tool_name_prefix="atl_")
+    return _ATLASSIAN_MCP_SINGLETON
+
+
 def get_atlassian_mcp_for_architect() -> list:
     """
     Atlassian MCP tools for the Architect agent.
@@ -120,7 +136,7 @@ def get_atlassian_mcp_for_architect() -> list:
     - Understand sprint / backlog priority before producing an Execution Plan
     """
     try:
-        return [_make_atlassian_mcp(tool_name_prefix="atl_arch_")]
+        return [_get_atlassian_mcp_singleton()]
     except Exception:
         return []
 
@@ -135,7 +151,7 @@ def get_atlassian_mcp_for_scribe() -> list:
     - Comment on Jira issues linking to generated .feature files
     """
     try:
-        return [_make_atlassian_mcp(tool_name_prefix="atl_sc_")]
+        return [_get_atlassian_mcp_singleton()]
     except Exception:
         return []
 
@@ -150,6 +166,6 @@ def get_atlassian_mcp_for_ci_log_analyzer() -> list:
     - Attach RCA report text to Jira issue descriptions and comments
     """
     try:
-        return [_make_atlassian_mcp(tool_name_prefix="atl_ci_")]
+        return [_get_atlassian_mcp_singleton()]
     except Exception:
         return []
