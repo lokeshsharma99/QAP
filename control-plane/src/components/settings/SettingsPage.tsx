@@ -81,8 +81,34 @@ const NAV_TABS: NavTab[] = [
     icon: KeyRound,
     sections: [
       {
+        id: 'kilo',
+        title: 'Kilo AI (Default)',
+        icon: Zap,
+        fields: [
+          { key: 'KILO_API_KEY', label: 'Kilo API Key', placeholder: 'kilo-...', secret: true, description: 'Free tier works without a key. Get one at: app.kilo.ai — unlocks kilo-auto/balanced.' },
+          { key: 'OPENROUTER_BASE_URL', label: 'Base URL', placeholder: 'https://api.kilo.ai/api/openrouter/v1', wide: true },
+        ],
+      },
+      {
+        id: 'github_copilot',
+        title: 'GitHub Copilot (Local Proxy)',
+        icon: Bot,
+        fields: [
+          { key: 'GITHUB_COPILOT_BASE_URL', label: 'Proxy Base URL', placeholder: 'http://127.0.0.1:3030/v1', wide: true, description: 'The Copilot Chat VS Code extension exposes an OpenAI-compatible server on 127.0.0.1:3030.' },
+          { key: 'GITHUB_COPILOT_API_KEY', label: 'API Key', placeholder: 'optional', secret: true, description: 'Not required — the extension handles auth. Leave as "optional".' },
+        ],
+      },
+      {
+        id: 'nvidia',
+        title: 'NVIDIA NIM',
+        icon: Cpu,
+        fields: [
+          { key: 'NVIDIA_API_KEY', label: 'NVIDIA API Key', placeholder: 'nvapi-...', secret: true, description: 'Get a free key at: build.nvidia.com — supports Qwen3 Coder, Llama 3.3, Nemotron, Phi-3, Gemma 2.' },
+        ],
+      },
+      {
         id: 'ollama',
-        title: 'Ollama / Primary LLM',
+        title: 'Ollama',
         icon: Bot,
         fields: [
           { key: 'OLLAMA_API_KEY', label: 'Ollama API Key', placeholder: 'd73713...', secret: true },

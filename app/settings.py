@@ -33,6 +33,13 @@ MODEL = OpenRouter(
 )
 
 # ---------------------------------------------------------------------------
+# Additional LLM provider credentials (used by /model/switch endpoint)
+# ---------------------------------------------------------------------------
+GITHUB_COPILOT_BASE_URL = getenv("GITHUB_COPILOT_BASE_URL", "http://127.0.0.1:3030/v1")
+GITHUB_COPILOT_API_KEY = getenv("GITHUB_COPILOT_API_KEY", "optional")
+NVIDIA_API_KEY = getenv("NVIDIA_API_KEY", "")
+
+# ---------------------------------------------------------------------------
 # Environment
 # ---------------------------------------------------------------------------
 RUNTIME_ENV = getenv("RUNTIME_ENV", "dev")
