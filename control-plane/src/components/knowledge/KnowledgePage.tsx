@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useStore } from '@/store'
@@ -304,15 +305,14 @@ export default function KnowledgePage() {
               return { id, name: `KB ${id.slice(0, 8)}` }
             })
           )
-          // Merge API-discovered KBs with the known QAP KBs (db_id based)
-          // Deduplicate by both id and name — avoids showing the same KB twice
-          // when the API discovers a UUID for a KB already in the static list
-          const merged = [...QAP_KNOWN_KBS]
-          resolved.forEach((r) => {
-            if (!merged.some((k) => k.id === r.id || k.name === r.name)) merged.push(r)
+          // Use API-discovered KBs (with inferred friendly names) — these are the real KBs.
+          // Match each UUID to a known QAP name where possible, otherwise use inferred name.
+          const finalKbs = resolved.map((r) => {
+            const known = QAP_KNOWN_KBS.find((k) => k.name === r.name)
+            return known ? { id: r.id, name: known.name } : r
           })
-          setKbs(merged)
-          setSelectedKb(dbId || merged[0].id)
+          setKbs(finalKbs)
+          setSelectedKb(dbId || finalKbs[0].id)
           return
         }
       } else if (probe) {
@@ -492,7 +492,7 @@ export default function KnowledgePage() {
   const displayDocs = searchResults !== null ? searchResults : docs
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       <div className="mx-auto max-w-4xl space-y-6">
 
         {/* Header */}
@@ -714,7 +714,7 @@ export default function KnowledgePage() {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
