@@ -12,6 +12,7 @@ from agno.tools.coding import CodingTools
 from agno.tools.knowledge import KnowledgeTools
 
 from agents.librarian.instructions import INSTRUCTIONS
+from agents.librarian.tools import LibrarianToolkit
 from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb
 
@@ -63,6 +64,7 @@ librarian = Agent(
         KnowledgeTools(knowledge=automation_knowledge),
         KnowledgeTools(knowledge=qap_learnings_kb),
         *_kg_tools,
+        LibrarianToolkit(),
     ],
     # Instructions
     instructions=INSTRUCTIONS,

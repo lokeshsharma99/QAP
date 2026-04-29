@@ -13,7 +13,7 @@ from agno.tools.reasoning import ReasoningTools
 from agno.tools.user_feedback import UserFeedbackTools
 
 from agents.judge.instructions import INSTRUCTIONS
-from agents.judge.tools import check_code_quality, lint_gherkin, score_confidence
+from agents.judge.tools import JudgeToolkit
 from app.settings import MODEL, agent_db
 from db import get_qap_learnings_kb, get_rca_kb
 
@@ -61,9 +61,7 @@ judge = Agent(
         KnowledgeTools(knowledge=qap_learnings_kb),
         KnowledgeTools(knowledge=rca_kb),
         *_decision_tools,
-        lint_gherkin,
-        check_code_quality,
-        score_confidence,
+        JudgeToolkit(),
     ],
     # Instructions
     instructions=INSTRUCTIONS,

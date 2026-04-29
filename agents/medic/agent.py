@@ -13,6 +13,7 @@ from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 
 from agents.medic.instructions import INSTRUCTIONS
+from agents.medic.tools import MedicToolkit
 from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
 
@@ -75,6 +76,7 @@ medic = Agent(
         KnowledgeTools(knowledge=site_manifesto_kb),
         *_playwright_tools,
         *_decision_tools,
+        MedicToolkit(),
     ],
     # Instructions
     instructions=INSTRUCTIONS,

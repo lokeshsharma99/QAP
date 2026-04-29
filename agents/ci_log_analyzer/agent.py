@@ -14,6 +14,8 @@ from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.reasoning import ReasoningTools
 
 from agents.base.semantica_agent import SemanticaAgent
+from agno.compression.manager import CompressionManager
+
 from agents.ci_log_analyzer.instructions import INSTRUCTIONS
 from agents.ci_log_analyzer.tools import (
     create_work_item,
@@ -101,6 +103,8 @@ ci_log_analyzer = SemanticaAgent(
     add_learnings_to_context=True,
     update_memory_on_run=True,
     enable_session_summaries=False,  # Disabled to reduce context window
+    compress_tool_results=True,
+    compression_manager=CompressionManager(model=MODEL, compress_token_limit=4000),
 
     # Context
     add_datetime_to_context=True,

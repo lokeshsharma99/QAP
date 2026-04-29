@@ -7,7 +7,14 @@ Helpers for confidence scoring and DoD checklist evaluation.
 
 import re
 
+from agno.exceptions import RetryAgentRun, StopAgentRun
+from agno.tools import Toolkit, tool
 
+
+@tool(
+    name="lint_gherkin",
+    description="Run a basic Gherkin syntax check on feature file content. Returns a dict of check name → pass/fail.",
+)
 def lint_gherkin(content: str) -> dict[str, bool]:
     """Run a basic Gherkin syntax check on feature file content.
 
@@ -17,6 +24,11 @@ def lint_gherkin(content: str) -> dict[str, bool]:
     Returns:
         Dict of check name → pass/fail.
     """
+    if not content or not content.strip():
+        raise RetryAgentRun(
+            "Empty content provided to lint_gherkin. Retrieve the Gherkin feature file content and try again."
+        )
+
     results: dict[str, bool] = {}
 
     results["has_feature"] = bool(re.search(r"^\s*Feature:", content, re.MULTILINE))
@@ -29,9 +41,19 @@ def lint_gherkin(content: str) -> dict[str, bool]:
         re.search(r"data-testid|\.click\(\)|\.fill\(|querySelector|xpath", content, re.IGNORECASE)
     )
 
+    if not results["has_feature"] and not results["has_scenario"]:
+        raise RetryAgentRun(
+            "Content is not valid Gherkin — missing both Feature: and Scenario: keywords. "
+            "Ensure you are passing a valid .feature file and try again."
+        )
+
     return results
 
 
+@tool(
+    name="check_code_quality",
+    description="Run a basic TypeScript/Playwright code quality check. Returns a dict of check name → pass/fail.",
+)
 def check_code_quality(content: str) -> dict[str, bool]:
     """Run a basic TypeScript/Playwright code quality check.
 
@@ -41,6 +63,11 @@ def check_code_quality(content: str) -> dict[str, bool]:
     Returns:
         Dict of check name → pass/fail.
     """
+    if not content or not content.strip():
+        raise RetryAgentRun(
+            "Empty content provided to check_code_quality. Retrieve the TypeScript source file and try again."
+        )
+
     results: dict[str, bool] = {}
 
     results["no_sleep"] = not bool(
@@ -58,6 +85,13 @@ def check_code_quality(content: str) -> dict[str, bool]:
     return results
 
 
+@tool(
+    name="score_confidence",
+    description=(
+        "Calculate confidence score from DoD checklist results. "
+        "Raises StopAgentRun (AUTO-REJECT) when score < 0.50."
+    ),
+)
 def score_confidence(checklist_results: dict[str, bool], artifact_type: str) -> float:
     """Calculate confidence score from checklist results.
 
@@ -67,9 +101,15 @@ def score_confidence(checklist_results: dict[str, bool], artifact_type: str) -> 
 
     Returns:
         Confidence score between 0.0 and 1.0.
+
+    Raises:
+        StopAgentRun: When score < 0.50 (AUTO-REJECT per quality gate policy).
     """
     if not checklist_results:
-        return 0.0
+        raise StopAgentRun(
+            "AUTO-REJECT: No checklist results provided — cannot score artifact. "
+            "Run lint_gherkin or check_code_quality first."
+        )
 
     total = len(checklist_results)
     passed = sum(1 for v in checklist_results.values() if v)
@@ -87,4 +127,27 @@ def score_confidence(checklist_results: dict[str, bool], artifact_type: str) -> 
         if check in checklist_results and not checklist_results[check]:
             base_score = min(base_score, cap)
 
-    return round(base_score, 2)
+    final_score = round(base_score, 2)
+
+    if final_score < 0.50:
+        raise StopAgentRun(
+            f"AUTO-REJECT: Confidence score {final_score:.0%} is below the 50% threshold. "
+            f"Artifact type: {artifact_type}. Failed checks: "
+            f"{[k for k, v in checklist_results.items() if not v]}. "
+            "Sending artifact back to the producing agent for rework."
+        )
+
+    return final_score
+
+
+# ---------------------------------------------------------------------------
+# JudgeToolkit
+# ---------------------------------------------------------------------------
+class JudgeToolkit(Toolkit):
+    """Groups all Judge Agent tools into a single registerable toolkit."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            name="judge",
+            tools=[lint_gherkin, check_code_quality, score_confidence],
+        )

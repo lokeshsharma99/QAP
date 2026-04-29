@@ -11,6 +11,8 @@ from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
+from agno.compression.manager import CompressionManager
+
 from agents.detective.instructions import INSTRUCTIONS
 from agents.detective.tools import classify_failure, extract_screenshot_from_trace, parse_ci_log, parse_trace_zip
 from app.settings import MODEL, agent_db
@@ -104,6 +106,7 @@ detective = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     compress_tool_results=True,
+    compression_manager=CompressionManager(model=MODEL, compress_token_limit=4000),
     tool_call_limit=50,
     # Context
     add_datetime_to_context=True,

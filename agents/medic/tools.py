@@ -8,7 +8,8 @@ Tools for performing surgical edits to fix broken locators.
 import difflib
 from pathlib import Path
 
-from agno.tools import tool
+from agno.exceptions import RetryAgentRun, StopAgentRun
+from agno.tools import Toolkit, tool
 
 
 @tool(
@@ -38,11 +39,9 @@ def apply_surgical_edit(
     full_path = Path("automation") / file_path
     
     if not full_path.exists():
-        return json.dumps({
-            "success": False,
-            "message": f"File not found: {full_path}",
-            "lines_changed": 0,
-        })
+        raise StopAgentRun(
+            f"Target file does not exist: {full_path}. Cannot apply healing patch."
+        )
     
     try:
         # Read the file
@@ -61,11 +60,10 @@ def apply_surgical_edit(
                 new_lines.append(line)
         
         if lines_changed == 0:
-            return json.dumps({
-                "success": False,
-                "message": f"Old locator not found in file: {old_locator}",
-                "lines_changed": 0,
-            })
+            raise RetryAgentRun(
+                f"Old locator '{old_locator}' not found in {file_path}. "
+                "Verify the exact locator string and try again with the correct value."
+            )
         
         # Write the file back
         full_path.write_text('\n'.join(new_lines))
@@ -75,6 +73,8 @@ def apply_surgical_edit(
             "message": f"Successfully replaced {old_locator} with {new_locator}",
             "lines_changed": lines_changed,
         })
+    except (RetryAgentRun, StopAgentRun):
+        raise
     except Exception as e:
         return json.dumps({
             "success": False,
@@ -109,11 +109,9 @@ def verify_edit_safety(
     issues = []
     
     if not full_path.exists():
-        issues.append(f"File not found: {full_path}")
-        return json.dumps({
-            "is_safe": False,
-            "issues": issues,
-        })
+        raise StopAgentRun(
+            f"Target file does not exist: {full_path}. Healing cannot proceed without the source file."
+        )
     
     try:
         content = full_path.read_text()
@@ -134,10 +132,18 @@ def verify_edit_safety(
         if new_locator.count('"') % 2 != 0 or new_locator.count("'") % 2 != 0:
             issues.append("New locator has unbalanced quotes")
         
+        if issues:
+            raise RetryAgentRun(
+                f"Safety check failed for {file_path}: {'; '.join(issues)}. "
+                "Please provide a valid old/new locator pair and try again."
+            )
+
         return json.dumps({
-            "is_safe": len(issues) == 0,
-            "issues": issues,
+            "is_safe": True,
+            "issues": [],
         })
+    except (RetryAgentRun, StopAgentRun):
+        raise
     except Exception as e:
         issues.append(f"Error verifying edit: {str(e)}")
         return json.dumps({
@@ -330,3 +336,22 @@ def run_verification_3x(
         "success": verification_passes >= 3,
         "message": f"Verification passed {verification_passes}/3 times",
     })
+
+
+# ---------------------------------------------------------------------------
+# MedicToolkit
+# ---------------------------------------------------------------------------
+class MedicToolkit(Toolkit):
+    """Groups all Medic Agent tools into a single registerable toolkit."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            name="medic",
+            tools=[
+                apply_surgical_edit,
+                verify_edit_safety,
+                rollback_edit,
+                generate_healing_patch,
+                run_verification_3x,
+            ],
+        )

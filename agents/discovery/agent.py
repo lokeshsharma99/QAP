@@ -12,7 +12,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.discovery.instructions import INSTRUCTIONS
-from agents.discovery.tools import fetch_html, parse_dom_tree, save_learning, ui_crawler
+from agents.discovery.tools import DiscoveryToolkit
 from app.settings import MODEL, agent_db
 from db import get_qap_learnings_kb, get_site_manifesto_kb
 
@@ -61,10 +61,7 @@ discovery = Agent(
         KnowledgeTools(knowledge=site_manifesto_kb),
         *_github_tools,
         *_playwright_tools,
-        fetch_html,
-        parse_dom_tree,
-        save_learning,
-        ui_crawler,
+        DiscoveryToolkit(),
     ],
     # Instructions
     instructions=INSTRUCTIONS,

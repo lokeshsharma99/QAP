@@ -17,6 +17,7 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from agno.run import RunContext
+from agno.tools import Toolkit, tool
 from bs4 import BeautifulSoup
 
 from contracts.site_manifesto import PageEntry, SiteManifesto, UIComponent
@@ -57,6 +58,12 @@ _USER_AGENT = (
 # ---------------------------------------------------------------------------
 # fetch_html — Tool
 # ---------------------------------------------------------------------------
+@tool(
+    name="fetch_html",
+    description="Fetch HTML content from a URL using requests. Results are cached to avoid redundant network calls.",
+    cache_results=True,
+    cache_ttl=1800,
+)
 def fetch_html(url: str, timeout: int = 30) -> str:
     """Fetch HTML content from a URL using requests.
 
@@ -89,6 +96,10 @@ def fetch_html(url: str, timeout: int = 30) -> str:
 # ---------------------------------------------------------------------------
 # parse_dom_tree — Tool
 # ---------------------------------------------------------------------------
+@tool(
+    name="parse_dom_tree",
+    description="Parse HTML content and extract interactable UI components as a list of component dicts.",
+)
 def parse_dom_tree(html_content: str, base_url: str = "") -> list[dict]:
     """Parse HTML content and extract interactable UI components.
 
@@ -116,6 +127,10 @@ def parse_dom_tree(html_content: str, base_url: str = "") -> list[dict]:
 # ---------------------------------------------------------------------------
 # save_learning — Tool
 # ---------------------------------------------------------------------------
+@tool(
+    name="save_learning",
+    description="Save a reusable crawling insight to the knowledge base.",
+)
 def save_learning(run_context: RunContext, title: str, insight: str) -> str:
     """Save a reusable crawling insight to the knowledge base.
 
@@ -136,6 +151,12 @@ def save_learning(run_context: RunContext, title: str, insight: str) -> str:
 # ---------------------------------------------------------------------------
 # ui_crawler — Primary skill tool
 # ---------------------------------------------------------------------------
+@tool(
+    name="ui_crawler",
+    description="Crawl the Application Under Test and produce a Site Manifesto skeleton. Results are cached per AUT URL.",
+    cache_results=True,
+    cache_ttl=1800,
+)
 def ui_crawler(
     aut_base_url: str,
     routes: Optional[list[str]] = None,
@@ -362,3 +383,16 @@ def _resolve_href(href: str, base_origin: str) -> str:
     if href.startswith("/") and base_origin:
         return urljoin(base_origin, href)
     return href
+
+
+# ---------------------------------------------------------------------------
+# DiscoveryToolkit
+# ---------------------------------------------------------------------------
+class DiscoveryToolkit(Toolkit):
+    """Groups all Discovery Agent tools into a single registerable toolkit."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            name="discovery",
+            tools=[fetch_html, parse_dom_tree, save_learning, ui_crawler],
+        )

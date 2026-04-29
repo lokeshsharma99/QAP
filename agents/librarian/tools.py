@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from agno.tools import Toolkit, tool
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 from agno.utils.log import logger
@@ -23,7 +24,7 @@ from contracts.test_deletion_approval import (
     ObsolescenceReport,
     TestDeletionRequest,
 )
-from db.session import get_automation_knowledge
+from db.session import get_automation_kb as get_automation_knowledge
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +164,12 @@ class AutomationFileWatcher:
 # ---------------------------------------------------------------------------
 # Tool Functions for Librarian Agent
 # ---------------------------------------------------------------------------
+@tool(
+    name="index_automation_codebase",
+    description="Index the entire automation codebase into the knowledge base. Cached to avoid redundant re-indexing.",
+    cache_results=True,
+    cache_ttl=300,
+)
 def index_automation_codebase(watch_path: str = "automation") -> str:
     """Index the entire automation codebase into the knowledge base.
 
@@ -177,6 +184,10 @@ def index_automation_codebase(watch_path: str = "automation") -> str:
     return f"Successfully indexed automation codebase from {watch_path}"
 
 
+@tool(
+    name="check_and_re_index_changes",
+    description="Check for file changes in the automation directory and re-index only changed files.",
+)
 def check_and_re_index_changes(watch_path: str = "automation") -> str:
     """Check for file changes and re-index if needed.
 
@@ -196,6 +207,12 @@ def check_and_re_index_changes(watch_path: str = "automation") -> str:
         return "No changes detected"
 
 
+@tool(
+    name="get_file_statistics",
+    description="Get statistics about the automation codebase files grouped by type. Cached for quick access.",
+    cache_results=True,
+    cache_ttl=60,
+)
 def get_file_statistics(watch_path: str = "automation") -> str:
     """Get statistics about the automation codebase.
 
@@ -224,6 +241,10 @@ def get_file_statistics(watch_path: str = "automation") -> str:
 # ---------------------------------------------------------------------------
 # Obsolescence Detection Tools
 # ---------------------------------------------------------------------------
+@tool(
+    name="detect_obsolete_scenarios",
+    description="Detect obsolete test scenarios by comparing Site Manifesto with feature files.",
+)
 def detect_obsolete_scenarios(watch_path: str = "automation") -> str:
     """Detect obsolete test scenarios by comparing Site Manifesto with feature files.
 
@@ -259,6 +280,10 @@ def detect_obsolete_scenarios(watch_path: str = "automation") -> str:
     return f"Detected {obsolete_count} potentially obsolete scenarios"
 
 
+@tool(
+    name="detect_unused_steps",
+    description="Detect step definitions not referenced in any feature file.",
+)
 def detect_unused_steps(watch_path: str = "automation") -> str:
     """Detect step definitions not referenced in any feature file.
 
@@ -301,6 +326,10 @@ def detect_unused_steps(watch_path: str = "automation") -> str:
     return f"Detected {unused_count} potentially unused step definitions"
 
 
+@tool(
+    name="detect_orphaned_pages",
+    description="Detect Page Objects not used by any step definition.",
+)
 def detect_orphaned_pages(watch_path: str = "automation") -> str:
     """Detect Page Objects not used by any step definition.
 
@@ -330,6 +359,10 @@ def detect_orphaned_pages(watch_path: str = "automation") -> str:
     return f"Detected {orphaned_count} potentially orphaned Page Objects"
 
 
+@tool(
+    name="generate_obsolescence_report",
+    description="Generate a comprehensive obsolescence report for the regression suite.",
+)
 def generate_obsolescence_report(watch_path: str = "automation") -> str:
     """Generate a comprehensive obsolescence report for the regression suite.
 
@@ -363,3 +396,24 @@ def generate_obsolescence_report(watch_path: str = "automation") -> str:
     logger.info(f"Orphaned pages: {orphaned_pages_result}")
 
     return f"Generated obsolescence report with ID: {report_id}"
+
+
+# ---------------------------------------------------------------------------
+# LibrarianToolkit
+# ---------------------------------------------------------------------------
+class LibrarianToolkit(Toolkit):
+    """Groups all Librarian Agent tools into a single registerable toolkit."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            name="librarian",
+            tools=[
+                index_automation_codebase,
+                check_and_re_index_changes,
+                get_file_statistics,
+                detect_obsolete_scenarios,
+                detect_unused_steps,
+                detect_orphaned_pages,
+                generate_obsolescence_report,
+            ],
+        )
