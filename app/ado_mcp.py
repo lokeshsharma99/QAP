@@ -129,19 +129,40 @@ def _make_ado_mcp(domains: list[str], tool_name_prefix: str) -> MCPTools:
 # Singleton — one shared ADO MCP process for all agents.
 # Using a single instance avoids spawning multiple npx processes at startup.
 # All domains needed by any agent are included in the superset.
+# Returns [] when AZURE_DEVOPS_URL or AZURE_DEVOPS_PAT are not configured so
+# that no MCPTools object is registered with AgentOS and no startup auth
+# attempt is made in headless / Docker environments.
 # ---------------------------------------------------------------------------
 _ADO_MCP_SINGLETON: MCPTools | None = None
 
 
-def _get_ado_mcp_singleton() -> MCPTools:
-    """Return the module-level singleton, creating it on first call."""
+def _get_ado_mcp_singleton() -> list:
+    """Return singleton list, empty if URL or PAT are not configured."""
+    ado_url = os.getenv("AZURE_DEVOPS_URL", "").rstrip("/")
+    ado_pat = os.getenv("AZURE_DEVOPS_PAT", "") or os.getenv("AZURE_DEVOPS_EXT_PAT", "")
+
+    if not ado_url:
+        _log.warning(
+            "AZURE_DEVOPS_URL not set — ADO MCP tools unavailable. "
+            "Set AZURE_DEVOPS_URL=https://dev.azure.com/yourorg in .env"
+        )
+        return []
+
+    if not ado_pat:
+        _log.warning(
+            "AZURE_DEVOPS_PAT not set — ADO MCP tools unavailable. "
+            "Set AZURE_DEVOPS_PAT in .env for non-interactive Docker auth. "
+            "Without a PAT the server falls back to browser auth which fails headless."
+        )
+        return []
+
     global _ADO_MCP_SINGLETON
     if _ADO_MCP_SINGLETON is None:
         _ADO_MCP_SINGLETON = _make_ado_mcp(
             domains=["core", "pipelines", "repositories", "work-items"],
             tool_name_prefix="ado_",
         )
-    return _ADO_MCP_SINGLETON
+    return [_ADO_MCP_SINGLETON]
 
 
 # ---------------------------------------------------------------------------
@@ -163,10 +184,7 @@ def get_ado_mcp_for_pipeline_analyst() -> list:
     - Fetch build definitions and pipeline YAML configuration
     - Compare the current run against the last passing run
     """
-    try:
-        return [_get_ado_mcp_singleton()]
-    except Exception:
-        return []
+    return _get_ado_mcp_singleton()
 
 
 def get_ado_mcp_for_ci_log_analyzer() -> list:
@@ -182,10 +200,7 @@ def get_ado_mcp_for_ci_log_analyzer() -> list:
     - Update existing work items with RCA findings and remediation notes
     - Search for duplicate open bugs before creating new ones
     """
-    try:
-        return [_get_ado_mcp_singleton()]
-    except Exception:
-        return []
+    return _get_ado_mcp_singleton()
 
 
 def get_ado_mcp_for_architect() -> list:
@@ -200,7 +215,4 @@ def get_ado_mcp_for_architect() -> list:
     - Read linked test cases to understand existing coverage
     - Query sprint / backlog for priority context before producing Execution Plan
     """
-    try:
-        return [_get_ado_mcp_singleton()]
-    except Exception:
-        return []
+    return _get_ado_mcp_singleton()
