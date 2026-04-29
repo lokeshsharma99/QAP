@@ -39,6 +39,7 @@ from teams.grooming import grooming_team
 from teams.operations import operations_team
 from teams.strategy import strategy_team
 from workflows.discovery_onboard import discovery_onboard
+from workflows.jira_to_pr import jira_to_pr
 from workflows.spec_to_code import spec_to_code
 from workflows.triage_heal import triage_heal
 
@@ -91,6 +92,7 @@ agent_os = AgentOS(
     ],
     workflows=[
         discovery_onboard,
+        jira_to_pr,
         spec_to_code,
         triage_heal,
     ],
