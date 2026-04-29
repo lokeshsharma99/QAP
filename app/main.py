@@ -26,6 +26,7 @@ from agents.pipeline_analyst import pipeline_analyst
 from agents.scribe import scribe
 from app.endpoints.agent_config import router as agent_config_router
 from app.endpoints.model import router as model_router
+from app.endpoints.optimize_memories import router as optimize_memories_router
 from app.endpoints.settings import router as settings_router
 from app.registry import registry
 from app.settings import RUNTIME_ENV, agent_db
@@ -81,6 +82,21 @@ agent_os = AgentOS(
 )
 
 app = agent_os.get_app()
+
+# ---------------------------------------------------------------------------
+# Override /optimize-memories to use MODEL (kilo-auto/free) instead of gpt-4o.
+# Insert before agno routes so FastAPI's first-match wins.
+# ---------------------------------------------------------------------------
+from fastapi.routing import APIRoute  # noqa: E402
+
+app.include_router(optimize_memories_router)
+# Move our override to the front of the route list so it takes priority
+new_routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/optimize-memories"
+              and r.operation_id == "optimize_memories_kilo"]
+other_routes = [r for r in app.routes if r not in new_routes]
+app.routes.clear()
+app.routes.extend(new_routes + other_routes)
+
 app.include_router(settings_router)
 app.include_router(model_router)
 app.include_router(agent_config_router)
