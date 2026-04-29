@@ -29,6 +29,18 @@ interface TraceSummary {
   error_count: number
 }
 
+/** Convert raw trace name like "Engineer.arun" → "Engineer"
+ *  or agent_id like "data_agent" / "ci-log-analyzer" → "Data Agent" / "Ci Log Analyzer" */
+const fmtRunName = (name?: string, agentId?: string, teamId?: string): string => {
+  const raw = name || agentId || teamId || 'run'
+  // strip method suffix: .arun / .run / .astream / .stream / .aprint
+  const stripped = raw.replace(/\.(arun|run|astream|stream|aprint|print)$/i, '')
+  // prettify snake_case and kebab-case → Title Case
+  return stripped
+    .replace(/[-_]/g, ' ')
+    .replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1))
+}
+
 const traceStatusColor = (status: string) => {
   if (status === 'success' || status === 'ok') return 'text-positive'
   if (status === 'error'   || status === 'failed') return 'text-destructive'
@@ -87,7 +99,7 @@ const RecentTracesCard = ({ endpoint, authToken }: { endpoint: string; authToken
               className="flex items-center gap-3 rounded-lg border border-transparent px-2 py-1.5 hover:border-accent/50 hover:bg-accent/20"
             >
               <span className={cn('size-1.5 shrink-0 rounded-full', t.error_count > 0 || t.status === 'error' ? 'bg-destructive' : t.status === 'running' ? 'bg-warning animate-pulse' : 'bg-positive')} />
-              <span className="flex-1 min-w-0 truncate text-xs text-primary">{t.name || t.agent_id || t.team_id || 'run'}</span>
+              <span className="flex-1 min-w-0 truncate text-xs text-primary">{fmtRunName(t.name, t.agent_id, t.team_id)}</span>
               <span className={cn('shrink-0 text-xs', traceStatusColor(t.status))}>{t.duration || '—'}</span>
               <span className="shrink-0 text-xs text-muted/50">{t.start_time ? dayjs(t.start_time).fromNow() : ''}</span>
             </Link>
