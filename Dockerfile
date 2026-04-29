@@ -76,8 +76,13 @@ RUN sed -i \
 # gracefully and the agent receives a clean error string.
 # Downgrade to log_warning so the logs are not polluted with tracebacks
 # every time a GitHub MCP tool reads a resource that does not exist yet.
+# Step 1: add log_warning to the import so the symbol is available.
+# Step 2: replace the log_exception call with log_warning.
 # ---------------------------------------------------------------------------
 RUN sed -i \
+    's/from agno.utils.log import log_debug, log_exception/from agno.utils.log import log_debug, log_exception, log_warning/' \
+    /usr/local/lib/python3.12/site-packages/agno/utils/mcp.py && \
+    sed -i \
     's/log_exception(f"Failed to call MCP tool/log_warning(f"MCP tool not found (non-fatal):/g' \
     /usr/local/lib/python3.12/site-packages/agno/utils/mcp.py
 
