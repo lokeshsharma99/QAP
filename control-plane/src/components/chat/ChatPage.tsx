@@ -15,6 +15,9 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 // rehypeSanitize intentionally removed — it corrupts code block text nodes, breaking mermaid
+import { useTheme } from 'next-themes'
+import SyntaxHighlighter from 'react-syntax-highlighter'
+import { atomOneDark, atomOneLight } from 'react-syntax-highlighter/dist/cjs/styles/hljs'
 import { useQueryState } from 'nuqs'
 import { cn } from '@/lib/utils'
 import dayjs from 'dayjs'
@@ -25,7 +28,7 @@ import {
   Bot, Cpu, Database, Hash, Clock, CheckCircle, XCircle, Zap, GitBranch, Activity,
   Users, Settings, BookOpen, MemoryStick, Layers, MessageSquare, MessagesSquare,
   Play, CornerDownRight, ArrowUp, Paperclip, X as XIcon, FileText, Image as ImageIcon,
-  Hammer, ChevronRight
+  Hammer, ChevronRight, Copy, Check
 } from 'lucide-react'
 
 import { getAgentDetailAPI, getTeamDetailAPI, getWorkflowDetailAPI } from '@/api/os'
@@ -235,6 +238,62 @@ const MermaidBlock = ({ code }: { code: string }) => {
   return <div ref={ref} className="my-3 flex justify-center overflow-x-auto [&>svg]:max-w-full [&>svg]:h-auto" />
 }
 
+// ---------------------------------------------------------------------------
+// Syntax-highlighted code block with language label + copy button
+// ---------------------------------------------------------------------------
+const CodeBlock = ({ lang, children }: { lang: string; children: string }) => {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme !== 'light'
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(children).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="rounded-md overflow-hidden border border-border/50 mb-3">
+      {/* header bar: language label + copy button */}
+      <div className={cn(
+        'flex items-center justify-between px-3 py-1.5 border-b border-border/30',
+        isDark ? 'bg-[#2d2d2d]' : 'bg-[#f0f0f0]'
+      )}>
+        <span className="text-[0.7rem] font-medium uppercase text-muted/70 font-dmmono">
+          {lang || 'code'}
+        </span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 text-[0.65rem] text-muted/60 hover:text-primary transition-colors"
+          title="Copy code"
+        >
+          {copied
+            ? <><Check className="size-3 text-green-500" /><span className="text-green-500">Copied</span></>
+            : <><Copy className="size-3" /><span>Copy</span></>}
+        </button>
+      </div>
+      {/* syntax-highlighted body */}
+      <SyntaxHighlighter
+        language={lang || 'text'}
+        style={isDark ? atomOneDark : atomOneLight}
+        customStyle={{
+          margin: 0,
+          padding: '12px',
+          fontSize: '0.8rem',
+          lineHeight: '1.6',
+          overflowX: 'auto',
+          background: isDark ? '#1e1e1e' : '#f9f9f9',
+        }}
+        codeTagProps={{ style: { fontFamily: 'DM Mono, monospace' } }}
+        wrapLongLines={false}
+      >
+        {children}
+      </SyntaxHighlighter>
+    </div>
+  )
+}
+
 const ReasoningBlock = ({ steps }: { steps: NonNullable<ChatMessage['extra_data']>['reasoning_steps'] }) => {
   const [open, setOpen] = useState(false)
   if (!steps || steps.length === 0) return null
@@ -357,18 +416,7 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
                       <code className="rounded bg-accent px-1.5 py-0.5 font-dmmono text-[0.8rem] text-primary/90">{text}</code>
                     )
                   }
-                  return (
-                    <div className="rounded-md overflow-hidden border border-border/50 mb-3">
-                      {lang && (
-                        <div className="flex items-center justify-between bg-[#2d2d2d] px-3 py-1.5 border-b border-border/30">
-                          <span className="text-[0.7rem] font-medium uppercase text-muted/70 font-dmmono">{lang}</span>
-                        </div>
-                      )}
-                      <pre className="bg-[#1e1e1e] p-3 overflow-x-auto">
-                        <code className="font-dmmono text-[0.8rem] leading-relaxed text-[#d4d4d4]">{children}</code>
-                      </pre>
-                    </div>
-                  )
+                  return <CodeBlock lang={lang} key={text.slice(0, 20)}>{text}</CodeBlock>
                 },
                 pre: ({ children }) => <>{children}</>,
                 blockquote: ({ children }) => (
