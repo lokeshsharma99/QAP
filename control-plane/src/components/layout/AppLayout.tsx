@@ -130,7 +130,7 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
           {!navCollapsed && (
             <div className="flex items-center gap-2">
               <Icon type="agno" size="xs" />
-              <span className="text-xs font-medium uppercase text-white">Quality Autopilot</span>
+              <span className="text-xs font-medium uppercase text-primary">Quality Autopilot</span>
             </div>
           )}
           <button
