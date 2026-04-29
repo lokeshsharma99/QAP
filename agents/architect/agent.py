@@ -7,6 +7,7 @@ Role: Parse requirements, query KB for impact, produce RequirementContext (Execu
 """
 
 from agno.agent import Agent
+from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
@@ -66,6 +67,19 @@ site_manifesto_kb = get_site_manifesto_kb()
 automation_kb = get_automation_kb()
 
 # ---------------------------------------------------------------------------
+# Memory Manager
+# ---------------------------------------------------------------------------
+memory_manager = MemoryManager(
+    db=agent_db,
+    memory_capture_instructions=(
+        "Only store requirement analysis patterns: the feature domain, "
+        "commonly affected Page Objects for that domain, and reusable "
+        "acceptance criteria patterns. Ignore ticket IDs, sprint names, "
+        "and one-off implementation details."
+    ),
+)
+
+# ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
 architect = Agent(
@@ -77,6 +91,7 @@ architect = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    memory_manager=memory_manager,
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
@@ -107,8 +122,6 @@ architect = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
-    enable_agentic_memory=True,
-    learning=True,
     update_memory_on_run=True,
     enable_session_summaries=True,
     add_session_summary_to_context=True,

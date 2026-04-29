@@ -75,7 +75,6 @@ impact_analyst = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
-    enable_agentic_memory=True,
     update_memory_on_run=True,
     search_past_sessions=True,
     num_past_sessions_to_search=3,

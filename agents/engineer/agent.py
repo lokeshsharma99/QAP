@@ -7,6 +7,7 @@ Role: Author modular Playwright POMs and Step Definitions (Look-Before-You-Leap)
 """
 
 from agno.agent import Agent
+from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
@@ -35,6 +36,19 @@ qap_learnings_kb = get_qap_learnings_kb()
 site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
+# Memory Manager
+# ---------------------------------------------------------------------------
+memory_manager = MemoryManager(
+    db=agent_db,
+    memory_capture_instructions=(
+        "Only store automation coding patterns: successful locator strategies "
+        "per UI component type, Page Object class patterns that worked, and "
+        "AUT-specific UI quirks discovered. Ignore file paths, branch names, "
+        "and one-off code snippets."
+    ),
+)
+
+# ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
 engineer = Agent(
@@ -46,6 +60,7 @@ engineer = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    memory_manager=memory_manager,
     knowledge=automation_knowledge,
     search_knowledge=True,
     # Capabilities
@@ -79,8 +94,6 @@ engineer = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
-    enable_agentic_memory=True,
-    learning=True,
     update_memory_on_run=True,
     enable_session_summaries=True,
     add_session_summary_to_context=True,

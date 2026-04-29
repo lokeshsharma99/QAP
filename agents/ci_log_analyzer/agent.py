@@ -99,7 +99,6 @@ ci_log_analyzer = SemanticaAgent(
     ],
 
     # Memory
-    enable_agentic_memory=True,
     learning=LearningMachine(
         # User memory: retain user preferences across sessions
         user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),

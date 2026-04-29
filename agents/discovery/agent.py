@@ -80,8 +80,6 @@ discovery = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
-    enable_agentic_memory=True,
-    learning=True,
     update_memory_on_run=True,
     enable_session_summaries=True,
     add_session_summary_to_context=True,

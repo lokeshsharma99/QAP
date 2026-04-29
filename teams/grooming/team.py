@@ -43,7 +43,7 @@ grooming_team = Team(
     show_members_responses=True,
 
     # Memory
-    enable_agentic_memory=True,
+    update_memory_on_run=True,
 
     # Context
     add_datetime_to_context=True,

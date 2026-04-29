@@ -8,6 +8,7 @@ Role: Run DoD checklist, auto-approve at >= 90% confidence.
 
 from agno.agent import Agent
 from agno.learn import LearningMachine, LearningMode, DecisionLogConfig, UserMemoryConfig
+from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
@@ -43,6 +44,19 @@ qap_learnings_kb = get_qap_learnings_kb()
 rca_kb = get_rca_kb()
 
 # ---------------------------------------------------------------------------
+# Memory Manager
+# ---------------------------------------------------------------------------
+memory_manager = MemoryManager(
+    db=agent_db,
+    memory_capture_instructions=(
+        "Only record quality gate decisions. For each verdict store: "
+        "artifact_type, confidence score (0-100), pass/fail, and the primary "
+        "rejection reason if failed. Ignore conversation pleasantries, "
+        "clarifying questions, and administrative messages."
+    ),
+)
+
+# ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
 judge = Agent(
@@ -53,6 +67,7 @@ judge = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    memory_manager=memory_manager,
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
@@ -89,7 +104,6 @@ judge = Agent(
         # mode=AGENTIC — Judge decides when a decision is significant enough to log
         decision_log=DecisionLogConfig(mode=LearningMode.AGENTIC),
     ),
-    update_memory_on_run=True,
     search_past_sessions=True,
     num_past_sessions_to_search=5,
     tool_call_limit=30,

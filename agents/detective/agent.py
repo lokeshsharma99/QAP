@@ -8,6 +8,7 @@ Role: Parse Playwright traces to classify failure root cause.
 
 from agno.agent import Agent
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
+from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
@@ -56,6 +57,19 @@ automation_kb = get_automation_kb()
 site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
+# Memory Manager
+# ---------------------------------------------------------------------------
+memory_manager = MemoryManager(
+    db=agent_db,
+    memory_capture_instructions=(
+        "Only store failure analysis patterns. For each failure record: "
+        "classification (LOCATOR_STALE/DATA_MISMATCH/TIMING_FLAKE/ENV_FAILURE/LOGIC_CHANGE), "
+        "root cause description, and the suggested fix strategy. "
+        "Ignore test run IDs, timestamps, and one-off execution details."
+    ),
+)
+
+# ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
 detective = Agent(
@@ -67,6 +81,7 @@ detective = Agent(
     model=MODEL,
     # Data
     db=agent_db,
+    memory_manager=memory_manager,
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
@@ -100,7 +115,6 @@ detective = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
-    enable_agentic_memory=True,
     learning=LearningMachine(
         # User memory: retain preferences across AgentUI sessions
         user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),

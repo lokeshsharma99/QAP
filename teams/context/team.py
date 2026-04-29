@@ -34,7 +34,7 @@ context_team = Team(
     share_member_interactions=True,
     show_members_responses=True,
     # Memory
-    enable_agentic_memory=True,
+    update_memory_on_run=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,
