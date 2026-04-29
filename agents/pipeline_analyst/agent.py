@@ -17,18 +17,25 @@ from agno.tools.scheduler import SchedulerTools
 
 from agents.pipeline_analyst.instructions import INSTRUCTIONS
 from agents.pipeline_analyst.tools import download_ci_artifact, parse_allure_results, parse_junit_xml
+from app.ado_mcp import get_ado_mcp_for_pipeline_analyst
 from app.github_mcp import get_github_mcp_for_pipeline_analyst
 from app.settings import MODEL, agent_db
 from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (requires GITHUB_TOKEN in .env)
-# Pipeline Analyst reads GitHub Actions workflow runs, job logs, and artifacts
-# to diagnose CI failures and correlate them with triggering code changes.
 # Toolsets: actions (workflow runs, job logs), repos (commits, diffs),
 #           pull_requests (triggering PR), contexts (repo metadata)
 # ---------------------------------------------------------------------------
 _github_tools = get_github_mcp_for_pipeline_analyst()
+
+# ---------------------------------------------------------------------------
+# Azure DevOps MCP Tools (requires AZURE_DEVOPS_URL + AZURE_DEVOPS_PAT in .env)
+# Domains: core, pipelines, repositories
+# Pipeline Analyst uses these to read ADO pipeline runs, job logs, build
+# definitions, and repo diffs to diagnose CI failures.
+# ---------------------------------------------------------------------------
+_ado_tools = get_ado_mcp_for_pipeline_analyst()
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
@@ -64,6 +71,7 @@ pipeline_analyst = Agent(
         KnowledgeTools(knowledge=rca_kb),
         KnowledgeTools(knowledge=automation_kb),
         *_github_tools,
+        *_ado_tools,
         download_ci_artifact,
         parse_junit_xml,
         parse_allure_results,

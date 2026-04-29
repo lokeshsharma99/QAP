@@ -62,7 +62,19 @@ JIRA_URL = getenv("JIRA_URL", "")
 JIRA_USERNAME = getenv("JIRA_USERNAME", "")
 JIRA_API_TOKEN = getenv("JIRA_API_TOKEN", "")
 AZURE_DEVOPS_URL = getenv("AZURE_DEVOPS_URL", "")
+AZURE_DEVOPS_EMAIL = getenv("AZURE_DEVOPS_EMAIL", "")
 AZURE_DEVOPS_PAT = getenv("AZURE_DEVOPS_PAT", "")
+AZURE_DEVOPS_PROJECT = getenv("AZURE_DEVOPS_PROJECT", "")
+
+# ---------------------------------------------------------------------------
+# Atlassian MCP (Jira + Confluence via Rovo MCP Server)
+# ---------------------------------------------------------------------------
+ATLASSIAN_URL = getenv("ATLASSIAN_URL", "")
+ATLASSIAN_EMAIL = getenv("ATLASSIAN_EMAIL", "")
+ATLASSIAN_API_TOKEN = getenv("ATLASSIAN_API_TOKEN", "")
+ATLASSIAN_CLOUD_ID = getenv("ATLASSIAN_CLOUD_ID", "")
+ATLASSIAN_JIRA_PROJECT = getenv("ATLASSIAN_JIRA_PROJECT", "")
+ATLASSIAN_CONFLUENCE_SPACE = getenv("ATLASSIAN_CONFLUENCE_SPACE", "")
 
 # ---------------------------------------------------------------------------
 # Optional tools

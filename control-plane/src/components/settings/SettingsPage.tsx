@@ -11,7 +11,7 @@ import useChatActions from '@/hooks/useChatActions'
 import {
   Server, KeyRound, Bot, Database, Globe, Wrench,
   ShieldCheck, RefreshCw, Save, Eye, EyeOff, CheckCircle2,
-  AlertCircle, CircleDot, Cpu, Zap, Users
+  AlertCircle, CircleDot, Cpu, Zap, Users, GitBranch
 } from 'lucide-react'
 import AgentConfigPanel from '@/components/chat/AgentConfigPanel'
 
@@ -113,8 +113,18 @@ const NAV_TABS: NavTab[] = [
         title: 'Integrations',
         icon: Wrench,
         fields: [
-          { key: 'GITHUB_TOKEN', label: 'GitHub Token', placeholder: 'ghp_...', secret: true, description: 'Used by Engineer agent for PR creation.' },
+          { key: 'GITHUB_TOKEN', label: 'GitHub Token', placeholder: 'ghp_...', secret: true, description: 'Used by Engineer agent for PR creation. Also enables GitHub MCP (repos, issues, actions).' },
           { key: 'SERPER_API_KEY', label: 'Serper API Key (Search)', placeholder: 'a8e7e6...', secret: true },
+        ],
+      },
+      {
+        id: 'mcp_servers',
+        title: 'MCP Servers',
+        icon: GitBranch,
+        fields: [
+          { key: '_mcp_info', label: 'GitHub MCP', placeholder: 'Enabled when GITHUB_TOKEN is set — uses @modelcontextprotocol/server-github via npx', description: 'Active on: Architect, Discovery, Engineer, Detective, Pipeline Analyst, Impact Analyst' },
+          { key: '_ado_mcp_info', label: 'Azure DevOps MCP', placeholder: 'Enabled when AZURE_DEVOPS_URL + AZURE_DEVOPS_PAT are set — uses @azure-devops/mcp via npx', description: 'Active on: Pipeline Analyst (pipelines), CI Log Analyzer (pipelines + work-items), Architect (work-items)' },
+          { key: '_atlassian_mcp_info', label: 'Atlassian Rovo MCP', placeholder: 'Enabled when ATLASSIAN_EMAIL + ATLASSIAN_API_TOKEN are set — uses mcp-remote proxy to mcp.atlassian.com', description: 'Active on: Architect (Jira), Scribe (Jira + Confluence), CI Log Analyzer (Jira bugs)' },
         ],
       },
     ],
@@ -185,10 +195,23 @@ const NAV_TABS: NavTab[] = [
         title: 'Azure DevOps',
         icon: ShieldCheck,
         fields: [
-          { key: 'AZURE_DEVOPS_URL', label: 'Azure DevOps URL', placeholder: 'https://dev.azure.com/yourorg', wide: true },
+          { key: 'AZURE_DEVOPS_URL', label: 'Azure DevOps URL', placeholder: 'https://dev.azure.com/yourorg', wide: true, description: 'Org name is auto-extracted for the ADO MCP server (@azure-devops/mcp).' },
           { key: 'AZURE_DEVOPS_EMAIL', label: 'Email', placeholder: 'user@example.com' },
-          { key: 'AZURE_DEVOPS_PAT', label: 'Personal Access Token', placeholder: 'PAT...', secret: true },
-          { key: 'AZURE_DEVOPS_PROJECT', label: 'Project Name', placeholder: 'MyProject' },
+          { key: 'AZURE_DEVOPS_PAT', label: 'Personal Access Token', placeholder: 'PAT...', secret: true, description: 'Also used as AZURE_DEVOPS_EXT_PAT for headless MCP auth (no browser required).' },
+          { key: 'AZURE_DEVOPS_PROJECT', label: 'Default Project Name', placeholder: 'MyProject' },
+        ],
+      },
+      {
+        id: 'atlassian_mcp',
+        title: 'Atlassian Rovo MCP (Jira + Confluence)',
+        icon: ShieldCheck,
+        fields: [
+          { key: 'ATLASSIAN_URL', label: 'Atlassian Site URL', placeholder: 'https://yourorg.atlassian.net', wide: true, description: 'Your Atlassian Cloud site. Admin must enable API token auth in Atlassian Administration → Security → Rovo MCP Server settings.' },
+          { key: 'ATLASSIAN_EMAIL', label: 'Atlassian Email', placeholder: 'user@example.com' },
+          { key: 'ATLASSIAN_API_TOKEN', label: 'Atlassian API Token', placeholder: 'ATATT3x...', secret: true, description: 'Create at: id.atlassian.com/manage-profile/security/api-tokens' },
+          { key: 'ATLASSIAN_CLOUD_ID', label: 'Cloud ID (optional)', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', description: 'Skips discovery round-trips. Find at: yourorg.atlassian.net/_edge/tenant_info' },
+          { key: 'ATLASSIAN_JIRA_PROJECT', label: 'Default Jira Project Key (optional)', placeholder: 'QAP' },
+          { key: 'ATLASSIAN_CONFLUENCE_SPACE', label: 'Default Confluence SpaceId (optional)', placeholder: '123456' },
         ],
       },
     ],

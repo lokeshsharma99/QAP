@@ -20,8 +20,22 @@ from db import get_automation_kb, get_qap_learnings_kb, get_site_manifesto_kb
 # GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
 # Architect reads GitHub Issues as requirement source + Wiki for domain context
 # ---------------------------------------------------------------------------
+from app.ado_mcp import get_ado_mcp_for_architect
+from app.atlassian_mcp import get_atlassian_mcp_for_architect
 from app.github_mcp import get_github_mcp_for_architect
 _github_tools = get_github_mcp_for_architect()
+
+# ---------------------------------------------------------------------------
+# Azure DevOps MCP Tools (requires AZURE_DEVOPS_URL + AZURE_DEVOPS_PAT in .env)
+# Domains: core, work-items — reads ADO work items as alternative requirement source
+# ---------------------------------------------------------------------------
+_ado_tools = get_ado_mcp_for_architect()
+
+# ---------------------------------------------------------------------------
+# Atlassian MCP Tools (requires ATLASSIAN_EMAIL + ATLASSIAN_API_TOKEN in .env)
+# Reads Jira issues (ACs, descriptions) and Confluence docs as requirements
+# ---------------------------------------------------------------------------
+_atlassian_tools = get_atlassian_mcp_for_architect()
 
 # ---------------------------------------------------------------------------
 # Semantica Context Graph Toolkit (optional — activated via SEMANTICA_ENABLED)
@@ -73,6 +87,8 @@ architect = Agent(
         KnowledgeTools(knowledge=automation_kb),
         *_kg_tools,
         *_github_tools,
+        *_ado_tools,
+        *_atlassian_tools,
     ],
     # Instructions
     instructions=INSTRUCTIONS,

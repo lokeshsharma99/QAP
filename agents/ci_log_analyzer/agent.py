@@ -19,10 +19,25 @@ from agents.ci_log_analyzer.tools import (
     create_work_item,
     get_pipeline_runs,
 )
+from app.ado_mcp import get_ado_mcp_for_ci_log_analyzer
+from app.atlassian_mcp import get_atlassian_mcp_for_ci_log_analyzer
 from app.settings import MODEL, agent_db
-from db.session import get_rca_knowledge
+from db.session import get_rca_kb as get_rca_knowledge
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Azure DevOps MCP Tools (requires AZURE_DEVOPS_URL + AZURE_DEVOPS_PAT in .env)
+# Domains: core, pipelines, work-items
+# CI Log Analyzer reads ADO pipeline logs and creates work items after HITL.
+# ---------------------------------------------------------------------------
+_ado_tools = get_ado_mcp_for_ci_log_analyzer()
+
+# ---------------------------------------------------------------------------
+# Atlassian MCP Tools (requires ATLASSIAN_EMAIL + ATLASSIAN_API_TOKEN in .env)
+# CI Log Analyzer creates Jira bugs from RCA findings after HITL approval.
+# ---------------------------------------------------------------------------
+_atlassian_tools = get_atlassian_mcp_for_ci_log_analyzer()
 
 # ---------------------------------------------------------------------------
 # Create Knowledge Base
@@ -47,6 +62,8 @@ tools = [
     ),
     get_pipeline_runs,
     create_work_item,
+    *_ado_tools,
+    *_atlassian_tools,
 ]
 
 # ---------------------------------------------------------------------------

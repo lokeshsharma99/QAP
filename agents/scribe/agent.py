@@ -13,6 +13,7 @@ from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 
 from agents.scribe.instructions import INSTRUCTIONS
+from app.atlassian_mcp import get_atlassian_mcp_for_scribe
 from app.settings import MODEL, agent_db
 from db import get_qap_learnings_kb
 
@@ -21,6 +22,12 @@ from db import get_qap_learnings_kb
 # Primary: qap_learnings — Scribe reads prior Gherkin patterns and conventions
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
+
+# ---------------------------------------------------------------------------
+# Atlassian MCP Tools (requires ATLASSIAN_EMAIL + ATLASSIAN_API_TOKEN in .env)
+# Scribe verifies all Jira ACs are covered and links .feature files to issues
+# ---------------------------------------------------------------------------
+_atlassian_tools = get_atlassian_mcp_for_scribe()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -41,6 +48,7 @@ scribe = Agent(
         CodingTools(requires_confirmation_tools=["run_shell"]),
         FileTools(),
         KnowledgeTools(knowledge=qap_learnings_kb),
+        *_atlassian_tools,
     ],
     # Instructions
     instructions=INSTRUCTIONS,
