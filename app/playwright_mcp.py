@@ -48,7 +48,6 @@ import logging
 import os
 
 from agno.tools.mcp import MCPTools
-from mcp.client.stdio import StdioServerParameters
 
 _log = logging.getLogger(__name__)
 
@@ -60,7 +59,12 @@ def _make_playwright_mcp(tool_name_prefix: str) -> list:
     """
     Build an MCPTools instance connecting to the Playwright MCP server.
 
-    Returns an empty list when configuration is missing so agents load cleanly.
+    Returns an empty list when PLAYWRIGHT_MCP_URL is not set.
+    In stdio mode, spawning a headless Chromium inside qap-api causes
+    startup timeouts — browser automation belongs in a dedicated service.
+
+    Start the service with:
+        docker compose --profile mcp up -d
 
     Parameters
     ----------
@@ -73,8 +77,9 @@ def _make_playwright_mcp(tool_name_prefix: str) -> list:
 
     if mcp_url:
         # ---------------------------------------------------------------------------
-        # Mode 1 — Connect to the running playwright-mcp Docker service via HTTP
-        # Playwright MCP server exposes a Streamable-HTTP MCP endpoint at /mcp
+        # Mode 1 — Connect to the running playwright-mcp Docker service via HTTP.
+        # This is the production path: a separate container runs the browser and
+        # exposes a Streamable-HTTP MCP endpoint at /mcp.  No npx spawn in qap-api.
         # ---------------------------------------------------------------------------
         from agno.tools.mcp.params import StreamableHTTPClientParams
 
@@ -88,32 +93,20 @@ def _make_playwright_mcp(tool_name_prefix: str) -> list:
         ]
     else:
         # ---------------------------------------------------------------------------
-        # Mode 2 — Spawn the MCP server in-process via npx (no extra service needed)
-        # --headless and --no-sandbox make it work inside Docker / CI containers.
+        # No service URL — skip tool registration entirely.
+        # Spawning @playwright/mcp via npx inside qap-api causes startup timeouts
+        # and couples browser state to the API process.
+        #
+        # To enable Playwright MCP tools, start the dedicated service:
+        #   docker compose --profile mcp up -d
+        # Then set PLAYWRIGHT_MCP_URL=http://playwright-mcp:8931 in .env.
         # ---------------------------------------------------------------------------
         _log.info(
-            "Playwright MCP: PLAYWRIGHT_MCP_URL not set — running headless via npx stdio. "
-            "To use the dedicated service, start it with: "
-            "docker compose --profile mcp up -d"
+            "Playwright MCP: PLAYWRIGHT_MCP_URL not set — Playwright tools unavailable. "
+            "Run 'docker compose --profile mcp up -d' and set PLAYWRIGHT_MCP_URL in .env "
+            "to enable browser automation tools for Discovery and Medic."
         )
-        return [
-            MCPTools(
-                server_params=StdioServerParameters(
-                    command="npx",
-                    args=[
-                        "-y",
-                        "@playwright/mcp@latest",
-                        "--headless",
-                        "--no-sandbox",
-                        "--isolated",
-                    ],
-                    env={**os.environ},
-                ),
-                transport="stdio",
-                tool_name_prefix=tool_name_prefix,
-                timeout_seconds=30,
-            )
-        ]
+        return []
 
 
 # ---------------------------------------------------------------------------
