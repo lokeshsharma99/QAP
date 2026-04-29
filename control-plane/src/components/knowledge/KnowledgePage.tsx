@@ -233,6 +233,7 @@ export default function KnowledgePage() {
   const [searchQuery, setSearchQuery]     = useState('')
   const [searchResults, setSearchResults] = useState<KBDocument[] | null>(null)
   const [searching, setSearching]         = useState(false)
+  const [searchMaxResults, setSearchMaxResults] = useState(10)
 
   // upload panel
   const [uploadTab, setUploadTab]     = useState<UploadTab>('text')
@@ -370,7 +371,7 @@ export default function KnowledgePage() {
     setSearching(true)
     try {
       const resolvedId = selectedKb
-      const body: Record<string, unknown> = { query: searchQuery, max_results: 10 }
+      const body: Record<string, unknown> = { query: searchQuery, max_results: searchMaxResults }
       if (resolvedId) {
         const p = kbParam(resolvedId)
         Object.assign(body, p)
@@ -529,6 +530,14 @@ export default function KnowledgePage() {
               className="w-full rounded-xl border border-accent bg-primaryAccent pl-8 pr-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
             />
           </div>
+          <select
+            value={searchMaxResults}
+            onChange={(e) => setSearchMaxResults(Number(e.target.value))}
+            className="rounded-xl border border-accent bg-primaryAccent px-2 py-2 text-xs text-muted outline-none focus:border-primary/30"
+            title="Max results"
+          >
+            {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
           <Button size="sm" onClick={handleSearch} disabled={searching || !searchQuery.trim()} className="gap-1.5">
             <Search className="size-3.5" />{searching ? 'Searching…' : 'Search'}
           </Button>
@@ -645,7 +654,7 @@ export default function KnowledgePage() {
                   onChange={(e) => setRemoteLoader(e.target.value)}
                   className="w-full rounded-xl border border-accent bg-background px-3 py-2 text-xs text-primary outline-none focus:border-primary/30"
                 >
-                  {['website', 'sitemap', 'pdf', 'docx', 'github', 'jira', 'confluence'].map((l) => (
+                  {['website', 'sitemap', 'pdf', 'docx', 'csv', 'arxiv', 'github', 'jira', 'confluence'].map((l) => (
                     <option key={l} value={l}>{l}</option>
                   ))}
                 </select>

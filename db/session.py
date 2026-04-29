@@ -57,6 +57,8 @@ def create_knowledge(name: str, table_name: str) -> Knowledge:
                 id="qwen3-embedding:4b",
                 dimensions=2560,
                 host=OLLAMA_HOST,
+                enable_batch=True,
+                batch_size=32,
             ),
         ),
         contents_db=get_postgres_db(knowledge_table=f"{table_name}_contents"),
