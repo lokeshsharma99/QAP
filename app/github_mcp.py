@@ -89,6 +89,7 @@ def _make_github_mcp(toolsets: list[str], tool_name_prefix: str) -> MCPTools:
         server_params=server_params,
         transport="stdio",
         tool_name_prefix=tool_name_prefix,
+        timeout_seconds=30,
     )
 
 

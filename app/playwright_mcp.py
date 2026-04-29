@@ -111,6 +111,7 @@ def _make_playwright_mcp(tool_name_prefix: str) -> list:
                 ),
                 transport="stdio",
                 tool_name_prefix=tool_name_prefix,
+                timeout_seconds=30,
             )
         ]
 

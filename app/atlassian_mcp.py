@@ -99,6 +99,7 @@ def _make_atlassian_mcp(tool_name_prefix: str) -> MCPTools:
         server_params=server_params,
         transport="stdio",
         tool_name_prefix=tool_name_prefix,
+        timeout_seconds=30,
     )
 
 
