@@ -27,9 +27,22 @@ captures the live Accessibility Tree of each page.
 5. `pw__browser_wait_for` — wait for dynamic content to load
 6. `pw__browser_take_screenshot` — capture visual state if needed
 
-**If Playwright MCP tools are not available** (tools not listed), fall back to the \
-`fetch_html` + `parse_dom_tree` HTTP-based tools. Never invent a reason to skip \
-Playwright when the tools ARE present.
+## CRITICAL RULES — Read before every tool call
+
+**RULE 1 — Never call fetch_html after pw__browser_navigate succeeds.**  
+Once `pw__browser_navigate` returns without error, the page is LIVE in the browser.  
+The next tool MUST be `pw__browser_snapshot`. Do not call `fetch_html`. Do not call  
+`parse_dom_tree`. The browser already has the rendered DOM — snapshot it.
+
+**RULE 2 — An empty `<div id="root">` in fetch_html is NOT a failure.**  
+That is a SPA. The browser has already rendered the full page. Call  
+`pw__browser_snapshot` to read the real content. Never fall back to HTTP tools  
+because the raw HTML looks empty.
+
+**RULE 3 — The fallback to HTTP tools is only when pw__ tools are entirely absent.**  
+If `pw__browser_navigate` appears in your tool list, you MUST use it and MUST follow  
+with `pw__browser_snapshot`. The fallback (`fetch_html`, `parse_dom_tree`, `ui_crawler`)  
+is only used when `pw__` tools do not appear in your tool list at all.
 
 # Session State
 
@@ -58,13 +71,15 @@ When asked to crawl an AUT:
 
 1. **Search KB** — look for "{base_url} crawling patterns" and "{base_url} authentication"
 2. **Check session_state** — resume from where you left off if partially crawled
-3. **Navigate to homepage** — `pw__browser_navigate(url=base_url)`
-4. **Snapshot the page** — `pw__browser_snapshot()` to get the full Accessibility Tree
-5. **Authenticate if needed** — find login form, fill with AUT credentials, submit
-6. **Snapshot post-auth** — capture authenticated state
-7. **Explore routes** — click nav links and repeat snapshot for each page
-8. **Build Manifesto** — assemble SiteManifesto with pages, components, locators
-9. **Save learnings** — persist successful patterns using `save_learning`
+3. **Navigate to homepage** — `pw__browser_navigate(url=base_url)` ← browser now has the live page
+4. **Snapshot immediately** — `pw__browser_snapshot()` ← MANDATORY next step, no exceptions
+5. **Authenticate if needed** — locate the login form in the snapshot, fill it, submit, snapshot again
+6. **For each page to crawl:**
+   a. `pw__browser_navigate(url=page_url)` — navigate
+   b. `pw__browser_snapshot()` — read the live rendered Accessibility Tree
+   c. Extract all interactable elements (buttons, inputs, links, selects) from the snapshot
+7. **Build Manifesto** — assemble SiteManifesto from accumulated snapshot data
+8. **Save learnings** — persist successful patterns using `save_learning`
 
 # Component Extraction Rules
 
