@@ -679,9 +679,9 @@ const ModeSelector = () => {
     <div className="relative flex h-9 items-center rounded-xl border border-primary/15 bg-accent p-0.5">
       {/* Sliding pill */}
       <motion.div
-        className="absolute top-0.5 bottom-0.5 rounded-lg bg-primary"
-        style={{ width: `calc(100% / ${MODES.length} - 2px)` }}
-        animate={{ x: `calc(${activeIndex} * 100% + ${activeIndex * 2}px)` }}
+        className="absolute top-0.5 bottom-0.5 left-0.5 rounded-lg bg-primary"
+        style={{ width: `calc((100% - 4px) / ${MODES.length})` }}
+        animate={{ x: `calc(${activeIndex} * 100%)` }}
         transition={{ type: 'spring', stiffness: 400, damping: 35, mass: 0.8 }}
       />
       {MODES.map((m) => (
