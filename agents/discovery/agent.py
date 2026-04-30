@@ -12,7 +12,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.discovery.instructions import INSTRUCTIONS
-from agents.discovery.tools import DiscoveryToolkit
+from agents.discovery.tools import DiscoveryFallbackToolkit, DiscoveryToolkit
 from app.settings import MODEL, agent_db
 from db import get_qap_learnings_kb, get_site_manifesto_kb
 
@@ -55,6 +55,9 @@ discovery = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
+    # HTTP fallback tools (fetch_html, parse_dom_tree, ui_crawler) are only
+    # registered when Playwright MCP is unavailable. When pw__ tools ARE present,
+    # they are excluded so the LLM cannot fall back to HTTP crawling for SPAs.
     tools=[
         ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=qap_learnings_kb),
@@ -62,6 +65,7 @@ discovery = Agent(
         *_github_tools,
         *_playwright_tools,
         DiscoveryToolkit(),
+        *([DiscoveryFallbackToolkit()] if not _playwright_tools else []),
     ],
     # Instructions
     instructions=INSTRUCTIONS,

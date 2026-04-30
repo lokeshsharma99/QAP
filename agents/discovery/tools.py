@@ -386,13 +386,39 @@ def _resolve_href(href: str, base_origin: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# DiscoveryToolkit
+# DiscoveryToolkit  — save_learning only (always registered)
 # ---------------------------------------------------------------------------
 class DiscoveryToolkit(Toolkit):
-    """Groups all Discovery Agent tools into a single registerable toolkit."""
+    """Core Discovery Agent tools: knowledge persistence only.
+
+    HTTP crawl tools (fetch_html, parse_dom_tree, ui_crawler) are intentionally
+    NOT included here. When Playwright MCP tools are available they must be used
+    exclusively — the HTTP tools are kept out of the tool list so the LLM cannot
+    fall back to them for SPA crawling.
+
+    If Playwright MCP is unavailable, use DiscoveryFallbackToolkit instead.
+    """
 
     def __init__(self) -> None:
         super().__init__(
             name="discovery",
-            tools=[fetch_html, parse_dom_tree, save_learning, ui_crawler],
+            tools=[save_learning],
+        )
+
+
+# ---------------------------------------------------------------------------
+# DiscoveryFallbackToolkit  — HTTP tools when Playwright MCP is not available
+# ---------------------------------------------------------------------------
+class DiscoveryFallbackToolkit(Toolkit):
+    """HTTP-based crawl tools for environments without a Playwright MCP service.
+
+    Only register this toolkit when PLAYWRIGHT_MCP_URL is not set and the
+    playwright-mcp container is not reachable. Never register both this toolkit
+    and pw__ MCP tools at the same time.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            name="discovery_fallback",
+            tools=[fetch_html, parse_dom_tree, ui_crawler],
         )
