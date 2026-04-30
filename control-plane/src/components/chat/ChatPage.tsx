@@ -28,7 +28,7 @@ import {
   Bot, Cpu, Database, Hash, Clock, CheckCircle, XCircle, Zap, GitBranch, Activity,
   Users, Settings, BookOpen, MemoryStick, Layers, MessageSquare, MessagesSquare,
   Play, CornerDownRight, ArrowUp, Paperclip, X as XIcon, FileText, Image as ImageIcon,
-  Hammer, ChevronRight, Copy, Check
+  Hammer, ChevronRight, Copy, Check, Square
 } from 'lucide-react'
 
 import { getAgentDetailAPI, getTeamDetailAPI, getWorkflowDetailAPI } from '@/api/os'
@@ -1336,7 +1336,7 @@ export default function ChatPage() {
   const [showActivity, setShowActivity] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const { messages, isStreaming, sessionsData, isSessionsLoading, isEndpointLoading, isEndpointActive, rightPanelOpen, setRightPanelOpen, chatEvents } = useStore()
-  const { handleStreamResponse } = useAIChatStreamHandler()
+  const { handleStreamResponse, cancelRun } = useAIChatStreamHandler()
   const { clearChat } = useChatActions()
   const { getSessions, getSession } = useSessionLoader()
   const [agentId] = useQueryState('agent')
@@ -1663,14 +1663,24 @@ export default function ChatPage() {
                 </button>
               </div>
 
-              {/* Right: send */}
-              <button
-                onClick={handleSubmit}
-                disabled={(!inputMessage.trim() && attachedFiles.length === 0) || isStreaming || !hasEntity}
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-background shadow-sm transition-colors hover:bg-primary/80 disabled:pointer-events-none disabled:opacity-50"
-              >
-                <ArrowUp className="size-[10.67px]" />
-              </button>
+              {/* Right: stop / send */}
+              {isStreaming ? (
+                <button
+                  onClick={cancelRun}
+                  title="Stop run"
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-destructive text-white shadow-sm transition-colors hover:bg-destructive/80"
+                >
+                  <Square className="size-[10px] fill-current" />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={(!inputMessage.trim() && attachedFiles.length === 0) || !hasEntity}
+                  className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-background shadow-sm transition-colors hover:bg-primary/80 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <ArrowUp className="size-[10.67px]" />
+                </button>
+              )}
             </div>
           </div>
         </div>

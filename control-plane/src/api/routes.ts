@@ -18,11 +18,13 @@ export const APIRoutes = {
   GetAgents:   (base: string) => `${base}/agents`,
   GetAgent:    (base: string, id: string) => `${base}/agents/${id}`,
   AgentRun:    (base: string) => `${base}/agents/{agent_id}/runs`,
+  CancelAgentRun: (base: string, aid: string, rid: string) => `${base}/agents/${aid}/runs/${rid}/cancel`,
 
   // ── Teams ───────────────────────────────────────────────────────────────
   GetTeams:    (base: string) => `${base}/teams`,
   GetTeam:     (base: string, id: string) => `${base}/teams/${id}`,
   TeamRun:     (base: string, id: string) => `${base}/teams/${id}/runs`,
+  CancelTeamRun: (base: string, tid: string, rid: string) => `${base}/teams/${tid}/runs/${rid}/cancel`,
   DeleteTeamSession: (base: string, tid: string, sid: string) => `${base}/v1/teams/${tid}/sessions/${sid}`,
 
   // ── Sessions ─────────────────────────────────────────────────────────────

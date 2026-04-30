@@ -90,6 +90,9 @@ interface Store {
   setActiveProvider: (provider: string) => void
   activeModelId: string
   setActiveModelId: (modelId: string) => void
+  // Active run tracking — used by the Stop button
+  activeRunId: string | null
+  setActiveRunId: (runId: string | null) => void
   // Per-entity config overrides — keyed by agent/team ID
   agentOverrides: Record<string, AgentConfigOverride>
   setAgentOverride: (id: string, override: AgentConfigOverride) => void
@@ -160,6 +163,8 @@ export const useStore = create<Store>()(
       setActiveProvider: (activeProvider) => set({ activeProvider }),
       activeModelId: 'kilo-auto/free',
       setActiveModelId: (activeModelId) => set({ activeModelId }),
+      activeRunId: null,
+      setActiveRunId: (activeRunId) => set({ activeRunId }),
       agentOverrides: {},
       setAgentOverride: (id, override) => set((s) => ({ agentOverrides: { ...s.agentOverrides, [id]: override } })),
       clearAgentOverride: (id) => set((s) => {

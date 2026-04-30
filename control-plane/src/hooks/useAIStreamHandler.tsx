@@ -26,6 +26,7 @@ const useAIChatStreamHandler = () => {
   const setSessionsData = useStore((state) => state.setSessionsData)
   const addChatEvent = useStore((state) => state.addChatEvent)
   const clearChatEvents = useStore((state) => state.clearChatEvents)
+  const setActiveRunId = useStore((state) => state.setActiveRunId)
   const { streamResponse } = useAIResponseStream()
 
   const updateMessagesWithErrorState = useCallback(() => {
@@ -182,6 +183,7 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.WorkflowStarted
             ) {
               newSessionId = chunk.session_id as string
+              if (chunk.run_id) setActiveRunId(chunk.run_id)
               setSessionId(chunk.session_id as string)
               if ((!sessionId || sessionId !== chunk.session_id) && chunk.session_id) {
                 const sessionData = {
@@ -493,6 +495,7 @@ const useAIChatStreamHandler = () => {
       } finally {
         focusChatInput()
         setIsStreaming(false)
+        setActiveRunId(null)
       }
     },
     [
@@ -513,11 +516,32 @@ const useAIChatStreamHandler = () => {
       setSessionId,
       processChunkToolCalls,
       addChatEvent,
-      clearChatEvents
+      clearChatEvents,
+      setActiveRunId
     ]
   )
 
-  return { handleStreamResponse }
+  const cancelRun = useCallback(async () => {
+    const runId = useStore.getState().activeRunId
+    if (!runId) return
+    const endpointUrl = constructEndpointUrl(selectedEndpoint)
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+    let cancelUrl: string | null = null
+    if (mode === 'agent' && agentId) {
+      cancelUrl = APIRoutes.CancelAgentRun(endpointUrl, agentId, runId)
+    } else if (mode === 'team' && teamId) {
+      cancelUrl = APIRoutes.CancelTeamRun(endpointUrl, teamId, runId)
+    } else if (mode === 'workflow' && workflowId) {
+      cancelUrl = APIRoutes.CancelWorkflowRun(endpointUrl, workflowId, runId)
+    }
+    if (!cancelUrl) return
+    try {
+      await fetch(cancelUrl, { method: 'POST', headers })
+    } catch { /* ignore — stream onError will fire */ }
+  }, [selectedEndpoint, authToken, mode, agentId, teamId, workflowId])
+
+  return { handleStreamResponse, cancelRun }
 }
 
 export default useAIChatStreamHandler
