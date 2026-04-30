@@ -152,12 +152,10 @@ services:
   playwright-mcp:
     image: mcr.microsoft.com/playwright:v1.52.0-noble
     container_name: playwright-mcp
-    # Install chrome-for-testing on first start (cached in the volume), then start
-    # the server with --browser chromium which maps to chrome-for-testing in
-    # @playwright/mcp. Without --browser flag the default is Google Chrome
-    # (/opt/google/chrome/chrome) which is NOT installed in this image.
+    # Install playwright-managed Chromium (the --browser chromium distribution),
+    # then start the MCP server. Both must use the same distribution name.
     command: >-
-      sh -c "npx -y @playwright/mcp@latest install-browser chrome-for-testing;
+      sh -c "npx -y @playwright/mcp@latest install-browser chromium;
              npx -y @playwright/mcp@latest --port 8931 --host 0.0.0.0 --allowed-hosts '*' --browser chromium"
     restart: unless-stopped
     ports:

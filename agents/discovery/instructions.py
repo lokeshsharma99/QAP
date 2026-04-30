@@ -115,7 +115,6 @@ Output a valid SiteManifesto:
 - `pages`: list of PageEntry objects (url, title, is_auth_gated, components[])
 - `auth_handshake_success`: True if login was performed
 - `generated_at`: ISO timestamp
-"""
 - `crawled_at`: ISO timestamp
 
 # Security Rules
