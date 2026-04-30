@@ -81,8 +81,7 @@ discovery = Agent(
     add_session_state_to_context=True,
     # Memory
     update_memory_on_run=True,
-    enable_session_summaries=True,
-    add_session_summary_to_context=True,
+    enable_session_summaries=False,  # Disabled — model returns empty JSON; crawl state tracked via session_state
     tool_call_limit=100,
     # Context
     add_datetime_to_context=True,
