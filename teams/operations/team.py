@@ -42,4 +42,6 @@ operations_team = Team(
     num_history_runs=5,
     # Output
     markdown=True,
+    followups=True,
+    num_followups=3,
 )
