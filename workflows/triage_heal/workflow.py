@@ -16,6 +16,7 @@ from agno.workflow import Condition, Loop, Step, Workflow
 
 from agents.detective import detective
 from agents.medic import medic
+from contracts.workflow_inputs import TriageInput
 
 
 # ---------------------------------------------------------------------------
@@ -53,6 +54,7 @@ triage_heal = Workflow(
     id="triage-heal",
     name="Triage and Heal",
     description="Trace ZIP + Logs → Detective → [Healable Gate] → Medic → Verify 3x",
+    input_schema=TriageInput,
     steps=[
         Step(name="Analyze Failure", agent=detective),
         Condition(

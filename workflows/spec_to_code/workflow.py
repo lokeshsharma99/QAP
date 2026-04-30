@@ -22,6 +22,7 @@ from agents.data_agent import data_agent
 from agents.engineer import engineer
 from agents.judge import judge
 from agents.scribe import scribe
+from contracts.workflow_inputs import JiraTicketInput
 
 
 # ---------------------------------------------------------------------------
@@ -48,6 +49,7 @@ spec_to_code = Workflow(
     id="spec-to-code",
     name="Spec to Code Pipeline",
     description="Requirement → Architect → Scribe → [Gherkin Judge Gate] → Data Agent → Engineer → PR",
+    input_schema=JiraTicketInput,
     steps=[
         Step(name="Parse Requirements", agent=architect),
         Step(name="Author Gherkin", agent=scribe),
