@@ -13,7 +13,7 @@ from agno.tools.knowledge import KnowledgeTools
 
 from agents.librarian.instructions import INSTRUCTIONS
 from agents.librarian.tools import LibrarianToolkit
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_automation_kb, get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -103,5 +103,6 @@ librarian = Agent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

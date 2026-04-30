@@ -16,7 +16,7 @@ from agno.tools.user_feedback import UserFeedbackTools
 
 from agents.judge.instructions import INSTRUCTIONS
 from agents.judge.tools import JudgeToolkit
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -126,5 +126,6 @@ judge = Agent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

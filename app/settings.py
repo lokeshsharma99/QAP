@@ -32,6 +32,81 @@ MODEL = OpenRouter(
     max_tokens=None,
 )
 
+# Dedicated model for followup suggestion generation.
+# Structured output is disabled so Agno uses a plain text/JSON prompt instead of
+# sending response_format=Followups (which kilo-auto rejects with "Provider returned error").
+FOLLOWUP_MODEL = OpenRouter(
+    id=_KILO_MODEL_ID,
+    base_url="https://api.kilo.ai/api/openrouter/v1",
+    api_key=_KILO_KEY,
+    max_tokens=512,
+    supports_native_structured_outputs=False,
+)
+
+# ---------------------------------------------------------------------------
+# Followup generation patch
+# Agno's default _build_followup_messages prompt doesn't request JSON output,
+# so the model returns a plain text list that fails JSON parsing.
+# Patch the module-level function to append explicit JSON format instructions,
+# and patch the parser to handle both JSON and numbered/bulleted plain text.
+# ---------------------------------------------------------------------------
+import re as _re
+import json as _json
+from agno.run.agent import Followups as _Followups
+from agno.models.message import Message as _Message
+import agno.agent._response as _agno_resp
+
+_orig_build = _agno_resp._build_followup_messages
+
+
+def _patched_build_followup_messages(response_content, num_suggestions, user_message=None):
+    messages = _orig_build(response_content, num_suggestions, user_message)
+    last = messages[-1]
+    json_instruction = (
+        '\n\nRespond ONLY with a valid JSON object — no markdown, no extra text:\n'
+        '{"suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]}'
+    )
+    messages[-1] = _Message(role=last.role, content=(last.content or '') + json_instruction)
+    return messages
+
+
+_orig_parse = _agno_resp._parse_followups_response
+
+
+def _patched_parse_followups_response(model_response):
+    # Try the original parser first (handles structured + JSON content)
+    result = _orig_parse(model_response)
+    if result:
+        return result
+
+    # Fallback: extract from plain text numbered/bulleted list
+    content = model_response.content or ''
+    # Strip any markdown code fences and try JSON again
+    stripped = _re.sub(r'```[a-z]*\n?', '', content).strip().rstrip('`').strip()
+    try:
+        data = _json.loads(stripped)
+        obj = _Followups.model_validate(data)
+        if obj.suggestions:
+            return obj.suggestions
+    except Exception:
+        pass
+
+    # Last resort: extract numbered or bulleted lines
+    lines = [
+        _re.sub(r'^[\s\d\.\-\*\u2022]+', '', line).strip()
+        for line in content.split('\n')
+        if _re.match(r'^\s*[\d\.\-\*\u2022]', line)
+    ]
+    lines = [l for l in lines if 5 < len(l) < 120]
+    if lines:
+        return lines[:3]
+
+    return None
+
+
+_agno_resp._build_followup_messages = _patched_build_followup_messages
+_agno_resp._parse_followups_response = _patched_parse_followups_response
+
 # ---------------------------------------------------------------------------
 # Additional LLM provider credentials (used by /model/switch endpoint)
 # ---------------------------------------------------------------------------

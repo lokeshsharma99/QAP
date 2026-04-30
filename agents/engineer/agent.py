@@ -16,7 +16,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agents.engineer.instructions import INSTRUCTIONS
 from agents.engineer.tools import run_typecheck, write_feature, write_pom, write_step_def
 from agents.librarian.agent import automation_knowledge
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_site_manifesto_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -119,5 +119,6 @@ engineer = Agent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

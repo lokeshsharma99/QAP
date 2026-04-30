@@ -14,7 +14,7 @@ from agno.tools.knowledge import KnowledgeTools
 
 from agents.medic.instructions import INSTRUCTIONS
 from agents.medic.tools import MedicToolkit
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -118,5 +118,6 @@ medic = Agent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

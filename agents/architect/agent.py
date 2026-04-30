@@ -14,7 +14,7 @@ from agno.tools.reasoning import ReasoningTools
 from agno.tools.user_control_flow import UserControlFlowTools
 
 from agents.architect.instructions import INSTRUCTIONS
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_site_manifesto_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -146,5 +146,6 @@ architect = Agent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

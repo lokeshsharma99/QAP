@@ -12,8 +12,7 @@ from agno.tools.knowledge import KnowledgeTools
 
 from agents.discovery.instructions import INSTRUCTIONS
 from agents.discovery.tools import DiscoveryHTTPToolkit, DiscoveryToolkit
-from app.settings import MODEL, agent_db
-from contracts.site_manifesto import SiteManifesto
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -95,8 +94,8 @@ discovery = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
-    output_schema=SiteManifesto,
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

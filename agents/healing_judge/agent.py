@@ -13,7 +13,7 @@ from agents.base.semantica_agent import SemanticaAgent
 from agents.healing_judge.instructions import INSTRUCTIONS
 from agents.healing_judge.tools import healing_judge_tools
 from db import get_culture_manager
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 
 # ---------------------------------------------------------------------------
 # Culture Manager
@@ -71,5 +71,6 @@ healing_judge = SemanticaAgent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

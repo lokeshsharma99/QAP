@@ -19,7 +19,7 @@ from agents.pipeline_analyst.instructions import INSTRUCTIONS
 from agents.pipeline_analyst.tools import download_ci_artifact, parse_allure_results, parse_junit_xml
 from app.ado_mcp import get_ado_mcp_for_pipeline_analyst
 from app.github_mcp import get_github_mcp_for_pipeline_analyst
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -120,5 +120,6 @@ pipeline_analyst = Agent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

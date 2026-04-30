@@ -25,7 +25,7 @@ from agents.curator.tools import (
     request_deletion_approval,
 )
 from db import get_culture_manager
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db.session import get_automation_kb
 
 logger = logging.getLogger(__name__)
@@ -98,6 +98,7 @@ curator = SemanticaAgent(
     num_history_runs=5,
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )
 

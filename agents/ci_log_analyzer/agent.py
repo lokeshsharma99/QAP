@@ -25,7 +25,7 @@ from agents.ci_log_analyzer.tools import (
 from app.ado_mcp import get_ado_mcp_for_ci_log_analyzer
 from app.atlassian_mcp import get_atlassian_mcp_for_ci_log_analyzer
 from db import get_culture_manager
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db.session import get_rca_kb as get_rca_knowledge
 
 logger = logging.getLogger(__name__)
@@ -130,5 +130,6 @@ ci_log_analyzer = SemanticaAgent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

@@ -26,7 +26,7 @@ from agents.technical_tester.tools import (
     run_tests,
 )
 from db import get_culture_manager
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db.session import get_automation_knowledge
 
 logger = logging.getLogger(__name__)
@@ -115,5 +115,6 @@ technical_tester = SemanticaAgent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

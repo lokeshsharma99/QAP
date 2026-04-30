@@ -14,7 +14,7 @@ from agno.tools.knowledge import KnowledgeTools
 
 from agents.scribe.instructions import INSTRUCTIONS
 from app.atlassian_mcp import get_atlassian_mcp_for_scribe
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -88,5 +88,6 @@ scribe = Agent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )

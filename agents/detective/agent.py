@@ -17,7 +17,7 @@ from agno.compression.manager import CompressionManager
 
 from agents.detective.instructions import INSTRUCTIONS
 from agents.detective.tools import classify_failure, extract_screenshot_from_trace, parse_ci_log, parse_trace_zip
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -144,5 +144,6 @@ detective = Agent(
     # Output
     markdown=True,
     followups=True,
+    followup_model=FOLLOWUP_MODEL,
     num_followups=3,
 )
