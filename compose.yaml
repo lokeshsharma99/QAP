@@ -71,6 +71,10 @@ services:
       - JIRA_URL=${JIRA_URL:-}
       - JIRA_USERNAME=${JIRA_USERNAME:-}
       - JIRA_API_TOKEN=${JIRA_API_TOKEN:-}
+      # Atlassian MCP (Rovo MCP Server — Jira + Confluence tools via atlassian_mcp.py)
+      - ATLASSIAN_URL=${ATLASSIAN_URL:-}
+      - ATLASSIAN_EMAIL=${ATLASSIAN_EMAIL:-}
+      - ATLASSIAN_API_TOKEN=${ATLASSIAN_API_TOKEN:-}
       # Azure DevOps (optional alternative to Jira)
       - AZURE_DEVOPS_URL=${AZURE_DEVOPS_URL:-}
       - AZURE_DEVOPS_PAT=${AZURE_DEVOPS_PAT:-}
