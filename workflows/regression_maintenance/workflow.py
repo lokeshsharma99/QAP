@@ -18,6 +18,7 @@ from workflows.regression_maintenance.instructions import INSTRUCTIONS
 regression_maintenance = Workflow(
     id="regression_maintenance",
     name="Regression Suite Maintenance",
+    description="Detect AUT changes → identify obsolete tests → HITL approval → delete → re-index KB",
     steps=[
         # Step 1: Detect AUT Changes (Discovery Agent)
         Step(

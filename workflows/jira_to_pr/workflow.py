@@ -55,6 +55,7 @@ def code_verdict_passes(step_input) -> bool:  # type: ignore[no-untyped-def]
 jira_to_pr = Workflow(
     id="jira-to-pr",
     name="Jira to PR Pipeline",
+    description="Jira ticket → Architect → Scribe → [Gherkin Judge Gate] → Data Agent → Engineer → GitHub PR",
     steps=[
         # -------------------------------------------------------------------
         # Step 1 — Architect: parse Jira ticket → RequirementContext

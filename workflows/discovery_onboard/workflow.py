@@ -19,6 +19,7 @@ from agents.discovery import discovery
 discovery_onboard = Workflow(
     id="discovery-onboard",
     name="Discovery Onboard",
+    description="AUT URL → Discovery Agent → Site Manifesto → Vectorized KB",
     steps=[
         Step(name="Crawl AUT", agent=discovery),
     ],

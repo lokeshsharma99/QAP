@@ -47,6 +47,7 @@ def code_quality_passes(step_input) -> bool:  # type: ignore[no-untyped-def]
 spec_to_code = Workflow(
     id="spec-to-code",
     name="Spec to Code Pipeline",
+    description="Requirement → Architect → Scribe → [Gherkin Judge Gate] → Data Agent → Engineer → PR",
     steps=[
         Step(name="Parse Requirements", agent=architect),
         Step(name="Author Gherkin", agent=scribe),

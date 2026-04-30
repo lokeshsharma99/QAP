@@ -17,6 +17,7 @@ from agents.judge import judge
 grooming = Workflow(
     id="grooming",
     name="3 Amigos Grooming",
+    description="3 Amigos user story review: BA (Architect) → SDET (Judge) → Dev (Engineer) → synthesised verdict → Jira comment",
     steps=[
         Step(
             name="BA Assessment",

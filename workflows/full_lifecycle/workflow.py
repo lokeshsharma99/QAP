@@ -25,6 +25,7 @@ from agents.scribe import scribe
 full_lifecycle = Workflow(
     id="full-lifecycle",
     name="Full Lifecycle",
+    description="End-to-end: requirement → spec → code → verify → PR using all 9 agents",
     steps=[
         Step(
             name="Requirement Analysis",

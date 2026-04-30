@@ -12,7 +12,7 @@ Pipeline:
 
 import re
 
-from agno.workflow import Condition, Step, Workflow
+from agno.workflow import Condition, Loop, Step, Workflow
 
 from agents.detective import detective
 from agents.medic import medic
@@ -36,19 +36,44 @@ def is_healable(step_input) -> bool:  # type: ignore[no-untyped-def]
     return is_locator_stale and not requires_human and confidence >= 0.90
 
 
+def healing_passed(outputs) -> bool:  # type: ignore[no-untyped-def]
+    """End the heal loop early if HealingPatch reports verification_passes >= 3."""
+    for output in outputs:
+        content = str(getattr(output, "content", "") or "")
+        match = re.search(r'"verification_passes":\s*(\d+)', content)
+        if match and int(match.group(1)) >= 3:
+            return True
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Create Workflow
 # ---------------------------------------------------------------------------
 triage_heal = Workflow(
     id="triage-heal",
     name="Triage and Heal",
+    description="Trace ZIP + Logs → Detective → [Healable Gate] → Medic → Verify 3x",
     steps=[
         Step(name="Analyze Failure", agent=detective),
         Condition(
             name="Healable Check",
             evaluator=is_healable,
+            # If healable: loop Medic up to 3× until verification_passes >= 3
             steps=[
-                Step(name="Patch Locator", agent=medic),
+                Loop(
+                    name="Verify Heal 3x",
+                    steps=[Step(name="Patch and Verify", agent=medic)],
+                    end_condition=healing_passed,
+                    max_iterations=3,
+                ),
+            ],
+            # Else: escalate to human — LOGIC_CHANGE or requires_human=True
+            else_steps=[
+                Step(
+                    name="Flag for Human Review",
+                    agent=detective,
+                    description="The failure is not auto-healable (LOGIC_CHANGE or requires_human=True). Summarise the RCAReport and produce a human-readable escalation notice explaining why manual intervention is required.",
+                ),
             ],
         ),
     ],

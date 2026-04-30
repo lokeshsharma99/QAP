@@ -15,6 +15,7 @@ from contracts.automation_scaffold import AutomationScaffold
 automation_scaffold = Workflow(
     id="automation-scaffold",
     name="Automation Framework Scaffold",
+    description="Scaffold a complete BDD+POM automation framework for a new project",
     steps=[
         Step(
             name="Create Scaffold Structure",

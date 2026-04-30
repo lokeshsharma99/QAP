@@ -20,6 +20,7 @@ from agents.medic import medic
 full_regression = Workflow(
     id="full-regression",
     name="Full Regression",
+    description="Full regression: generate automation → execute tests → triage failures → heal locators",
     steps=[
         Step(
             name="Generate Automation",
