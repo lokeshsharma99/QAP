@@ -389,15 +389,7 @@ def _resolve_href(href: str, base_origin: str) -> str:
 # DiscoveryToolkit  — save_learning only (always registered)
 # ---------------------------------------------------------------------------
 class DiscoveryToolkit(Toolkit):
-    """Core Discovery Agent tools: knowledge persistence only.
-
-    HTTP crawl tools (fetch_html, parse_dom_tree, ui_crawler) are intentionally
-    NOT included here. When Playwright MCP tools are available they must be used
-    exclusively — the HTTP tools are kept out of the tool list so the LLM cannot
-    fall back to them for SPA crawling.
-
-    If Playwright MCP is unavailable, use DiscoveryFallbackToolkit instead.
-    """
+    """Core Discovery Agent tools: knowledge persistence."""
 
     def __init__(self) -> None:
         super().__init__(
@@ -407,18 +399,27 @@ class DiscoveryToolkit(Toolkit):
 
 
 # ---------------------------------------------------------------------------
-# DiscoveryFallbackToolkit  — HTTP tools when Playwright MCP is not available
+# DiscoveryHTTPToolkit  — static HTTP crawl tools (always registered)
+#
+# Works ALONGSIDE Playwright MCP tools, not as a replacement.
+# Playwright handles live rendering + accessibility tree (SPAs, JS-heavy pages).
+# HTTP tools handle static structure discovery + link extraction cheaply.
+#
+# Dual strategy:
+#   1. ui_crawler / fetch_html + parse_dom_tree  → static DOM, link graph, form fields
+#   2. pw__browser_navigate + pw__browser_snapshot → rendered accessibility tree
 # ---------------------------------------------------------------------------
-class DiscoveryFallbackToolkit(Toolkit):
-    """HTTP-based crawl tools for environments without a Playwright MCP service.
+class DiscoveryHTTPToolkit(Toolkit):
+    """HTTP-based crawl tools for static DOM discovery.
 
-    Only register this toolkit when PLAYWRIGHT_MCP_URL is not set and the
-    playwright-mcp container is not reachable. Never register both this toolkit
-    and pw__ MCP tools at the same time.
+    Always registered alongside Playwright MCP tools.
+    Use these FIRST to map the link graph and form structure cheaply via HTTP,
+    then use pw__ tools to capture the live rendered Accessibility Tree per page.
+    Never substitute these for pw__ tools when exploring JavaScript-rendered content.
     """
 
     def __init__(self) -> None:
         super().__init__(
-            name="discovery_fallback",
+            name="discovery_http",
             tools=[fetch_html, parse_dom_tree, ui_crawler],
         )

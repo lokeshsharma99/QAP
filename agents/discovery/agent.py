@@ -11,7 +11,7 @@ from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 
 from agents.discovery.instructions import INSTRUCTIONS
-from agents.discovery.tools import DiscoveryFallbackToolkit, DiscoveryToolkit
+from agents.discovery.tools import DiscoveryHTTPToolkit, DiscoveryToolkit
 from app.settings import MODEL, agent_db
 from db import get_qap_learnings_kb
 
@@ -45,16 +45,19 @@ discovery = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
-    # KnowledgeTools includes think/analyze/search_knowledge — no ReasoningTools needed.
-    # GitHub tools excluded: Discovery's job is crawling, not repo interaction.
-    # HTTP fallback tools (fetch_html, parse_dom_tree, ui_crawler) are only
-    # registered when Playwright MCP is unavailable. When pw__ tools ARE present,
-    # they are excluded so the LLM cannot fall back to HTTP crawling for SPAs.
+    # Dual strategy — both toolkits are ALWAYS registered:
+    #   1. DiscoveryHTTPToolkit (fetch_html, parse_dom_tree, ui_crawler):
+    #      Static DOM crawl — cheaply maps link graph, form fields, page structure.
+    #      Use FIRST on each URL for a fast structural overview.
+    #   2. pw__* Playwright MCP tools (registered when playwright-mcp is reachable):
+    #      Live browser rendering — captures the real Accessibility Tree for SPAs.
+    #      Use AFTER HTTP crawl to capture what JS actually renders.
+    #   3. DiscoveryToolkit (save_learning): always registered for KB persistence.
     tools=[
         KnowledgeTools(knowledge=qap_learnings_kb),
+        DiscoveryHTTPToolkit(),
         *_playwright_tools,
         DiscoveryToolkit(),
-        *([DiscoveryFallbackToolkit()] if not _playwright_tools else []),
     ],
     # Instructions
     instructions=INSTRUCTIONS,
