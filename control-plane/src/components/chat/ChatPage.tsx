@@ -318,7 +318,38 @@ const ReasoningBlock = ({ steps }: { steps: NonNullable<ChatMessage['extra_data'
   )
 }
 
-const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
+// ---------------------------------------------------------------------------
+// ThinkingBubble — animated dots + current Agno streaming event label
+// Shown while the agent is working but hasn't produced any content yet
+// ---------------------------------------------------------------------------
+const ThinkingBubble = ({ latestEvent }: { latestEvent: import('@/store').ChatEvent | null }) => {
+  const label =
+    latestEvent?.type === 'tool_start' ? latestEvent.label
+    : latestEvent?.type === 'reasoning' ? latestEvent.label
+    : latestEvent?.type === 'memory' ? latestEvent.label
+    : latestEvent?.type === 'run_start' ? latestEvent.label
+    : 'Thinking…'
+
+  return (
+    <div className="flex items-center gap-3 max-w-2xl rounded-xl bg-primaryAccent px-4 py-3">
+      <div className="flex items-center gap-1 shrink-0">
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="size-1.5 rounded-full bg-muted"
+            animate={{ opacity: [0.25, 1, 0.25], y: [0, -3, 0] }}
+            transition={{ duration: 1.0, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+          />
+        ))}
+      </div>
+      <span className="text-xs text-muted/70 truncate">{label}</span>
+    </div>
+  )
+}
+
+const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null }: {
+  msg: ChatMessage; index: number; isActiveStreaming?: boolean; latestEvent?: import('@/store').ChatEvent | null
+}) => {
   const isUser = msg.role === 'user'
   const [toolCallsOpen, setToolCallsOpen] = useState(false)
   return (
@@ -332,6 +363,12 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
         <Icon type={isUser ? 'user' : 'agent'} size="xs" />
         <span className="text-xs font-medium uppercase text-muted">{isUser ? 'You' : 'Agent'}</span>
         <span className="text-xs text-muted/50">{fmtMsgTime(msg.created_at)}</span>
+        {!isUser && isActiveStreaming && (
+          <span className="flex items-center gap-1 rounded-full bg-positive/10 px-1.5 py-0.5 text-[10px] text-positive">
+            <span className="size-1 rounded-full bg-positive animate-pulse inline-block" />
+            Live
+          </span>
+        )}
       </div>
       {msg.extra_data?.reasoning_steps && <ReasoningBlock steps={msg.extra_data.reasoning_steps} />}
       {msg.tool_calls && msg.tool_calls.length > 0 && (
@@ -446,6 +483,9 @@ const MessageItem = ({ msg, index }: { msg: ChatMessage; index: number }) => {
             </ReactMarkdown>
           )}
         </div>
+      )}
+      {!msg.content && !isUser && isActiveStreaming && (
+        <ThinkingBubble latestEvent={latestEvent} />
       )}
     </motion.div>
   )
@@ -1359,6 +1399,11 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
+  // Auto-show activity stream when a run starts so users see live events
+  useEffect(() => {
+    if (isStreaming) setShowActivity(true)
+  }, [isStreaming])
+
   // Auto-resize textarea as content grows
   useEffect(() => {
     const el = textareaRef.current
@@ -1580,7 +1625,14 @@ export default function ChatPage() {
               </motion.div>
             ) : (
               <motion.div key="messages" className="space-y-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
-                {messages.map((msg, i) => <MessageItem key={i} msg={msg} index={i} />)}
+                {messages.map((msg, i) => {
+                  const isLast = i === messages.length - 1
+                  const isActiveStreaming = isLast && isStreaming
+                  const latestEvent = isActiveStreaming && chatEvents.length > 0
+                    ? chatEvents[chatEvents.length - 1]
+                    : null
+                  return <MessageItem key={i} msg={msg} index={i} isActiveStreaming={isActiveStreaming} latestEvent={latestEvent} />
+                })}
               </motion.div>
             )}
             </AnimatePresence>

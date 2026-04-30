@@ -412,6 +412,11 @@ const useAIChatStreamHandler = () => {
                 return newMessages
               })
             } else if (
+              chunk.event === RunEvent.StepStarted
+            ) {
+              const stepName = (chunk as RunResponse & { step_name?: string }).step_name
+              addChatEvent({ type: 'run_start', label: `▶ Step${stepName ? `: ${stepName}` : ''} started`, ts: Date.now() })
+            } else if (
               chunk.event === RunEvent.StepCompleted
             ) {
               const stepName = (chunk as RunResponse & { step_name?: string }).step_name
