@@ -15,6 +15,7 @@ from agno.tools.user_control_flow import UserControlFlowTools
 
 from agents.architect.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
+from contracts.requirement_context import RequirementContext
 from db import get_qap_learnings_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
@@ -135,6 +136,7 @@ architect = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
+    output_schema=RequirementContext,
     markdown=True,
     followups=True,
     num_followups=3,

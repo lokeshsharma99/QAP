@@ -17,6 +17,7 @@ from agno.tools.user_feedback import UserFeedbackTools
 from agents.judge.instructions import INSTRUCTIONS
 from agents.judge.tools import JudgeToolkit
 from app.settings import MODEL, agent_db
+from contracts.judge_verdict import JudgeVerdict
 from db import get_qap_learnings_kb, get_rca_kb
 
 # ---------------------------------------------------------------------------
@@ -115,6 +116,7 @@ judge = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
+    output_schema=JudgeVerdict,
     markdown=True,
     followups=True,
     num_followups=3,

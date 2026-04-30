@@ -13,6 +13,7 @@ from agno.tools.knowledge import KnowledgeTools
 
 from agents.data_agent.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
+from contracts.run_context import RunContext
 from db import get_qap_learnings_kb
 
 # ---------------------------------------------------------------------------
@@ -65,6 +66,7 @@ data_agent = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
+    output_schema=RunContext,
     markdown=True,
     followups=True,
     num_followups=3,

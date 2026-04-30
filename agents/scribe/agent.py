@@ -15,6 +15,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agents.scribe.instructions import INSTRUCTIONS
 from app.atlassian_mcp import get_atlassian_mcp_for_scribe
 from app.settings import MODEL, agent_db
+from contracts.gherkin_spec import GherkinSpec
 from db import get_qap_learnings_kb
 
 # ---------------------------------------------------------------------------
@@ -77,6 +78,7 @@ scribe = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
+    output_schema=GherkinSpec,
     markdown=True,
     followups=True,
     num_followups=3,

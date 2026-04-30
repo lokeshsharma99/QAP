@@ -15,6 +15,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agents.medic.instructions import INSTRUCTIONS
 from agents.medic.tools import MedicToolkit
 from app.settings import MODEL, agent_db
+from contracts.healing_patch import HealingPatch
 from db import get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
@@ -107,6 +108,7 @@ medic = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
+    output_schema=HealingPatch,
     markdown=True,
     followups=True,
     num_followups=3,

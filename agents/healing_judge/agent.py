@@ -13,6 +13,7 @@ from agents.base.semantica_agent import SemanticaAgent
 from agents.healing_judge.instructions import INSTRUCTIONS
 from agents.healing_judge.tools import healing_judge_tools
 from app.settings import MODEL, agent_db
+from contracts.judge_verdict import JudgeVerdict
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -59,6 +60,7 @@ healing_judge = SemanticaAgent(
     num_history_runs=5,
 
     # Output
+    output_schema=JudgeVerdict,
     markdown=True,
     followups=True,
     num_followups=3,
