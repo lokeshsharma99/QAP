@@ -18,7 +18,6 @@ from agno.compression.manager import CompressionManager
 from agents.detective.instructions import INSTRUCTIONS
 from agents.detective.tools import classify_failure, extract_screenshot_from_trace, parse_ci_log, parse_trace_zip
 from app.settings import MODEL, agent_db
-from contracts.rca_report import RCAReport
 from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -143,7 +142,6 @@ detective = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
-    output_schema=RCAReport,
     markdown=True,
     followups=True,
     num_followups=3,

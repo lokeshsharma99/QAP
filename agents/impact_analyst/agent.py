@@ -15,7 +15,6 @@ from agno.tools.reasoning import ReasoningTools
 from agents.impact_analyst.instructions import INSTRUCTIONS
 from app.github_mcp import get_github_mcp_for_impact_analyst
 from app.settings import MODEL, agent_db
-from contracts.impact_report import ImpactReport
 from db import get_automation_kb, get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -95,7 +94,6 @@ impact_analyst = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
-    output_schema=ImpactReport,
     markdown=True,
     followups=True,
     num_followups=3,
