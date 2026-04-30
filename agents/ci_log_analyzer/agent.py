@@ -119,4 +119,6 @@ ci_log_analyzer = SemanticaAgent(
 
     # Output
     markdown=True,
+    followups=True,
+    num_followups=3,
 )

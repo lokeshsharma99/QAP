@@ -104,4 +104,6 @@ technical_tester = SemanticaAgent(
 
     # Output
     markdown=True,
+    followups=True,
+    num_followups=3,
 )

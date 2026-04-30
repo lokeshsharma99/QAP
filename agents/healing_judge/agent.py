@@ -60,4 +60,6 @@ healing_judge = SemanticaAgent(
 
     # Output
     markdown=True,
+    followups=True,
+    num_followups=3,
 )

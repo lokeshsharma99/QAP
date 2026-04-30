@@ -91,6 +91,8 @@ curator = SemanticaAgent(
     read_chat_history=True,
     num_history_runs=5,
     markdown=True,
+    followups=True,
+    num_followups=3,
 )
 
 logger.info("Curator agent created successfully")
