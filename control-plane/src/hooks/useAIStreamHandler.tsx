@@ -456,6 +456,22 @@ const useAIChatStreamHandler = () => {
               })
               addChatEvent({ type: 'error', label: 'Workflow cancelled', ts: Date.now() })
               setStreamingErrorMessage(cancelMsg)
+            } else if (
+              chunk.event === RunEvent.FollowupsCompleted ||
+              chunk.event === RunEvent.TeamFollowupsCompleted
+            ) {
+              const followups = (chunk as RunResponse & { followups?: string[] }).followups
+              if (followups && followups.length > 0) {
+                setMessages((prevMessages) => {
+                  const newMessages = [...prevMessages]
+                  const idx = newMessages.length - 1
+                  const lastMessage = newMessages[idx]
+                  if (lastMessage && lastMessage.role === 'agent') {
+                    newMessages[idx] = { ...lastMessage, followups }
+                  }
+                  return newMessages
+                })
+              }
             }
           },
           onError: (error) => {

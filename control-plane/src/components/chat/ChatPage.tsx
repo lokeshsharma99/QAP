@@ -435,6 +435,29 @@ const ReasoningBlock = ({ steps }: { steps: NonNullable<ChatMessage['extra_data'
 }
 
 // ---------------------------------------------------------------------------
+// FollowupSuggestions — clickable suggestion pills rendered after a response
+// ---------------------------------------------------------------------------
+const FollowupSuggestions = ({ suggestions, onSelect }: { suggestions: string[]; onSelect: (s: string) => void }) => (
+  <motion.div
+    className="flex flex-wrap gap-1.5 pt-2"
+    initial={{ opacity: 0, y: 6 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.2, ease: 'easeOut' }}
+  >
+    {suggestions.map((s, i) => (
+      <button
+        key={i}
+        onClick={() => onSelect(s)}
+        className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/60 px-3 py-1 text-xs text-muted hover:border-brand/50 hover:bg-brand/10 hover:text-primary transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="size-3 shrink-0 opacity-60"><path d="M8 1a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5H1.75a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 8 1Z" /></svg>
+        {s}
+      </button>
+    ))}
+  </motion.div>
+)
+
+// ---------------------------------------------------------------------------
 // ThinkingBubble — animated dots + current Agno streaming event label
 // Shown while the agent is working but hasn't produced any content yet
 // ---------------------------------------------------------------------------
@@ -463,8 +486,8 @@ const ThinkingBubble = ({ latestEvent }: { latestEvent: import('@/store').ChatEv
   )
 }
 
-const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null }: {
-  msg: ChatMessage; index: number; isActiveStreaming?: boolean; latestEvent?: import('@/store').ChatEvent | null
+const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null, onFollowupClick }: {
+  msg: ChatMessage; index: number; isActiveStreaming?: boolean; latestEvent?: import('@/store').ChatEvent | null; onFollowupClick?: (s: string) => void
 }) => {
   const isUser = msg.role === 'user'
   return (
@@ -582,6 +605,9 @@ const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null
       )}
       {!msg.content && !isUser && isActiveStreaming && (
         <ThinkingBubble latestEvent={latestEvent} />
+      )}
+      {!isUser && !isActiveStreaming && msg.followups && msg.followups.length > 0 && onFollowupClick && (
+        <FollowupSuggestions suggestions={msg.followups} onSelect={onFollowupClick} />
       )}
     </motion.div>
   )
@@ -1709,7 +1735,7 @@ export default function ChatPage() {
                   const latestEvent = isActiveStreaming && chatEvents.length > 0
                     ? chatEvents[chatEvents.length - 1]
                     : null
-                  return <MessageItem key={i} msg={msg} index={i} isActiveStreaming={isActiveStreaming} latestEvent={latestEvent} />
+                  return <MessageItem key={i} msg={msg} index={i} isActiveStreaming={isActiveStreaming} latestEvent={latestEvent} onFollowupClick={(s) => { setInputMessage(s); setTimeout(() => textareaRef.current?.focus(), 0) }} />
                 })}
               </motion.div>
             )}

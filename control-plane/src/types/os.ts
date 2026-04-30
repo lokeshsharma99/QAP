@@ -273,6 +273,12 @@ export enum RunEvent {
   TeamReasoningCompleted = 'TeamReasoningCompleted',
   TeamMemoryUpdateStarted = 'TeamMemoryUpdateStarted',
   TeamMemoryUpdateCompleted = 'TeamMemoryUpdateCompleted',
+  // Followup Events (Agent)
+  FollowupsStarted = 'FollowupsStarted',
+  FollowupsCompleted = 'FollowupsCompleted',
+  // Followup Events (Team)
+  TeamFollowupsStarted = 'TeamFollowupsStarted',
+  TeamFollowupsCompleted = 'TeamFollowupsCompleted',
   // Workflow Events
   WorkflowStarted = 'WorkflowStarted',
   WorkflowCompleted = 'WorkflowCompleted',
@@ -333,6 +339,7 @@ export interface RunResponseContent {
   videos?: VideoData[]
   audio?: AudioData[]
   response_audio?: ResponseAudio
+  followups?: string[]
 }
 
 export type RunResponse = RunResponseContent
@@ -348,4 +355,5 @@ export interface ChatMessage {
   audio?: AudioData[]
   response_audio?: ResponseAudio
   extra_data?: AgentExtraData
+  followups?: string[]
 }
