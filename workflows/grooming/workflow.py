@@ -5,7 +5,7 @@ Grooming Workflow
 Workflow for 3 Amigos user story review from BA, SDET, and Dev perspectives.
 """
 
-from agno.workflow import Workflow, Step
+from agno.workflow import Parallel, Step, Workflow
 
 from agents.architect import architect
 from agents.engineer import engineer
@@ -17,12 +17,13 @@ from agents.judge import judge
 grooming = Workflow(
     id="grooming",
     name="3 Amigos Grooming",
-    description="3 Amigos user story review: BA (Architect) → SDET (Judge) → Dev (Engineer) → synthesised verdict → Jira comment",
+    description="3 Amigos user story review: BA (Architect) + SDET (Judge) + Dev (Engineer) in parallel → synthesised verdict → Jira comment",
     steps=[
-        Step(
-            name="BA Assessment",
-            agent=architect,
-            description="""As the Business Analyst perspective, evaluate the user story from the provided Jira ticket.
+        Parallel(
+            Step(
+                name="BA Assessment",
+                agent=architect,
+                description="""As the Business Analyst perspective, evaluate the user story from the provided Jira ticket.
 
 Input: A Jira ticket ID (e.g., GDS-5) provided in the workflow input.
 
@@ -38,19 +39,20 @@ Output: Provide a BAAssessment with:
 - notes: your additional observations
 
 Focus on: Are the requirements clear? Can they be tested? Is there missing information?""",
-        ),
-        Step(
-            name="SDET Assessment",
-            agent=judge,
-            description="""As the SDET perspective, evaluate automation feasibility and risk.
+            ),
+            Step(
+                name="SDET Assessment",
+                agent=judge,
+                description="""As the SDET perspective, evaluate automation feasibility and risk. Fetch the Jira ticket independently.
 
-Input: The Jira ticket details and BA assessment from previous step.
+Input: A Jira ticket ID (e.g., GDS-5) provided in the workflow input.
 
 Your task:
-1. Evaluate automation feasibility (High/Medium/Low)
-2. Identify edge cases that need testing
-3. Assess risk level for automation (Low/Medium/High)
-4. Provide additional notes from SDET perspective
+1. Use fetch_jira_ticket tool to get the ticket details directly
+2. Evaluate automation feasibility (High/Medium/Low)
+3. Identify edge cases that need testing
+4. Assess risk level for automation (Low/Medium/High)
+5. Provide additional notes from SDET perspective
 
 Output: Provide an SDETAssessment with:
 - automation_feasibility: "high", "medium", or "low"
@@ -59,18 +61,19 @@ Output: Provide an SDETAssessment with:
 - notes: your additional observations
 
 Focus on: Can this be automated? What are the tricky cases? What could go wrong?""",
-        ),
-        Step(
-            name="Dev Assessment",
-            agent=engineer,
-            description="""As the Developer perspective, evaluate implementation complexity.
+            ),
+            Step(
+                name="Dev Assessment",
+                agent=engineer,
+                description="""As the Developer perspective, evaluate implementation complexity. Fetch the Jira ticket independently.
 
-Input: The Jira ticket details and previous assessments.
+Input: A Jira ticket ID (e.g., GDS-5) provided in the workflow input.
 
 Your task:
-1. Assess implementation complexity (Low/Medium/High)
-2. Identify dependencies or prerequisites
-3. Provide additional notes from Dev perspective
+1. Use fetch_jira_ticket tool to get the ticket details directly
+2. Assess implementation complexity (Low/Medium/High)
+3. Identify dependencies or prerequisites
+4. Provide additional notes from Dev perspective
 
 Output: Provide a DevAssessment with:
 - implementation_complexity: "low", "medium", or "high"
@@ -78,6 +81,8 @@ Output: Provide a DevAssessment with:
 - notes: your additional observations
 
 Focus on: How complex is this to implement? What dependencies exist? Any technical challenges?""",
+            ),
+            name="3 Amigos Assessment",
         ),
         Step(
             name="Synthesize Assessment",
