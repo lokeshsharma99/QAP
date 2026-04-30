@@ -24,6 +24,7 @@ from agents.curator.tools import (
     request_batch_deletion_approval,
     request_deletion_approval,
 )
+from db import get_culture_manager
 from app.settings import MODEL, agent_db
 from db.session import get_automation_kb
 
@@ -64,6 +65,11 @@ tools = [
     log_deletion_to_audit,
     generate_maintenance_report,
 ]
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent

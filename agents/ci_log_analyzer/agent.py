@@ -24,6 +24,7 @@ from agents.ci_log_analyzer.tools import (
 )
 from app.ado_mcp import get_ado_mcp_for_ci_log_analyzer
 from app.atlassian_mcp import get_atlassian_mcp_for_ci_log_analyzer
+from db import get_culture_manager
 from app.settings import MODEL, agent_db
 from db.session import get_rca_kb as get_rca_knowledge
 
@@ -70,6 +71,11 @@ tools = [
 ]
 
 # ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
+
+# ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
 ci_log_analyzer = SemanticaAgent(
@@ -111,6 +117,10 @@ ci_log_analyzer = SemanticaAgent(
     compress_tool_results=True,
     compression_manager=CompressionManager(model=MODEL, compress_token_limit=4000),
 
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=False,  # Disabled to prevent context overflow

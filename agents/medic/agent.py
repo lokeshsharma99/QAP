@@ -16,7 +16,7 @@ from agents.medic.instructions import INSTRUCTIONS
 from agents.medic.tools import MedicToolkit
 from app.settings import MODEL, agent_db
 from contracts.healing_patch import HealingPatch
-from db import get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
+from db import get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # Semantica Decision Intelligence (optional — activated via SEMANTICA_ENABLED)
@@ -50,6 +50,11 @@ except Exception:
 qap_learnings_kb = get_qap_learnings_kb()
 rca_kb = get_rca_kb()
 site_manifesto_kb = get_site_manifesto_kb()
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -102,6 +107,10 @@ medic = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

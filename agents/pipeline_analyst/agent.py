@@ -21,7 +21,7 @@ from app.ado_mcp import get_ado_mcp_for_pipeline_analyst
 from app.github_mcp import get_github_mcp_for_pipeline_analyst
 from app.settings import MODEL, agent_db
 from contracts.pipeline_rca_report import PipelineRCAReport
-from db import get_qap_learnings_kb, get_rca_kb
+from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (requires GITHUB_TOKEN in .env)
@@ -45,6 +45,11 @@ _ado_tools = get_ado_mcp_for_pipeline_analyst()
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
 rca_kb = get_rca_kb()
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -104,6 +109,10 @@ pipeline_analyst = Agent(
     num_past_sessions_to_search=5,
     compress_tool_results=True,
     tool_call_limit=50,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

@@ -12,8 +12,14 @@ from agno.tools.reasoning import ReasoningTools
 from agents.base.semantica_agent import SemanticaAgent
 from agents.healing_judge.instructions import INSTRUCTIONS
 from agents.healing_judge.tools import healing_judge_tools
+from db import get_culture_manager
 from app.settings import MODEL, agent_db
 from contracts.judge_verdict import JudgeVerdict
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -53,6 +59,10 @@ healing_judge = SemanticaAgent(
     update_memory_on_run=True,
     enable_session_summaries=True,
 
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

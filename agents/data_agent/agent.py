@@ -14,13 +14,18 @@ from agno.tools.knowledge import KnowledgeTools
 from agents.data_agent.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
 from contracts.run_context import RunContext
-from db import get_qap_learnings_kb
+from db import get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: qap_learnings — Data Agent reads prior data patterns, writes PII/seed conventions
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -60,6 +65,10 @@ data_agent = Agent(
     # Memory
     update_memory_on_run=True,
     tool_call_limit=30,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

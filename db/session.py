@@ -7,6 +7,7 @@ PostgreSQL database connection for Quality Autopilot.
 
 from os import getenv
 
+from agno.culture.manager import CultureManager
 from agno.db.postgres import PostgresDb
 from agno.knowledge import Knowledge
 from agno.knowledge.embedder.ollama import OllamaEmbedder
@@ -155,3 +156,45 @@ def get_document_library_kb() -> Knowledge:
     if _document_library_kb is None:
         _document_library_kb = create_knowledge("Document Library", "document_library_vectors")
     return _document_library_kb
+
+
+# ---------------------------------------------------------------------------
+# Shared Culture Manager Singleton
+# One CultureManager per process — all agents share the same cultural knowledge
+# table (agno_cultural_knowledge). Agents read culture via add_culture_to_context=True
+# and update it via enable_agentic_culture=True.
+# ---------------------------------------------------------------------------
+
+_culture_manager: CultureManager | None = None
+
+
+def get_culture_manager() -> CultureManager:
+    """Shared CultureManager — all agents read/write universal QAP principles here.
+
+    Table: agno_cultural_knowledge (auto-created by Agno)
+    Purpose: Universal principles, best practices, and patterns discovered across
+    all agent runs. Unlike Memory (user-specific), Culture stores 'how we do things'
+    so every agent benefits from collective intelligence from day one.
+
+    capture_instructions focus on:
+    - STLC patterns and conventions that proved effective
+    - Locator strategies that work best with the AUT
+    - Communication and reasoning patterns that produce quality output
+    - Anti-patterns to avoid (learned from failures/rejections)
+    """
+    global _culture_manager
+    if _culture_manager is None:
+        _culture_manager = CultureManager(
+            db=get_postgres_db(),
+            culture_capture_instructions=(
+                "Focus only on universal, reusable principles that apply across multiple agents "
+                "and sessions. Capture: (1) STLC patterns that consistently produce quality "
+                "Gherkin specs or Page Objects, (2) locator strategies that proved resilient "
+                "in the AUT (prefer data-testid > role > text), (3) communication patterns "
+                "that improved BA readability or Judge approval rates, (4) anti-patterns "
+                "discovered (e.g. CSS selectors that broke, over-broad step definitions, "
+                "hardcoded test data). Ignore one-off session details, ticket IDs, or "
+                "environment-specific observations."
+            ),
+        )
+    return _culture_manager

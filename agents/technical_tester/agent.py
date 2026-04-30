@@ -25,6 +25,7 @@ from agents.technical_tester.tools import (
     run_planner,
     run_tests,
 )
+from db import get_culture_manager
 from app.settings import MODEL, agent_db
 from db.session import get_automation_knowledge
 
@@ -64,6 +65,11 @@ tools = [
 ]
 
 # ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
+
+# ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
 technical_tester = SemanticaAgent(
@@ -96,6 +102,10 @@ technical_tester = SemanticaAgent(
     update_memory_on_run=True,
     enable_session_summaries=True,
 
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

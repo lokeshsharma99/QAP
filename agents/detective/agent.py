@@ -19,7 +19,7 @@ from agents.detective.instructions import INSTRUCTIONS
 from agents.detective.tools import classify_failure, extract_screenshot_from_trace, parse_ci_log, parse_trace_zip
 from app.settings import MODEL, agent_db
 from contracts.rca_report import RCAReport
-from db import get_qap_learnings_kb, get_rca_kb
+from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
@@ -65,6 +65,11 @@ memory_manager = MemoryManager(
         "Ignore test run IDs, timestamps, and one-off execution details."
     ),
 )
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -128,6 +133,10 @@ detective = Agent(
     compress_tool_results=True,
     compression_manager=CompressionManager(model=MODEL, compress_token_limit=4000),
     tool_call_limit=50,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

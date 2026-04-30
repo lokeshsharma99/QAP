@@ -16,7 +16,7 @@ from agents.scribe.instructions import INSTRUCTIONS
 from app.atlassian_mcp import get_atlassian_mcp_for_scribe
 from app.settings import MODEL, agent_db
 from contracts.gherkin_spec import GherkinSpec
-from db import get_qap_learnings_kb
+from db import get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
@@ -29,6 +29,11 @@ qap_learnings_kb = get_qap_learnings_kb()
 # Scribe verifies all Jira ACs are covered and links .feature files to issues
 # ---------------------------------------------------------------------------
 _atlassian_tools = get_atlassian_mcp_for_scribe()
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -72,6 +77,10 @@ scribe = Agent(
     enable_session_summaries=True,
     add_session_summary_to_context=True,
     tool_call_limit=50,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

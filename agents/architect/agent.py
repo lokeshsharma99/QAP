@@ -16,7 +16,7 @@ from agno.tools.user_control_flow import UserControlFlowTools
 from agents.architect.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
 from contracts.requirement_context import RequirementContext
-from db import get_qap_learnings_kb, get_site_manifesto_kb
+from db import get_qap_learnings_kb, get_site_manifesto_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
@@ -80,6 +80,11 @@ memory_manager = MemoryManager(
 )
 
 # ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
+
+# ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
 architect = Agent(
@@ -130,6 +135,10 @@ architect = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

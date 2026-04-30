@@ -17,7 +17,7 @@ from agents.engineer.instructions import INSTRUCTIONS
 from agents.engineer.tools import run_typecheck, write_feature, write_pom, write_step_def
 from agents.librarian.agent import automation_knowledge
 from app.settings import MODEL, agent_db
-from db import get_qap_learnings_kb, get_site_manifesto_kb
+from db import get_qap_learnings_kb, get_site_manifesto_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
@@ -47,6 +47,11 @@ memory_manager = MemoryManager(
         "and one-off code snippets."
     ),
 )
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -102,6 +107,10 @@ engineer = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

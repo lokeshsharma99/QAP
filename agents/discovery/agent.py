@@ -14,7 +14,7 @@ from agents.discovery.instructions import INSTRUCTIONS
 from agents.discovery.tools import DiscoveryHTTPToolkit, DiscoveryToolkit
 from app.settings import MODEL, agent_db
 from contracts.site_manifesto import SiteManifesto
-from db import get_qap_learnings_kb
+from db import get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # Playwright MCP Tools (optional — uses PLAYWRIGHT_MCP_URL or npx headless)
@@ -30,6 +30,11 @@ _playwright_tools = get_playwright_mcp_for_discovery()
 # Note: site_manifesto KB is WRITTEN by Discovery via save_learning — not read.
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -80,6 +85,10 @@ discovery = Agent(
     update_memory_on_run=True,
     enable_session_summaries=False,  # Disabled — model returns empty JSON; crawl state tracked via session_state
     tool_call_limit=100,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

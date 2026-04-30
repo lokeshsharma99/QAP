@@ -16,7 +16,7 @@ from agents.impact_analyst.instructions import INSTRUCTIONS
 from app.github_mcp import get_github_mcp_for_impact_analyst
 from app.settings import MODEL, agent_db
 from contracts.impact_report import ImpactReport
-from db import get_automation_kb, get_qap_learnings_kb
+from db import get_automation_kb, get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
@@ -32,6 +32,11 @@ _github_tools = get_github_mcp_for_impact_analyst()
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
 automation_kb = get_automation_kb()
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -80,6 +85,10 @@ impact_analyst = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

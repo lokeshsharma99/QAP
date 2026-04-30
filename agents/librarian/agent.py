@@ -14,7 +14,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agents.librarian.instructions import INSTRUCTIONS
 from agents.librarian.tools import LibrarianToolkit
 from app.settings import MODEL, agent_db
-from db import get_automation_kb, get_qap_learnings_kb
+from db import get_automation_kb, get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
 # Semantica KG Toolkit (optional — activated via SEMANTICA_ENABLED)
@@ -43,6 +43,11 @@ except Exception:
 # ---------------------------------------------------------------------------
 automation_knowledge = get_automation_kb()
 qap_learnings_kb = get_qap_learnings_kb()
+
+# ---------------------------------------------------------------------------
+# Culture Manager
+# ---------------------------------------------------------------------------
+culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -86,6 +91,10 @@ librarian = Agent(
     # Memory
     update_memory_on_run=True,
     tool_call_limit=50,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,
