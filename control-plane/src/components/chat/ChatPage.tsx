@@ -676,12 +676,13 @@ const ModeSelector = () => {
     setMode(newMode); setMessages([]); setAgentId(null); setTeamId(null); setWorkflowId(null); setSessionId(null)
   }
   return (
-    <div className="relative flex h-9 items-center rounded-xl border border-primary/15 bg-accent p-0.5">
-      {/* Sliding pill */}
+    <div className="relative flex h-9 items-center rounded-xl border border-primary/15 bg-accent overflow-hidden">
+      {/* Sliding pill — width = exact 1/3, left anchored at 0, overflow-hidden clips spring overshoot */}
       <motion.div
-        className="absolute top-0.5 bottom-0.5 left-0.5 rounded-lg bg-primary"
-        style={{ width: `calc((100% - 4px) / ${MODES.length})` }}
-        animate={{ x: `calc(${activeIndex} * 100%)` }}
+        className="absolute inset-y-0.5 left-0 rounded-lg bg-primary"
+        style={{ width: `calc(100% / ${MODES.length})` }}
+        animate={{ x: `${activeIndex * 100}%` }}
+        initial={false}
         transition={{ type: 'spring', stiffness: 400, damping: 35, mass: 0.8 }}
       />
       {MODES.map((m) => (
@@ -689,7 +690,7 @@ const ModeSelector = () => {
           key={m}
           onClick={() => handleModeChange(m)}
           className={cn(
-            'relative z-10 flex-1 px-2 py-1 text-xs font-medium uppercase transition-colors duration-150',
+            'relative z-10 w-1/3 px-2 py-1 text-xs font-medium uppercase transition-colors duration-150',
             mode === m ? 'text-primaryAccent' : 'text-muted hover:text-primary'
           )}
         >{m}</button>
