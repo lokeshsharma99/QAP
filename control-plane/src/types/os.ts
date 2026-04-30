@@ -155,6 +155,7 @@ export interface MemberSummary {
 }
 
 export interface AgentFullDetail extends AgentDetails {
+  role?: string
   tools?: ToolsDetail
   sessions?: SessionsDetail
   knowledge?: KnowledgeDetail

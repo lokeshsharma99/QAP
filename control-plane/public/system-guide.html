@@ -564,10 +564,10 @@
 
       <div class="nav-section">Agents</div>
       <div class="nav-item" onclick="show('agents', this)">
-        <div class="nav-dot" style="background:#bc8cff"></div> All 13 Agents
+        <div class="nav-dot" style="background:#bc8cff"></div> All 15 Agents
       </div>
       <div class="nav-item" onclick="show('squads', this)">
-        <div class="nav-dot" style="background:#ffa657"></div> 5 Squads (Teams)
+        <div class="nav-dot" style="background:#ffa657"></div> 6 Squads (Teams)
       </div>
       <div class="nav-item" onclick="show('judge', this)">
         <div class="nav-dot" style="background:#f85149"></div> The Judge
@@ -585,6 +585,9 @@
       </div>
       <div class="nav-item" onclick="show('discovery', this)">
         <div class="nav-dot" style="background:#3fb950"></div> Discovery
+      </div>
+      <div class="nav-item" onclick="show('workflows', this)">
+        <div class="nav-dot" style="background:#d29922"></div> All 10 Workflows
       </div>
 
       <div class="nav-section">Data</div>
@@ -619,19 +622,19 @@
 
       <div class="stat-grid">
         <div class="stat-item">
-          <div class="stat-num" style="color:var(--purple)">13</div>
+          <div class="stat-num" style="color:var(--purple)">15</div>
           <div class="stat-label">Autonomous Agents</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" style="color:var(--accent)">5</div>
+          <div class="stat-num" style="color:var(--accent)">6</div>
           <div class="stat-label">Coordinating Teams</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" style="color:var(--green)">7</div>
+          <div class="stat-num" style="color:var(--green)">10</div>
           <div class="stat-label">Workflows</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" style="color:var(--orange)">10</div>
+          <div class="stat-num" style="color:var(--orange)">15</div>
           <div class="stat-label">Pydantic Contracts</div>
         </div>
       </div>
@@ -741,7 +744,7 @@
         <div class="sl-icon">🤖</div>
         <div>
           <div class="sl-name">LLM — OpenRouter via Kilo AI</div>
-          <div class="sl-detail">MODEL = OpenRouter(id="kilo-auto/free") · Base URL: api.kilo.ai/api/openrouter/v1 · Per-agent override via PATCH /agents/{id}/config</div>
+          <div class="sl-detail">MODEL = OpenRouter(id="kilo-auto/free") · Base URL: api.kilo.ai/api/openrouter/v1 · Per-agent override via PATCH /agents/{id}/config · Ollama Cloud fallback (minimax-m2.7:cloud)</div>
         </div>
         <div class="sl-port">API</div>
       </div>
@@ -749,9 +752,9 @@
         <div class="sl-icon">📦</div>
         <div>
           <div class="sl-name">Embeddings — OllamaEmbedder (qwen3-embedding:4b)</div>
-          <div class="sl-detail">dimensions=2560 · All knowledge bases use SearchType.hybrid</div>
+          <div class="sl-detail">dimensions=2560 · All knowledge bases use SearchType.hybrid · Served via host.docker.internal:11434</div>
         </div>
-        <div class="sl-port">local</div>
+        <div class="sl-port">:11434</div>
       </div>
 
       <h3>🐳 Docker Compose Services</h3>
@@ -776,7 +779,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-agents" class="section">
       <div class="page-header">
-        <h2>🤖 All 13 Agents</h2>
+        <h2>🤖 All 15 Agents</h2>
         <p>Each agent lives in its own directory with <code style="font-family:var(--mono)">agent.py · instructions.py · __init__.py · __main__.py</code></p>
       </div>
 
@@ -886,6 +889,22 @@
           <div class="agent-output">→ <span>JudgeVerdict (heal)</span></div>
         </div>
 
+        <div class="agent-card">
+          <div class="agent-icon">🎯</div>
+          <div class="agent-name">Impact Analyst</div>
+          <div class="agent-skill">impact_analysis</div>
+          <div class="agent-desc">Analyzes blast radius of code or UI changes across Page Objects and Step Definitions. Scores risk and flags affected tests.</div>
+          <div class="agent-output">→ <span>ImpactReport</span></div>
+        </div>
+
+        <div class="agent-card">
+          <div class="agent-icon">📈</div>
+          <div class="agent-name">Pipeline Analyst</div>
+          <div class="agent-skill">pipeline_analysis</div>
+          <div class="agent-desc">Analyzes CI/CD pipeline trends, flakiness scores, and mean-time-to-heal across builds. Surfaces systemic risk patterns.</div>
+          <div class="agent-output">→ <span>PipelineRCAReport</span></div>
+        </div>
+
       </div>
 
       <h3>📁 Agent File Layout (every agent)</h3>
@@ -938,7 +957,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-squads" class="section">
       <div class="page-header">
-        <h2>🏢 The 5 Squads (Teams)</h2>
+        <h2>🏢 The 6 Squads (Teams)</h2>
         <p>All teams use <code style="font-family:var(--mono)">TeamMode.coordinate</code>. The team leader delegates to members, never the other way around.</p>
       </div>
 
@@ -1007,13 +1026,27 @@
           <div class="card-header">
             <div class="card-icon" style="background:rgba(188,140,255,0.15)">🌱</div>
             <div>
-              <div class="card-title">Grooming / Diagnostics Squads</div>
-              <div class="card-subtitle">teams/grooming/ · teams/diagnostics/ · The Curators</div>
+              <div class="card-title">Grooming Squad</div>
+              <div class="card-subtitle">teams/grooming/ · The Curators</div>
             </div>
           </div>
           <div class="card-body">
-            <p><strong>Members:</strong> 🧹 Curator + 📚 Librarian (grooming) · 📊 CI Log Analyzer + 🔍 Detective (diagnostics)</p>
-            <p><strong>Goal:</strong> Grooming keeps the regression suite clean (HITL-gated deletions). Diagnostics analyzes systemic CI failure patterns across pipeline runs.</p>
+            <p><strong>Members:</strong> 🏛️ Architect + ✍️ Scribe + 🎯 Impact Analyst</p>
+            <p><strong>Goal:</strong> Backlog grooming — batch-process Jira tickets into Gherkin spec bundles. Deduplicates coverage, surfaces requirement conflicts.</p>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column: 1/-1">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(248,81,73,0.15)">🔬</div>
+            <div>
+              <div class="card-title">Diagnostics Squad</div>
+              <div class="card-subtitle">teams/diagnostics/ · The CI Triage Crew</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p><strong>Members:</strong> 📊 CI Log Analyzer + 🔍 Detective</p>
+            <p><strong>Goal:</strong> CI failure triage with correlated pipeline log + Playwright trace analysis. Creates Jira tickets after HITL approval.</p>
           </div>
         </div>
       </div>
@@ -1363,7 +1396,7 @@
     <div id="section-contracts" class="section">
       <div class="page-header">
         <h2>📝 Hand-off Contracts (Pydantic)</h2>
-        <p>Every agent-to-agent transition uses a structured Pydantic contract. Never pass raw strings between agents.</p>
+        <p>Every agent-to-agent transition uses a structured Pydantic contract. Never pass raw strings between agents. 15 contracts in <code style="font-family:var(--mono)">contracts/</code>.</p>
       </div>
 
       <div class="table-wrap">
@@ -1400,6 +1433,12 @@
             <td>classification, confidence, affected_locator, suggested_fix, requires_human</td>
           </tr>
           <tr>
+            <td class="mono">PipelineRCAReport</td>
+            <td>contracts/pipeline_rca_report.py</td>
+            <td>CI Log Analyzer → Detective/Human</td>
+            <td>pipeline_run_id, failure_patterns, flakiness_score, recommended_actions</td>
+          </tr>
+          <tr>
             <td class="mono">HealingPatch</td>
             <td>contracts/healing_patch.py</td>
             <td>Medic → Healing Judge</td>
@@ -1418,16 +1457,40 @@
             <td>feature_files, page_objects, step_definitions, test_results</td>
           </tr>
           <tr>
+            <td class="mono">ImpactReport</td>
+            <td>contracts/impact_report.py</td>
+            <td>Impact Analyst → any</td>
+            <td>affected_agents, propagation_paths, risk_score, affected_tests</td>
+          </tr>
+          <tr>
             <td class="mono">TestDeletionApproval</td>
             <td>contracts/test_deletion_approval.py</td>
             <td>Curator → Human/KB</td>
             <td>deletion_requests, approvals, audit_trail</td>
           </tr>
           <tr>
-            <td class="mono">ImpactReport</td>
-            <td>contracts/impact_report.py</td>
-            <td>Impact Analyst → any</td>
-            <td>affected_agents, propagation_paths, risk_score</td>
+            <td class="mono">GroomingAssessment</td>
+            <td>contracts/grooming_assessment.py</td>
+            <td>Grooming Team → Strategy</td>
+            <td>ticket_batch, coverage_gaps, duplicate_scenarios, priority_order</td>
+          </tr>
+          <tr>
+            <td class="mono">SquadHandoff</td>
+            <td>contracts/squad_handoff.py</td>
+            <td>Any squad → Any squad</td>
+            <td>from_squad, to_squad, payload, metadata, handoff_type</td>
+          </tr>
+          <tr>
+            <td class="mono">WorkflowStatus</td>
+            <td>contracts/workflow_status.py</td>
+            <td>Workflow engine → UI/API</td>
+            <td>workflow_id, step_statuses, current_step, errors</td>
+          </tr>
+          <tr>
+            <td class="mono">ExecutionResult</td>
+            <td>contracts/execution_result.py</td>
+            <td>Test runner → Detective</td>
+            <td>test_name, passed, trace_path, duration, error_message</td>
           </tr>
         </table>
       </div>
@@ -1503,67 +1566,161 @@
         <div class="tl-item">
           <div class="tl-dot done"></div>
           <div class="tl-title">Phase 0 — Infrastructure <span class="badge green">✅ GATE CLEARED</span></div>
-          <div class="tl-body">Docker Compose running. Agent writes to local disk. qap-db, qap-api, qap-ui services live.</div>
-          <div class="tl-gate" style="border-color:var(--green)">GET /health → 200 · Volume mount verified</div>
+          <div class="tl-body">Docker Compose running. qap-db, qap-api, qap-ui services live. Automation scaffold workflow registered. 15 tasks completed.</div>
+          <div class="tl-gate" style="border-color:var(--green)">GET /health → 200 · Volume mount verified · Agent scaffolds BDD+POM framework on demand</div>
         </div>
 
         <div class="tl-item">
           <div class="tl-dot done"></div>
           <div class="tl-title">Phase 0.5 — AUT Onboarding <span class="badge green">✅ GATE CLEARED</span></div>
-          <div class="tl-body">Discovery Agent generates Site Manifesto. SiteManifesto JSON persisted in PgVector.</div>
-          <div class="tl-gate" style="border-color:var(--green)">Autonomous login + navigates ≥3 core pages · Accessibility Tree extracted</div>
+          <div class="tl-body">Discovery Agent crawled GDS demo SPA via Playwright MCP. 5 pages, 45 components. Site Manifesto persisted to PgVector. Playwright MCP on :8931.</div>
+          <div class="tl-gate" style="border-color:var(--green)">Autonomous crawl ≥3 core pages · Accessibility Tree extracted · KB verified · 16 tasks completed</div>
         </div>
 
         <div class="tl-item">
           <div class="tl-dot done"></div>
           <div class="tl-title">Phase 1 — Contextual Indexing <span class="badge green">✅ GATE CLEARED</span></div>
-          <div class="tl-body">Existing POMs and Step Defs vectorized. Librarian indexes all test code. Git-sync hook active.</div>
-          <div class="tl-gate" style="border-color:var(--green)">Semantic query returns correct POM for UI component · 5/5 queries passed</div>
+          <div class="tl-body">Librarian indexes POMs and Step Defs. codebase_vectors KB live. Git-sync hook active. 5/5 semantic queries passed.</div>
+          <div class="tl-gate" style="border-color:var(--green)">Semantic query returns correct POM for UI component · OllamaEmbedder (qwen3-embedding:4b, 2560d)</div>
         </div>
 
         <div class="tl-item">
           <div class="tl-dot done"></div>
           <div class="tl-title">Phase 2 — Spec-Driven Development <span class="badge green">✅ GATE CLEARED</span></div>
-          <div class="tl-body">Jira webhook → Gherkin workflow live. Architect + Scribe produce valid .feature files via AgentUI.</div>
-          <div class="tl-gate" style="border-color:var(--green)">Gherkin Judge ≥90% · Human approves first 5 specs · Traceability verified</div>
+          <div class="tl-body">Jira webhook → Gherkin workflow live. Architect + Scribe produce valid .feature files. Grooming team operational.</div>
+          <div class="tl-gate" style="border-color:var(--green)">Gherkin Judge ≥90% · Human approved first 5 specs · Traceability verified</div>
         </div>
 
         <div class="tl-item">
-          <div class="tl-dot done"></div>
-          <div class="tl-title">Phase 3 — Autonomous Implementation <span class="badge yellow">⚠ PARTIAL (5/9)</span></div>
-          <div class="tl-body">Engineer generates and verifies feature tests. Look-Before-You-Leap pattern implemented. ESLint configured.</div>
-          <div class="tl-gate" style="border-color:var(--yellow)">Pending: Green local run · Code Judge ≥90% on generated code · &gt;90% execution success rate</div>
+          <div class="tl-dot next"></div>
+          <div class="tl-title">Phase 3 — Autonomous Implementation <span class="badge yellow">⚠ IN PROGRESS</span></div>
+          <div class="tl-body">Engineer generates and verifies feature tests. Look-Before-You-Leap pattern implemented. jira_to_pr workflow live. ESLint + TypeScript configured.</div>
+          <div class="tl-gate" style="border-color:var(--yellow)">Pending: Green local container run · Code Judge ≥90% on generated output · >90% execution success rate</div>
         </div>
 
         <div class="tl-item">
           <div class="tl-dot done"></div>
           <div class="tl-title">Phase 4 — Triage &amp; Self-Healing <span class="badge green">✅ GATE CLEARED</span></div>
-          <div class="tl-body">Detective diagnoses failures. Medic patches locators. Healing loop verified end-to-end.</div>
+          <div class="tl-body">Detective diagnoses failures with 92.3% accuracy. Medic patches locators. Full healing loop verified end-to-end.</div>
           <div class="tl-gate" style="border-color:var(--green)">92.3% Detective accuracy · 10/10 selector breaks healed · 0 human code interventions</div>
         </div>
 
         <div class="tl-item">
-          <div class="tl-dot done"></div>
-          <div class="tl-title">Phase 5 — Autonomous Maturity <span class="badge yellow">⚠ IN PROGRESS</span></div>
-          <div class="tl-body">Scale and harden. Flip from "Human-Gated" to "Audit-Log" mode for routine maintenance.</div>
+          <div class="tl-dot pending"></div>
+          <div class="tl-title">Phase 5 — Autonomous Maturity <span class="badge yellow">⚠ NEXT TARGET</span></div>
+          <div class="tl-body">Scale and harden. Flip from "Human-Gated" to "Audit-Log" mode for routine maintenance. Depends on Phase 3 gate clearing first.</div>
           <div class="tl-gate" style="border-color:var(--yellow)">95% autonomous · 30 consecutive days · audit trail · &lt;$1/feature · zero secret leaks</div>
         </div>
 
         <div class="tl-item">
-          <div class="tl-dot done"></div>
-          <div class="tl-title">Phase 6 — Regression Suite Curation <span class="badge yellow">⚠ INFRA DONE, TESTING PENDING</span></div>
-          <div class="tl-body">Curator agent detects obsolete tests. HITL-gated deletion flow. Regression Maintenance workflow.</div>
-          <div class="tl-gate" style="border-color:var(--yellow)">≥90% obsolescence detection accuracy · HITL approval works · Audit trail maintained</div>
+          <div class="tl-dot pending"></div>
+          <div class="tl-title">Phase 6 — Regression Suite Curation <span class="badge">🔜 PLANNED</span></div>
+          <div class="tl-body">Curator agent detects obsolete tests. HITL-gated deletion flow. Regression Maintenance workflow. Infrastructure built, testing pending.</div>
+          <div class="tl-gate" style="border-color:var(--border)">≥90% obsolescence detection · HITL approval works · Audit trail maintained</div>
         </div>
 
         <div class="tl-item">
-          <div class="tl-dot done"></div>
-          <div class="tl-title">Phase 7 — Semantica Integration <span class="badge green">✅ INFRASTRUCTURE COMPLETE</span></div>
-          <div class="tl-body">Semantic decision intelligence, temporal queries, provenance tracking across all 13 agents.</div>
-          <div class="tl-gate" style="border-color:var(--green)">All 13 agents extend SemanticaAgent · per-agent feature flags · API starts cleanly · zero impact when disabled</div>
+          <div class="tl-dot pending"></div>
+          <div class="tl-title">Phase 7 — Full Observability <span class="badge">🔜 PLANNED</span></div>
+          <div class="tl-body">Pipeline Analyst and Impact Analyst fully operational. Dashboard shows live flakiness, MTTF, regression velocity metrics.</div>
+          <div class="tl-gate" style="border-color:var(--border)">90-day trace retention · flakiness dashboard · mean-time-to-heal &lt;5 min</div>
         </div>
 
       </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ALL WORKFLOWS                                                       -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-workflows" class="section">
+      <div class="page-header">
+        <h2>⚡ All 10 Workflows</h2>
+        <p>Every workflow lives in <code style="font-family:var(--mono)">workflows/&lt;name&gt;/</code> with <code style="font-family:var(--mono)">workflow.py · instructions.py · __init__.py</code></p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <tr><th>ID</th><th>Directory</th><th>Pipeline</th><th>Purpose</th></tr>
+          <tr>
+            <td class="mono" style="color:var(--accent)">spec-to-code</td>
+            <td>workflows/spec_to_code/</td>
+            <td>Architect → Scribe → Data Agent → Engineer</td>
+            <td>Full ticket-to-PR pipeline with Judge gates at every step</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--accent)">jira-to-pr</td>
+            <td>workflows/jira_to_pr/</td>
+            <td>Jira webhook → Strategy → Engineering → PR</td>
+            <td>End-to-end from Jira ticket to merged GitHub PR (full lifecycle without evals)</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--green)">discovery-onboard</td>
+            <td>workflows/discovery_onboard/</td>
+            <td>Discovery → Librarian → KB</td>
+            <td>AUT onboarding: crawl site, build Site Manifesto, index into PgVector</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--red)">triage-heal</td>
+            <td>workflows/triage_heal/</td>
+            <td>Detective → Medic → Healing Judge</td>
+            <td>CI failure triage + surgical self-healing loop with 3× verification</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--purple)">automation-scaffold</td>
+            <td>workflows/automation_scaffold/</td>
+            <td>Engineer + Data Agent</td>
+            <td>Scaffold a new BDD+POM test framework from scratch for any AUT</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--purple)">full-lifecycle</td>
+            <td>workflows/full_lifecycle/</td>
+            <td>All squads in sequence</td>
+            <td>End-to-end: requirement → spec → code → verify → PR (includes evals)</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--orange)">full-regression</td>
+            <td>workflows/full_regression/</td>
+            <td>Engineer + Technical Tester</td>
+            <td>Run full regression suite in sandboxed Playwright container, collect results</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--yellow)">grooming</td>
+            <td>workflows/grooming/</td>
+            <td>Grooming team (Architect + Scribe + Impact Analyst)</td>
+            <td>Batch Jira backlog grooming → Gherkin spec bundle → deduplication</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--yellow)">regression-maintenance</td>
+            <td>workflows/regression_maintenance/</td>
+            <td>Detective + Medic + Curator</td>
+            <td>Scheduled locator health checks + auto-heal + obsolescence detection</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--teal)">technical-testing</td>
+            <td>workflows/technical_testing/</td>
+            <td>Technical Tester</td>
+            <td>Rapid exploratory test generation via Playwright agents for new features</td>
+          </tr>
+        </table>
+      </div>
+
+      <h3>🔧 Workflow Constructor</h3>
+      <pre><span class="hl-fn">my_workflow</span> = <span class="hl-class">Workflow</span>(
+    <span class="hl-key">id</span>=<span class="hl-str">"my-workflow"</span>,
+    <span class="hl-key">name</span>=<span class="hl-str">"My Workflow"</span>,
+    <span class="hl-key">steps</span>=[
+        <span class="hl-class">Step</span>(<span class="hl-key">name</span>=<span class="hl-str">"Step 1"</span>, <span class="hl-key">agent</span>=<span class="hl-fn">architect</span>),
+        <span class="hl-class">Step</span>(<span class="hl-key">name</span>=<span class="hl-str">"Step 2"</span>, <span class="hl-key">agent</span>=<span class="hl-fn">scribe</span>),
+        <span class="hl-class">Condition</span>(
+            <span class="hl-key">name</span>=<span class="hl-str">"Judge Gate"</span>,
+            <span class="hl-key">evaluator</span>=<span class="hl-fn">judge_approves</span>,
+            <span class="hl-key">steps</span>=[<span class="hl-class">Step</span>(<span class="hl-key">name</span>=<span class="hl-str">"Proceed"</span>, <span class="hl-key">agent</span>=<span class="hl-fn">engineer</span>)],
+        ),
+    ],
+)
+
+<span class="hl-cmt"># Register in app/main.py</span>
+<span class="hl-fn">agent_os</span> = <span class="hl-class">AgentOS</span>(<span class="hl-key">workflows</span>=[..., <span class="hl-fn">my_workflow</span>], ...)</pre>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
