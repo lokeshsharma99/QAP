@@ -56,24 +56,10 @@ _USER_AGENT = (
 
 
 # ---------------------------------------------------------------------------
-# fetch_html — Tool
+# Internal HTTP helpers (called by tools AND by ui_crawler directly)
 # ---------------------------------------------------------------------------
-@tool(
-    name="fetch_html",
-    description="Fetch HTML content from a URL using requests. Results are cached to avoid redundant network calls.",
-    cache_results=True,
-    cache_ttl=1800,
-)
-def fetch_html(url: str, timeout: int = 30) -> str:
-    """Fetch HTML content from a URL using requests.
-
-    Args:
-        url: The URL to fetch HTML from.
-        timeout: Request timeout in seconds.
-
-    Returns:
-        The raw HTML content as a string, or an error message if fetch fails.
-    """
+def _fetch_html(url: str, timeout: int = 30) -> str:
+    """Fetch HTML content from a URL using requests."""
     try:
         response = requests.get(
             url,
@@ -93,6 +79,44 @@ def fetch_html(url: str, timeout: int = 30) -> str:
         return f"ERROR: {type(e).__name__}: {e} for {url}"
 
 
+def _parse_dom_tree_impl(html_content: str, base_url: str = "") -> list[dict]:
+    """Parse HTML content and extract interactable UI components."""
+    if html_content.startswith("ERROR:"):
+        return []
+
+    soup = BeautifulSoup(html_content, "html.parser")
+    components = []
+
+    for tag in soup.find_all(_INTERACTABLE_TAGS):
+        component = _extract_component_info(tag, base_url)
+        if component:
+            components.append(component)
+
+    return components
+
+
+# ---------------------------------------------------------------------------
+# fetch_html — Tool
+# ---------------------------------------------------------------------------
+@tool(
+    name="fetch_html",
+    description="Fetch HTML content from a URL using requests. Results are cached to avoid redundant network calls.",
+    cache_results=True,
+    cache_ttl=1800,
+)
+def fetch_html(url: str, timeout: int = 30) -> str:
+    """Fetch HTML content from a URL using requests.
+
+    Args:
+        url: The URL to fetch HTML from.
+        timeout: Request timeout in seconds.
+
+    Returns:
+        The raw HTML content as a string, or an error message if fetch fails.
+    """
+    return _fetch_html(url, timeout)
+
+
 # ---------------------------------------------------------------------------
 # parse_dom_tree — Tool
 # ---------------------------------------------------------------------------
@@ -110,18 +134,7 @@ def parse_dom_tree(html_content: str, base_url: str = "") -> list[dict]:
     Returns:
         List of component dicts with element info and locator candidates.
     """
-    if html_content.startswith("ERROR:"):
-        return []
-
-    soup = BeautifulSoup(html_content, "html.parser")
-    components = []
-
-    for tag in soup.find_all(_INTERACTABLE_TAGS):
-        component = _extract_component_info(tag, base_url)
-        if component:
-            components.append(component)
-
-    return components
+    return _parse_dom_tree_impl(html_content, base_url)
 
 
 # ---------------------------------------------------------------------------
@@ -200,12 +213,12 @@ def ui_crawler(
             continue
         visited.add(url)
 
-        html = fetch_html(url)
+        html = _fetch_html(url)
         if html.startswith("ERROR:"):
             pages.append({"url": url, "route": route, "error": html, "components": []})
             continue
 
-        components = parse_dom_tree(html, base_url=base_origin)
+        components = _parse_dom_tree_impl(html, base_url=base_origin)
         title = _extract_title(html)
         is_auth_gated = _detect_auth_gate(html)
         accessibility_tree_hash = _hash_content(html)
