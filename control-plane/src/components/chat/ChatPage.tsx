@@ -194,6 +194,108 @@ const ToolCallsSidebar = ({
 )
 
 // ---------------------------------------------------------------------------
+// Inline tool call steps — numbered timeline inside the chat message
+// ---------------------------------------------------------------------------
+const InlineToolSteps = ({ toolCalls }: { toolCalls: NonNullable<ChatMessage['tool_calls']> }) => {
+  const [expanded, setExpanded] = useState(false)
+  const [openIdx, setOpenIdx] = useState<number | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getDuration = (tc: NonNullable<ChatMessage['tool_calls']>[0]) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a = tc as any
+    const ms = a.metrics?.time != null ? a.metrics.time * 1000
+      : a.metrics?.execution_time != null ? Number(a.metrics.execution_time)
+      : null
+    return ms !== null ? `${ms.toFixed(0)}ms` : null
+  }
+  const hasErrors = toolCalls.some((tc) => tc.tool_call_error)
+
+  return (
+    <div className="pl-9 my-1 max-w-2xl">
+      <button
+        onClick={() => setExpanded((o) => !o)}
+        className="flex items-center gap-2 rounded-lg border border-accent/60 bg-background/60 px-2.5 py-1.5 text-xs text-muted hover:bg-accent hover:text-primary transition-colors w-full"
+      >
+        <Hammer className="size-3 text-brand shrink-0" />
+        <span className="font-medium flex-1 text-left">
+          {toolCalls.length} tool call{toolCalls.length !== 1 ? 's' : ''}
+        </span>
+        {hasErrors && <XCircle className="size-3 text-destructive shrink-0" />}
+        <ChevronDown className={cn('size-3 shrink-0 transition-transform text-muted/40', expanded && 'rotate-180')} />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="mt-1.5 ml-2 border-l-2 border-accent pl-3 space-y-1">
+              {toolCalls.map((tc, i) => {
+                const dur = getDuration(tc)
+                const isOpen = openIdx === i
+                const hasError = !!tc.tool_call_error
+                return (
+                  <div key={i} className="rounded-lg border border-accent/40 bg-background overflow-hidden">
+                    <button
+                      onClick={() => setOpenIdx(isOpen ? null : i)}
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-accent/30 transition-colors"
+                    >
+                      <span className="font-mono text-muted/30 shrink-0 w-4 text-right tabular-nums">{i + 1}</span>
+                      <Hammer className={cn('size-3 shrink-0', hasError ? 'text-destructive' : 'text-brand')} />
+                      <span className={cn('flex-1 text-left font-mono truncate', hasError ? 'text-destructive' : 'text-primary')}>{tc.tool_name}</span>
+                      {dur && <span className="text-muted/40 font-mono shrink-0 text-[10px]">{dur}</span>}
+                      {hasError
+                        ? <XCircle className="size-3 text-destructive shrink-0" />
+                        : <CheckCircle className="size-3 text-positive/50 shrink-0" />}
+                      <ChevronDown className={cn('size-3 text-muted/30 shrink-0 transition-transform', isOpen && 'rotate-180')} />
+                    </button>
+
+                    {isOpen && (
+                      <div className="px-3 pb-3 pt-1 space-y-2 border-t border-accent/30">
+                        {tc.tool_args && Object.keys(tc.tool_args).length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase text-muted/60 mb-1">Args</p>
+                            <div className="space-y-1">
+                              {Object.entries(tc.tool_args).map(([k, v]) => (
+                                <div key={k} className="flex gap-1.5 text-xs">
+                                  <span className="text-muted/50 shrink-0 font-mono">{k}:</span>
+                                  <span className="font-mono text-primary/80 break-all">
+                                    {typeof v === 'string' ? v : JSON.stringify(v)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {tc.content && (
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase text-muted/60 mb-1">Result</p>
+                            <pre className={cn(
+                              'max-h-32 overflow-y-auto rounded px-2 py-1.5 text-xs font-dmmono whitespace-pre-wrap break-all',
+                              hasError ? 'bg-destructive/10 text-destructive' : 'bg-accent/40 text-primary/80'
+                            )}>
+                              {typeof tc.content === 'string' ? tc.content : JSON.stringify(tc.content, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Robust message timestamp formatter
 // ---------------------------------------------------------------------------
 const fmtMsgTime = (ts: number | undefined | null): string => {
@@ -298,22 +400,36 @@ const ReasoningBlock = ({ steps }: { steps: NonNullable<ChatMessage['extra_data'
   const [open, setOpen] = useState(false)
   if (!steps || steps.length === 0) return null
   return (
-    <div className="mb-2 rounded-xl border border-accent text-xs">
-      <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2 px-3 py-2">
-        <Brain className="size-3 text-muted" />
-        <span className="flex-1 text-left text-muted">Reasoning ({steps.length} steps)</span>
-        {open ? <ChevronUp className="size-3 text-muted" /> : <ChevronDown className="size-3 text-muted" />}
+    <div className="mb-2 rounded-xl border border-accent/60 bg-accent/10 text-xs overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2 px-3 py-2 hover:bg-accent/20 transition-colors">
+        <Brain className="size-3 text-info shrink-0" />
+        <span className="flex-1 text-left text-muted font-medium">Reasoning</span>
+        <span className="text-muted/40 tabular-nums">{steps.length} step{steps.length !== 1 ? 's' : ''}</span>
+        <ChevronDown className={cn('size-3 text-muted/40 shrink-0 transition-transform', open && 'rotate-180')} />
       </button>
-      {open && (
-        <div className="space-y-2 border-t border-accent px-3 py-2">
-          {steps.map((step, i) => (
-            <div key={i} className="border-l-2 border-accent pl-2">
-              <div className="font-medium text-muted">{step.title}</div>
-              {step.reasoning && <div className="mt-0.5 text-muted/70">{step.reasoning}</div>}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-accent/40 px-3 py-2 space-y-2">
+              {steps.map((step, i) => (
+                <div key={i} className="flex gap-2">
+                  <span className="shrink-0 w-4 text-right font-mono text-muted/30 text-[10px] mt-0.5 tabular-nums">{i + 1}</span>
+                  <div className="border-l-2 border-info/30 pl-2 min-w-0">
+                    <div className="font-semibold text-muted">{step.title}</div>
+                    {step.reasoning && <div className="mt-0.5 text-muted/60 leading-relaxed">{step.reasoning}</div>}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -351,7 +467,6 @@ const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null
   msg: ChatMessage; index: number; isActiveStreaming?: boolean; latestEvent?: import('@/store').ChatEvent | null
 }) => {
   const isUser = msg.role === 'user'
-  const [toolCallsOpen, setToolCallsOpen] = useState(false)
   return (
     <motion.div
       className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}
@@ -372,26 +487,7 @@ const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null
       </div>
       {msg.extra_data?.reasoning_steps && <ReasoningBlock steps={msg.extra_data.reasoning_steps} />}
       {msg.tool_calls && msg.tool_calls.length > 0 && (
-        <>
-          {/* chip — click to open sidebar */}
-          <div className="flex flex-wrap items-center gap-2 pl-9">
-            <div className="cursor-pointer bg-transparent py-1" onClick={() => setToolCallsOpen(true)}>
-              <div className="flex items-center justify-between gap-x-2 rounded-sm bg-accent border border-border/50 px-2 py-1">
-                <Hammer className="text-brand size-4" />
-                <p className="font-dmmono text-xs font-normal tracking-[0.02em] leading-[1rem] space-x-2 uppercase text-primary">
-                  <span className="text-muted">{msg.tool_calls.length} </span>Tools Called
-                </p>
-                <ChevronRight className="text-muted size-4" />
-              </div>
-            </div>
-          </div>
-          {/* sliding sidebar panel */}
-          <ToolCallsSidebar
-            open={toolCallsOpen}
-            onClose={() => setToolCallsOpen(false)}
-            toolCalls={msg.tool_calls}
-          />
-        </>
+        <InlineToolSteps toolCalls={msg.tool_calls} />
       )}
       {msg.content && (
         <div className={cn('max-w-2xl rounded-xl px-4 py-3',
@@ -501,6 +597,18 @@ const fmtSessionDate = (ts: string | number | undefined | null): string => {
   return d.isValid() ? d.format('MMM D, HH:mm') : '—'
 }
 
+// ---------------------------------------------------------------------------
+// Friendly session name — deterministic word-pair from session_id
+// ---------------------------------------------------------------------------
+const SESS_ADJ = ['Amber','Azure','Bold','Calm','Crisp','Deep','Dusty','Elder','Fern','Gold','Jade','Keen','Lime','Navy','Oak','Pine','Rose','Sage','Slate','Swift','Teal','Warm']
+const SESS_NOUN = ['Arc','Atlas','Breeze','Cipher','Dawn','Echo','Forge','Grove','Hawk','Iris','Leaf','Mesa','Nova','Orbit','Peak','Reef','Spark','Tide','Vault','Wave','Zenith']
+function friendlySessionName(id: string): string {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) | 0
+  const pos = Math.abs(h)
+  return `${SESS_ADJ[pos % SESS_ADJ.length]} ${SESS_NOUN[Math.floor(pos / SESS_ADJ.length) % SESS_NOUN.length]}`
+}
+
 const SessionItem = ({ session, isSelected, onClick }: {
   session: { session_id: string; created_at: string | number }
   isSelected: boolean
@@ -516,7 +624,7 @@ const SessionItem = ({ session, isSelected, onClick }: {
       isSelected ? 'bg-accent text-primary' : 'text-muted hover:bg-accent/50 hover:text-primary'
     )}
   >
-    <div className="font-medium">Session {session.session_id.slice(0, 8)}…</div>
+    <div className="font-medium">{friendlySessionName(session.session_id)}</div>
     <div className="mt-0.5 text-muted/50">{fmtSessionDate(session.created_at)}</div>
   </motion.button>
 )
@@ -825,15 +933,22 @@ const ModelSwitcher = () => {
 
 // ---------------------------------------------------------------------------
 
-const Section = ({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) => (
-  <div>
-    <div className="mb-1.5 flex items-center gap-1.5">
-      {icon}
-      <span className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</span>
+const Section = ({ icon, title, children, defaultOpen = true }: { icon: React.ReactNode; title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="mb-1.5 flex w-full items-center gap-1.5 hover:opacity-80 transition-opacity"
+      >
+        {icon}
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted flex-1 text-left">{title}</span>
+        <ChevronDown className={cn('size-3 text-muted/40 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && children}
     </div>
-    {children}
-  </div>
-)
+  )
+}
 
 const KV = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex flex-col gap-0.5 py-1 border-b border-accent/30 last:border-0">
@@ -1119,7 +1234,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
           )}
 
           {teamDetail.tools?.tools && teamDetail.tools.tools.length > 0 && (
-            <Section icon={<Wrench className="size-3.5 text-brand" />} title={`Tools (${teamDetail.tools.tools.length})`}>
+            <Section icon={<Wrench className="size-3.5 text-brand" />} title={`Tools (${teamDetail.tools.tools.length})`} defaultOpen={false}>
               <div className="rounded-xl border border-accent bg-background p-3 space-y-1">
                 {teamDetail.tools.tools.map((t, i) => (
                   <div key={i} className="text-xs font-mono text-primary">{t.name}</div>
@@ -1148,7 +1263,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
           )}
 
           {teamDetail.default_tools && Object.keys(teamDetail.default_tools).length > 0 && (
-            <Section icon={<Settings className="size-3.5 text-brand" />} title="Default Tools">
+            <Section icon={<Settings className="size-3.5 text-brand" />} title="Default Tools" defaultOpen={false}>
               <Card>
                 {Object.entries(teamDetail.default_tools).map(([k, v]) => (
                   <KV key={k} label={k} value={String(v)} />
@@ -1158,7 +1273,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
           )}
 
           {teamDetail.system_message && (
-            <Section icon={<MessageSquare className="size-3.5 text-brand" />} title="System Message">
+            <Section icon={<MessageSquare className="size-3.5 text-brand" />} title="System Message" defaultOpen={false}>
               <Card>
                 {teamDetail.system_message.add_datetime_to_context !== undefined && <KV label="add_datetime_to_context" value={String(teamDetail.system_message.add_datetime_to_context)} />}
                 {teamDetail.system_message.markdown !== undefined && <KV label="markdown" value={String(teamDetail.system_message.markdown)} />}
@@ -1173,7 +1288,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
           )}
 
           {teamDetail.streaming && (
-            <Section icon={<Zap className="size-3.5 text-brand" />} title="Streaming">
+            <Section icon={<Zap className="size-3.5 text-brand" />} title="Streaming" defaultOpen={false}>
               <Card>
                 {teamDetail.streaming.stream_member_events !== undefined && <KV label="stream_member_events" value={String(teamDetail.streaming.stream_member_events)} />}
               </Card>
@@ -1203,7 +1318,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
           )}
 
           {agentDetail.tools?.tools && agentDetail.tools.tools.length > 0 && (
-            <Section icon={<Wrench className="size-3.5 text-brand" />} title={`Tools (${agentDetail.tools.tools.length})`}>
+            <Section icon={<Wrench className="size-3.5 text-brand" />} title={`Tools (${agentDetail.tools.tools.length})`} defaultOpen={false}>
               <div className="rounded-xl border border-accent bg-background p-3 space-y-1">
                 {agentDetail.tools.tools.map((t, i) => (
                   <div key={i} className="text-xs font-mono text-primary">{t.name}</div>
@@ -1241,7 +1356,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
           )}
 
           {agentDetail.default_tools && Object.keys(agentDetail.default_tools).length > 0 && (
-            <Section icon={<Settings className="size-3.5 text-brand" />} title="Default Tools">
+            <Section icon={<Settings className="size-3.5 text-brand" />} title="Default Tools" defaultOpen={false}>
               <Card>
                 {Object.entries(agentDetail.default_tools).map(([k, v]) => (
                   <KV key={k} label={k} value={String(v)} />
@@ -1251,7 +1366,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
           )}
 
           {agentDetail.system_message && (
-            <Section icon={<MessageSquare className="size-3.5 text-brand" />} title="System Message">
+            <Section icon={<MessageSquare className="size-3.5 text-brand" />} title="System Message" defaultOpen={false}>
               <Card>
                 {agentDetail.system_message.add_datetime_to_context !== undefined && <KV label="add_datetime_to_context" value={String(agentDetail.system_message.add_datetime_to_context)} />}
                 {agentDetail.system_message.markdown !== undefined && <KV label="markdown" value={String(agentDetail.system_message.markdown)} />}
@@ -1266,7 +1381,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
           )}
 
           {agentDetail.streaming && (
-            <Section icon={<Zap className="size-3.5 text-brand" />} title="Streaming">
+            <Section icon={<Zap className="size-3.5 text-brand" />} title="Streaming" defaultOpen={false}>
               <Card>
                 {agentDetail.streaming.stream_member_events !== undefined && <KV label="stream_member_events" value={String(agentDetail.streaming.stream_member_events)} />}
               </Card>
@@ -1284,43 +1399,6 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId }: { agentId: strin
         </>
       )}
       {/* End details tab wrapper */}
-
-      {/* SSE Event Log */}
-      <div className="mt-auto border-t border-accent/50 p-3 shrink-0">
-        <div className="mb-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Zap className="size-3.5 text-brand" />
-            <span className="text-xs font-semibold uppercase text-muted">Event Log</span>
-          </div>
-          {isStreaming && (
-            <span className="flex items-center gap-1 rounded-full bg-positive/10 px-2 py-0.5 text-xs text-positive">
-              <span className="size-1.5 rounded-full bg-positive animate-pulse inline-block" />
-              Live
-            </span>
-          )}
-        </div>
-        {chatEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-accent bg-background py-6 text-center">
-            <Clock className="size-5 text-muted/20" />
-            <p className="mt-1.5 text-xs text-muted/50">Events appear here during a run</p>
-          </div>
-        ) : (
-          <div className="space-y-1 overflow-y-auto rounded-xl border border-accent bg-background p-2 max-h-52">
-            {chatEvents.map((e, i) => (
-              <div key={i} className="flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-accent/30">
-                <EventTypeIcon type={e.type} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-primary truncate">{e.label}</div>
-                  {e.detail && <div className="text-xs text-muted/60 truncate font-mono">{e.detail}</div>}
-                </div>
-                <div className="shrink-0 text-xs text-muted/40 font-mono">
-                  {dayjs(e.ts).format('HH:mm:ss')}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   )
 }
