@@ -152,7 +152,7 @@ services:
   playwright-mcp:
     image: mcr.microsoft.com/playwright:v1.52.0-noble
     container_name: playwright-mcp
-    command: npx -y @playwright/mcp@latest --port 8931 --host 0.0.0.0 --allowed-hosts "*"
+    command: npx -y @playwright/mcp@latest --port 8931 --host 0.0.0.0 --allowed-hosts "*" --browser chromium
     restart: unless-stopped
     ports:
       - "8931:8931"
