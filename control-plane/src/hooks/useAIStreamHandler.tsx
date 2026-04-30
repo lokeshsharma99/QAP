@@ -165,6 +165,17 @@ const useAIChatStreamHandler = () => {
         formData.append('stream', 'true')
         formData.append('session_id', sessionId ?? '')
 
+        // For new sessions, pass the first user message as session_name so Agno persists it.
+        if (!sessionId) {
+          const userMessage = formData.get('message') as string | null
+          if (userMessage) {
+            const nameParam = userMessage.length > 60 ? userMessage.slice(0, 60).trimEnd() + '…' : userMessage
+            const urlWithName = new URL(RunUrl)
+            urlWithName.searchParams.set('session_name', nameParam)
+            RunUrl = urlWithName.toString()
+          }
+        }
+
         const headers: Record<string, string> = {}
         if (authToken) {
           headers['Authorization'] = `Bearer ${authToken}`

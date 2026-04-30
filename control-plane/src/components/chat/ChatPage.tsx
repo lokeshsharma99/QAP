@@ -636,10 +636,16 @@ function friendlySessionName(id: string): string {
 }
 
 const SessionItem = ({ session, isSelected, onClick }: {
-  session: { session_id: string; created_at: string | number }
+  session: { session_id: string; session_name?: string; created_at: string | number }
   isSelected: boolean
   onClick: () => void
-}) => (
+}) => {
+  const displayName = session.session_name
+    ? session.session_name.length > 40
+      ? session.session_name.slice(0, 40).trimEnd() + '…'
+      : session.session_name
+    : friendlySessionName(session.session_id)
+  return (
   <motion.button
     onClick={onClick}
     whileHover={{ x: 2 }}
@@ -650,10 +656,11 @@ const SessionItem = ({ session, isSelected, onClick }: {
       isSelected ? 'bg-accent text-primary' : 'text-muted hover:bg-accent/50 hover:text-primary'
     )}
   >
-    <div className="font-medium">{friendlySessionName(session.session_id)}</div>
+    <div className="font-medium leading-snug" title={session.session_name}>{displayName}</div>
     <div className="mt-0.5 text-muted/50">{fmtSessionDate(session.created_at)}</div>
   </motion.button>
-)
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Mode & Entity selectors
