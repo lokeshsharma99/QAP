@@ -9,20 +9,11 @@ Role: Launch browser, authenticate with AUT, explore pages, generate Site Manife
 from agno.agent import Agent
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
-from agno.tools.reasoning import ReasoningTools
 
 from agents.discovery.instructions import INSTRUCTIONS
 from agents.discovery.tools import DiscoveryFallbackToolkit, DiscoveryToolkit
 from app.settings import MODEL, agent_db
-from db import get_qap_learnings_kb, get_site_manifesto_kb
-
-# ---------------------------------------------------------------------------
-# GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
-# Discovery reads Wiki pages (Domain Knowledge, Wireframes) for AUT context
-# before crawling so it knows what pages and flows to prioritise.
-# ---------------------------------------------------------------------------
-from app.github_mcp import get_github_mcp_for_discovery
-_github_tools = get_github_mcp_for_discovery()
+from db import get_qap_learnings_kb
 
 # ---------------------------------------------------------------------------
 # Playwright MCP Tools (optional — uses PLAYWRIGHT_MCP_URL or npx headless)
@@ -35,10 +26,9 @@ _playwright_tools = get_playwright_mcp_for_discovery()
 # ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary: qap_learnings (shared collective intelligence)
-# Domain:  site_manifesto — Discovery is the WRITER of this KB
+# Note: site_manifesto KB is WRITTEN by Discovery via save_learning — not read.
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
-site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -55,14 +45,13 @@ discovery = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
+    # KnowledgeTools includes think/analyze/search_knowledge — no ReasoningTools needed.
+    # GitHub tools excluded: Discovery's job is crawling, not repo interaction.
     # HTTP fallback tools (fetch_html, parse_dom_tree, ui_crawler) are only
     # registered when Playwright MCP is unavailable. When pw__ tools ARE present,
     # they are excluded so the LLM cannot fall back to HTTP crawling for SPAs.
     tools=[
-        ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=qap_learnings_kb),
-        KnowledgeTools(knowledge=site_manifesto_kb),
-        *_github_tools,
         *_playwright_tools,
         DiscoveryToolkit(),
         *([DiscoveryFallbackToolkit()] if not _playwright_tools else []),
