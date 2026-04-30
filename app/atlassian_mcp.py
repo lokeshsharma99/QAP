@@ -42,6 +42,8 @@ Usage by agent
 import base64
 import logging
 import os
+import socket
+import urllib.parse
 
 from agno.tools.mcp import MCPTools
 from mcp.client.stdio import StdioServerParameters
@@ -117,11 +119,67 @@ def _make_atlassian_mcp(tool_name_prefix: str) -> MCPTools:
 _ATLASSIAN_MCP_SINGLETON: MCPTools | None = None
 
 
+def _atlassian_mcp_service_reachable(url: str) -> bool:
+    """Return True if the atlassian-mcp Docker service TCP port is open."""
+    parsed = urllib.parse.urlparse(url)
+    host = parsed.hostname or "atlassian-mcp"
+    port = parsed.port or 8933
+    try:
+        with socket.create_connection((host, port), timeout=2):
+            return True
+    except OSError:
+        return False
+
+
 def _get_atlassian_mcp_singleton() -> MCPTools:
-    """Return the module-level singleton, creating it on first call."""
+    """Return the module-level singleton.
+
+    Priority:
+    1. HTTP — connect to the atlassian-mcp Docker service (ATLASSIAN_MCP_URL).
+       The service wraps mcp-remote stdio via supergateway streamable-HTTP.
+    2. stdio fallback — spawn npx mcp-remote locally inside qap-api.
+       Used when the atlassian-mcp container is not running.
+    Raises ValueError when credentials are not configured.
+    """
+    email = os.getenv("ATLASSIAN_EMAIL", "")
+    api_token = os.getenv("ATLASSIAN_API_TOKEN", "")
+
+    if not email or not api_token:
+        _log.warning(
+            "ATLASSIAN_EMAIL or ATLASSIAN_API_TOKEN not set — Atlassian MCP unavailable. "
+            "Set both in .env and ensure your org admin has enabled API token auth in "
+            "Atlassian Administration → Security → Rovo MCP Server settings."
+        )
+        raise ValueError("Atlassian credentials not configured")
+
     global _ATLASSIAN_MCP_SINGLETON
-    if _ATLASSIAN_MCP_SINGLETON is None:
-        _ATLASSIAN_MCP_SINGLETON = _make_atlassian_mcp(tool_name_prefix="atl_")
+    if _ATLASSIAN_MCP_SINGLETON is not None:
+        return _ATLASSIAN_MCP_SINGLETON
+
+    # -------------------------------------------------------------------------
+    # Mode 1 — streamable-HTTP connection to the atlassian-mcp Docker service.
+    # -------------------------------------------------------------------------
+    atlassian_mcp_url = os.getenv("ATLASSIAN_MCP_URL", "").rstrip("/")
+    if atlassian_mcp_url and _atlassian_mcp_service_reachable(atlassian_mcp_url):
+        _ATLASSIAN_MCP_SINGLETON = MCPTools(
+            url=atlassian_mcp_url,
+            transport="streamable-http",
+            tool_name_prefix="atl_",
+            timeout_seconds=60,
+        )
+        return _ATLASSIAN_MCP_SINGLETON
+
+    if atlassian_mcp_url:
+        _log.warning(
+            "ATLASSIAN_MCP_URL is set to %s but the service is not reachable. "
+            "Falling back to npx stdio. Start with: docker compose up -d atlassian-mcp",
+            atlassian_mcp_url,
+        )
+
+    # -------------------------------------------------------------------------
+    # Mode 2 — stdio fallback: spawn npx mcp-remote inside qap-api.
+    # -------------------------------------------------------------------------
+    _ATLASSIAN_MCP_SINGLETON = _make_atlassian_mcp(tool_name_prefix="atl_")
     return _ATLASSIAN_MCP_SINGLETON
 
 
