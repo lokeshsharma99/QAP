@@ -18,7 +18,7 @@ from agno.compression.manager import CompressionManager
 from agents.detective.instructions import INSTRUCTIONS
 from agents.detective.tools import classify_failure, extract_screenshot_from_trace, parse_ci_log, parse_trace_zip
 from app.settings import MODEL, agent_db
-from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
+from db import get_qap_learnings_kb, get_rca_kb
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
@@ -46,15 +46,11 @@ except Exception:
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
-# Primary: qap_learnings (shared)
-# Domain:  rca_kb      — Detective WRITES failure classifications here
-#          automation_kb  — Detective reads code to understand what broke
-#          site_manifesto — Detective checks if UI changed
+# Primary: qap_learnings (shared, native search_knowledge=True)
+# Domain:  rca_kb — Detective reads past failure classifications for pattern matching
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
 rca_kb = get_rca_kb()
-automation_kb = get_automation_kb()
-site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
 # Memory Manager
@@ -85,12 +81,13 @@ detective = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
+    # ReasoningTools: essential for RCA reasoning chains (provides think/analyze once).
+    # KnowledgeTools(rca_kb): find past failure classifications — the secondary KB.
+    # qap_learnings searched natively (primary KB). automation_kb and site_manifesto
+    # dropped — Detective classifies from traces, not from reading code/UI maps.
     tools=[
         ReasoningTools(add_instructions=True),
-        KnowledgeTools(knowledge=qap_learnings_kb),
         KnowledgeTools(knowledge=rca_kb),
-        KnowledgeTools(knowledge=automation_kb),
-        KnowledgeTools(knowledge=site_manifesto_kb),
         *_decision_tools,
         *_github_tools,
         parse_trace_zip,

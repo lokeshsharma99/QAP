@@ -64,10 +64,12 @@ engineer = Agent(
     knowledge=automation_knowledge,
     search_knowledge=True,
     # Capabilities
+    # KnowledgeTools(site_manifesto_kb): Look-Before-You-Leap — verify locators before writing.
+    # KnowledgeTools(qap_learnings_kb): read coding patterns and conventions.
+    # KnowledgeTools(automation_knowledge) dropped — redundant with native search_knowledge=True.
     tools=[
         CodingTools(requires_confirmation_tools=["run_shell"]),
         FileTools(),
-        KnowledgeTools(knowledge=automation_knowledge),
         KnowledgeTools(knowledge=site_manifesto_kb),
         KnowledgeTools(knowledge=qap_learnings_kb),
         *_github_tools,

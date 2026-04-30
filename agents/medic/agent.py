@@ -15,7 +15,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agents.medic.instructions import INSTRUCTIONS
 from agents.medic.tools import MedicToolkit
 from app.settings import MODEL, agent_db
-from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
+from db import get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
 # Semantica Decision Intelligence (optional — activated via SEMANTICA_ENABLED)
@@ -42,14 +42,12 @@ except Exception:
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
-# Primary: qap_learnings (shared)
+# Primary: qap_learnings (shared, native search_knowledge=True)
 # Domain:  rca_kb       — Medic reads Detective's RCA to know what to patch
-#          automation_kb — Medic reads the actual POM file to make surgical edit
 #          site_manifesto — Medic looks up the new correct locator from live AUT map
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
 rca_kb = get_rca_kb()
-automation_kb = get_automation_kb()
 site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
@@ -67,12 +65,14 @@ medic = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
+    # KnowledgeTools(rca_kb): read Detective's RCA report to know what locator to patch.
+    # KnowledgeTools(site_manifesto_kb): find the new correct locator from live AUT map.
+    # KnowledgeTools(qap_learnings_kb) dropped — redundant with native search_knowledge=True.
+    # KnowledgeTools(automation_kb) dropped — Medic reads POM files via FileTools directly.
     tools=[
         CodingTools(requires_confirmation_tools=["run_shell"]),
         FileTools(),
-        KnowledgeTools(knowledge=qap_learnings_kb),
         KnowledgeTools(knowledge=rca_kb),
-        KnowledgeTools(knowledge=automation_kb),
         KnowledgeTools(knowledge=site_manifesto_kb),
         *_playwright_tools,
         *_decision_tools,

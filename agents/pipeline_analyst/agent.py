@@ -20,7 +20,7 @@ from agents.pipeline_analyst.tools import download_ci_artifact, parse_allure_res
 from app.ado_mcp import get_ado_mcp_for_pipeline_analyst
 from app.github_mcp import get_github_mcp_for_pipeline_analyst
 from app.settings import MODEL, agent_db
-from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb
+from db import get_qap_learnings_kb, get_rca_kb
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (requires GITHUB_TOKEN in .env)
@@ -39,13 +39,11 @@ _ado_tools = get_ado_mcp_for_pipeline_analyst()
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
-# Primary:  qap_learnings (collective intelligence — pattern recognition)
-# Analysis: rca_kb        — reads past RCA reports to spot recurring failures
-#           automation_kb  — finds the automation code for the failing test
+# Primary:  qap_learnings (collective intelligence, native search_knowledge=True)
+# Analysis: rca_kb — reads past RCA reports to spot recurring failures
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
 rca_kb = get_rca_kb()
-automation_kb = get_automation_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -62,6 +60,9 @@ pipeline_analyst = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
+    # ReasoningTools: pipeline log reasoning (provides think/analyze once).
+    # KnowledgeTools(rca_kb): find recurring failure patterns — primary secondary KB.
+    # KnowledgeTools(automation_kb) dropped — Pipeline Analyst reads logs not code.
     tools=[
         ReasoningTools(add_instructions=True),
         SchedulerTools(
@@ -69,7 +70,6 @@ pipeline_analyst = Agent(
             default_endpoint="/agents/pipeline-analyst/runs",
         ),
         KnowledgeTools(knowledge=rca_kb),
-        KnowledgeTools(knowledge=automation_kb),
         *_github_tools,
         *_ado_tools,
         download_ci_artifact,

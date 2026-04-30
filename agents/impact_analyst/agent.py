@@ -15,7 +15,7 @@ from agno.tools.reasoning import ReasoningTools
 from agents.impact_analyst.instructions import INSTRUCTIONS
 from app.github_mcp import get_github_mcp_for_impact_analyst
 from app.settings import MODEL, agent_db
-from db import get_automation_kb, get_qap_learnings_kb, get_site_manifesto_kb
+from db import get_automation_kb, get_qap_learnings_kb
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
@@ -26,13 +26,11 @@ _github_tools = get_github_mcp_for_impact_analyst()
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
-# Primary:  qap_learnings  (collective intelligence — all agents)
+# Primary:  qap_learnings  (collective intelligence, native search_knowledge=True)
 # Analysis: automation_kb  (existing POMs, step defs, features — read-only)
-#           site_manifesto (UI components and locators — read-only)
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
 automation_kb = get_automation_kb()
-site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -49,10 +47,12 @@ impact_analyst = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
+    # ReasoningTools: impact analysis reasoning (provides think/analyze once).
+    # KnowledgeTools(automation_kb): find existing test coverage — core for impact analysis.
+    # KnowledgeTools(site_manifesto_kb) dropped — automation_kb gives sufficient context.
     tools=[
         ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=automation_kb),
-        KnowledgeTools(knowledge=site_manifesto_kb),
         *_github_tools,
     ],
     learning=True,

@@ -12,7 +12,6 @@ from pathlib import Path
 
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.file import FileTools
-from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.base.semantica_agent import SemanticaAgent
@@ -45,6 +44,8 @@ else:
 # ---------------------------------------------------------------------------
 # Build Tools List
 # ---------------------------------------------------------------------------
+# KnowledgeTools(automation_knowledge) dropped: redundant with native search_knowledge=True.
+# ReasoningTools provides think/analyze. Native KB search covers automation_knowledge.
 tools = [
     ReasoningTools(
         enable_think=True,
@@ -53,7 +54,6 @@ tools = [
         add_few_shot=True,
     ),
     FileTools(Path("automation")),
-    KnowledgeTools(knowledge=automation_knowledge) if automation_knowledge else None,
     init_playwright_agents,
     create_seed_test,
     run_planner,

@@ -10,7 +10,6 @@ from pathlib import Path
 
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.file import FileTools
-from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.user_feedback import UserFeedbackTools
 
@@ -46,6 +45,8 @@ else:
 # ---------------------------------------------------------------------------
 # Build Tools List
 # ---------------------------------------------------------------------------
+# KnowledgeTools(automation_knowledge) dropped: redundant with native search_knowledge=True.
+# ReasoningTools provides think/analyze. Native KB search covers automation_knowledge.
 tools = [
     ReasoningTools(
         enable_think=True,
@@ -55,16 +56,6 @@ tools = [
     ),
     UserFeedbackTools(),
     FileTools(Path("automation")),
-]
-
-# Add KnowledgeTools if knowledge base is available
-if automation_knowledge is not None:
-    tools.append(KnowledgeTools(knowledge=automation_knowledge))
-else:
-    logger.warning("Curator: Skipping KnowledgeTools due to None knowledge base")
-
-# Add Curator-specific tools
-tools.extend([
     request_deletion_approval,
     request_batch_deletion_approval,
     approve_deletion,
@@ -72,7 +63,7 @@ tools.extend([
     DeletionToolkit(),
     log_deletion_to_audit,
     generate_maintenance_report,
-])
+]
 
 # ---------------------------------------------------------------------------
 # Create Agent

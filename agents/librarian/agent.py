@@ -59,9 +59,10 @@ librarian = Agent(
     knowledge=automation_knowledge,
     search_knowledge=True,
     # Capabilities
+    # KnowledgeTools(qap_learnings_kb): read/write indexing conventions and patterns.
+    # KnowledgeTools(automation_knowledge) dropped — redundant with native search_knowledge=True.
     tools=[
         CodingTools(),
-        KnowledgeTools(knowledge=automation_knowledge),
         KnowledgeTools(knowledge=qap_learnings_kb),
         *_kg_tools,
         LibrarianToolkit(),

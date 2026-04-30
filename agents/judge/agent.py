@@ -71,10 +71,12 @@ judge = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
+    # ReasoningTools: adversarial reasoning (provides think/analyze once).
+    # KnowledgeTools(rca_kb): check past healing/failure history when reviewing patches.
+    # KnowledgeTools(qap_learnings_kb) dropped — redundant with native search_knowledge=True.
     tools=[
         ReasoningTools(add_instructions=True),
         UserFeedbackTools(),
-        KnowledgeTools(knowledge=qap_learnings_kb),
         KnowledgeTools(knowledge=rca_kb),
         *_decision_tools,
         JudgeToolkit(),

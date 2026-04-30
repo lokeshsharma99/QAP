@@ -15,7 +15,7 @@ from agno.tools.user_control_flow import UserControlFlowTools
 
 from agents.architect.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db
-from db import get_automation_kb, get_qap_learnings_kb, get_site_manifesto_kb
+from db import get_qap_learnings_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
 # GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
@@ -59,12 +59,11 @@ except Exception:
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
-# Primary: qap_learnings (shared collective intelligence — all agents)
-# Domain:  site_manifesto + automation (read-only — Architect queries existing POMs)
+# Primary: qap_learnings (shared collective intelligence, native search_knowledge=True)
+# Domain:  site_manifesto — Architect reads page/component map to identify affected POMs
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
 site_manifesto_kb = get_site_manifesto_kb()
-automation_kb = get_automation_kb()
 
 # ---------------------------------------------------------------------------
 # Memory Manager
@@ -95,11 +94,13 @@ architect = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
+    # ReasoningTools: core reasoning for requirement analysis (provides think/analyze).
+    # KnowledgeTools(site_manifesto_kb): query live UI map to identify affected pages.
+    # automation_kb searched natively via search_knowledge=True (qap_learnings is primary KB).
     tools=[
         ReasoningTools(add_instructions=True),
         UserControlFlowTools(),
         KnowledgeTools(knowledge=site_manifesto_kb),
-        KnowledgeTools(knowledge=automation_kb),
         *_kg_tools,
         *_github_tools,
         *_ado_tools,
