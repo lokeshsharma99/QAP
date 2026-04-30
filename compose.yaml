@@ -152,10 +152,18 @@ services:
   playwright-mcp:
     image: mcr.microsoft.com/playwright:v1.52.0-noble
     container_name: playwright-mcp
-    command: npx -y @playwright/mcp@latest --port 8931 --host 0.0.0.0 --allowed-hosts "*" --browser chromium
+    # Install chrome-for-testing on first start (cached in the volume).
+    # @playwright/mcp@latest uses chrome-for-testing by default — NOT the
+    # system Chromium nor Google Chrome. The install-browser subcommand
+    # fetches the exact binary version the MCP server requires.
+    command: >-
+      sh -c "npx -y @playwright/mcp@latest install-browser chrome-for-testing;
+             npx -y @playwright/mcp@latest --port 8931 --host 0.0.0.0 --allowed-hosts '*'"
     restart: unless-stopped
     ports:
       - "8931:8931"
+    volumes:
+      - playwright-mcp-browsers:/root/.cache/ms-playwright
     networks:
       - qap-net
 
@@ -199,3 +207,4 @@ networks:
 volumes:
   pgdata:
   generated_code:
+  playwright-mcp-browsers:  # caches chrome-for-testing download across container restarts
