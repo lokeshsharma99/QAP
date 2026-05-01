@@ -13,18 +13,22 @@ from pathlib import Path
 from agno.os import AgentOS
 
 from agents.architect import architect
+from agents.concierge import concierge
 from agents.curator import curator
 from agents.data_agent import data_agent
 from agents.detective import detective
 from agents.discovery import discovery
 from agents.engineer import engineer
+from agents.healing_judge import healing_judge
 from agents.impact_analyst import impact_analyst
 from agents.judge import judge
 from agents.librarian import librarian
 from agents.medic import medic
 from agents.pipeline_analyst import pipeline_analyst
 from agents.scribe import scribe
+from agents.technical_tester import technical_tester
 from app.endpoints.agent_config import router as agent_config_router
+from app.endpoints.culture import router as culture_router
 from app.endpoints.model import router as model_router
 from app.endpoints.eval_runs import router as eval_runs_router
 from app.endpoints.mcp_status import router as mcp_status_router
@@ -37,11 +41,20 @@ from teams.context import context_team
 from teams.diagnostics import diagnostics_team
 from teams.engineering import engineering_team
 from teams.grooming import grooming_team
+from teams.intelligence import intelligence_team
 from teams.operations import operations_team
 from teams.strategy import strategy_team
+from workflows.automation_scaffold import automation_scaffold
 from workflows.discovery_onboard import discovery_onboard
+from workflows.full_lifecycle import full_lifecycle
+from workflows.full_regression import full_regression
+from workflows.grooming import grooming
+from workflows.impact_assessment import impact_assessment
 from workflows.jira_to_pr import jira_to_pr
+from workflows.pipeline_failure_assessment import pipeline_failure_assessment
+from workflows.regression_maintenance import regression_maintenance
 from workflows.spec_to_code import spec_to_code
+from workflows.technical_testing import technical_testing
 from workflows.triage_heal import triage_heal
 
 # ---------------------------------------------------------------------------
@@ -70,6 +83,7 @@ agent_os = AgentOS(
     # Guardrails in pre_hooks are always synchronous regardless of this flag.
     run_hooks_in_background=True,
     agents=[
+        concierge,
         discovery,
         librarian,
         architect,
@@ -82,6 +96,8 @@ agent_os = AgentOS(
         curator,
         impact_analyst,
         pipeline_analyst,
+        healing_judge,
+        technical_tester,
     ],
     teams=[
         context_team,
@@ -90,12 +106,21 @@ agent_os = AgentOS(
         operations_team,
         diagnostics_team,
         grooming_team,
+        intelligence_team,
     ],
     workflows=[
         discovery_onboard,
         jira_to_pr,
         spec_to_code,
         triage_heal,
+        impact_assessment,
+        pipeline_failure_assessment,
+        automation_scaffold,
+        full_lifecycle,
+        full_regression,
+        grooming,
+        regression_maintenance,
+        technical_testing,
     ],
     knowledge=_kb_list if _kb_list else None,
     registry=registry,
@@ -174,6 +199,7 @@ app.include_router(settings_router)
 app.include_router(model_router)
 app.include_router(mcp_status_router)
 app.include_router(agent_config_router)
+app.include_router(culture_router)
 
 if __name__ == "__main__":
     agent_os.serve(

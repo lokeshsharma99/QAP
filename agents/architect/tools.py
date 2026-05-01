@@ -16,9 +16,22 @@ from requests.auth import HTTPBasicAuth
 logger = logging.getLogger(__name__)
 
 
+def _adf_to_text(node: object) -> str:
+    """Convert Atlassian Document Format (ADF) node to plain text."""
+    if not isinstance(node, dict):
+        return ""
+    node_type = node.get("type", "")
+    if node_type == "text":
+        return node.get("text", "")
+    children = node.get("content", [])
+    parts = [_adf_to_text(c) for c in children]
+    sep = "\n" if node_type in ("paragraph", "bulletList", "orderedList", "listItem", "heading") else ""
+    return sep.join(p for p in parts if p).strip()
+
+
 @tool(
     name="fetch_jira_ticket",
-    description="Fetch Jira ticket details using direct API call"
+    description="Fetch Jira ticket details using direct Jira REST API call"
 )
 def fetch_jira_ticket(ticket_key: str) -> dict:
     """Fetch Jira ticket details using direct API call.
@@ -29,9 +42,13 @@ def fetch_jira_ticket(ticket_key: str) -> dict:
     Returns:
         Dictionary containing ticket details or error message.
     """
-    jira_url = os.getenv("JIRA_URL", "https://lokeshsharma2.atlassian.net")
-    jira_username = os.getenv("JIRA_USERNAME")
-    jira_api_token = os.getenv("JIRA_API_TOKEN")
+    # Support both JIRA_* and ATLASSIAN_* env var naming conventions
+    jira_url = (
+        os.getenv("JIRA_URL")
+        or os.getenv("ATLASSIAN_URL", "https://lokeshsharma2.atlassian.net")
+    )
+    jira_username = os.getenv("JIRA_USERNAME") or os.getenv("ATLASSIAN_EMAIL")
+    jira_api_token = os.getenv("JIRA_API_TOKEN") or os.getenv("ATLASSIAN_API_TOKEN")
 
     if not jira_username or not jira_api_token:
         logger.warning("Jira credentials not configured - cannot fetch ticket")
@@ -54,14 +71,59 @@ def fetch_jira_ticket(ticket_key: str) -> dict:
 
         if response.status_code == 200:
             ticket_data = response.json()
+            fields = ticket_data.get("fields", {})
+            # Description may be Atlassian Document Format (ADF) object or plain string
+            raw_desc = fields.get("description", "")
+            if isinstance(raw_desc, dict):
+                description = _adf_to_text(raw_desc)
+            else:
+                description = raw_desc or ""
+            # Extract acceptance criteria from custom field (common names)
+            ac_text = ""
+            for cf_key in ("customfield_10016", "customfield_10014", "customfield_10028"):
+                cf_val = fields.get(cf_key)
+                if cf_val:
+                    if isinstance(cf_val, dict):
+                        ac_text = _adf_to_text(cf_val)
+                    elif isinstance(cf_val, str):
+                        ac_text = cf_val
+                    if ac_text:
+                        break
+            # Extract issue links (linked requirements, blocks, relates to, etc.)
+            raw_links = fields.get("issuelinks", [])
+            issue_links = []
+            for link in raw_links:
+                link_type = link.get("type", {})
+                direction = "inward" if "inwardIssue" in link else "outward"
+                linked_issue = link.get("inwardIssue") or link.get("outwardIssue") or {}
+                link_label = link_type.get("inward" if direction == "inward" else "outward", "")
+                issue_links.append({
+                    "link_type": link_type.get("name", ""),
+                    "direction": direction,
+                    "label": link_label,
+                    "linked_key": linked_issue.get("key", ""),
+                    "linked_summary": linked_issue.get("fields", {}).get("summary", ""),
+                    "linked_status": linked_issue.get("fields", {}).get("status", {}).get("name", ""),
+                    "linked_url": f"{jira_url}/browse/{linked_issue.get('key', '')}",
+                })
+            # Extract reporter and assignee
+            reporter = fields.get("reporter") or {}
+            assignee = fields.get("assignee") or {}
             return {
                 "ticket_key": ticket_key,
                 "ticket_url": f"{jira_url}/browse/{ticket_key}",
-                "summary": ticket_data.get("fields", {}).get("summary", ""),
-                "description": ticket_data.get("fields", {}).get("description", ""),
-                "status": ticket_data.get("fields", {}).get("status", {}).get("name", ""),
-                "priority": ticket_data.get("fields", {}).get("priority", {}).get("name", ""),
-                "project_key": ticket_data.get("fields", {}).get("project", {}).get("key", ""),
+                "summary": fields.get("summary", ""),
+                "description": description,
+                "acceptance_criteria": ac_text,
+                "status": fields.get("status", {}).get("name", "") if fields.get("status") else "",
+                "priority": fields.get("priority", {}).get("name", "") if fields.get("priority") else "",
+                "project_key": fields.get("project", {}).get("key", "") if fields.get("project") else "",
+                "labels": fields.get("labels", []),
+                "components": [c.get("name", "") for c in fields.get("components", [])],
+                "issue_links": issue_links,
+                "reporter": reporter.get("displayName", ""),
+                "assignee": assignee.get("displayName", ""),
+                "issue_type": fields.get("issuetype", {}).get("name", ""),
             }
         else:
             logger.error(f"Failed to fetch ticket {ticket_key}: {response.status_code}")
@@ -142,3 +204,216 @@ def add_jira_comment(ticket_id: str, comment: str, requirement_context_id: str =
             "error": f"Request failed: {str(e)}",
             "ticket_id": ticket_id,
         }
+
+
+@tool(
+    name="create_jira_issue",
+    description="Create a new Jira issue (story, bug, task, or sub-task) in a given project"
+)
+def create_jira_issue(
+    project_key: str,
+    summary: str,
+    description: str = "",
+    issue_type: str = "Story",
+    priority: str = "Medium",
+    labels: Optional[list] = None,
+    parent_key: Optional[str] = None,
+) -> dict:
+    """Create a new Jira issue.
+
+    Args:
+        project_key: Jira project key (e.g., "GDS")
+        summary: Issue title / one-line summary
+        description: Detailed description (plain text)
+        issue_type: Issue type — Story, Bug, Task, Sub-task (default: Story)
+        priority: Priority — Highest, High, Medium, Low, Lowest (default: Medium)
+        labels: Optional list of label strings to attach
+        parent_key: Optional parent issue key for sub-tasks (e.g., "GDS-42")
+
+    Returns:
+        Dictionary with created issue key, URL, and id on success, or error details.
+    """
+    jira_url = (
+        os.getenv("JIRA_URL")
+        or os.getenv("ATLASSIAN_URL", "https://lokeshsharma2.atlassian.net")
+    )
+    jira_username = os.getenv("JIRA_USERNAME") or os.getenv("ATLASSIAN_EMAIL")
+    jira_api_token = os.getenv("JIRA_API_TOKEN") or os.getenv("ATLASSIAN_API_TOKEN")
+
+    if not jira_username or not jira_api_token:
+        logger.warning("Jira credentials not configured - cannot create issue")
+        return {"error": "Jira credentials not configured"}
+
+    fields: dict = {
+        "project": {"key": project_key},
+        "summary": summary,
+        "issuetype": {"name": issue_type},
+        "priority": {"name": priority},
+        "description": {
+            "type": "doc",
+            "version": 1,
+            "content": [
+                {
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": description or summary}],
+                }
+            ],
+        },
+    }
+    if labels:
+        fields["labels"] = labels
+    if parent_key:
+        fields["parent"] = {"key": parent_key}
+
+    try:
+        response = requests.post(
+            f"{jira_url}/rest/api/3/issue",
+            auth=HTTPBasicAuth(jira_username, jira_api_token),
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            json={"fields": fields},
+            timeout=10,
+        )
+        if response.status_code == 201:
+            data = response.json()
+            key = data.get("key", "")
+            return {
+                "success": True,
+                "issue_key": key,
+                "issue_id": data.get("id", ""),
+                "issue_url": f"{jira_url}/browse/{key}",
+                "message": f"Issue {key} created in project {project_key}",
+            }
+        logger.error(f"Failed to create Jira issue: {response.status_code} {response.text}")
+        return {"error": f"Failed to create issue: HTTP {response.status_code}", "detail": response.text}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating Jira issue: {e}")
+        return {"error": f"Request failed: {str(e)}"}
+
+
+@tool(
+    name="fetch_linked_issues",
+    description=(
+        "Fetch the full details of all issues linked to a given Jira ticket "
+        "(e.g. 'relates to', 'is blocked by', 'is required by', 'linked requirement'). "
+        "Call this after fetch_jira_ticket to enrich the analysis with linked requirements."
+    ),
+)
+def fetch_linked_issues(ticket_key: str) -> dict:
+    """Fetch full details of every issue linked to *ticket_key*.
+
+    Returns a dict with:
+    - ``parent_key``: the ticket we fetched links from
+    - ``linked_issues``: list of dicts, each containing the full fields of one linked issue
+      (key, summary, description, acceptance_criteria, status, priority, issue_type, issue_links)
+
+    Args:
+        ticket_key: Parent Jira ticket key (e.g. "GDS-8")
+    """
+    jira_url = (
+        os.getenv("JIRA_URL")
+        or os.getenv("ATLASSIAN_URL", "https://lokeshsharma2.atlassian.net")
+    )
+    jira_username = os.getenv("JIRA_USERNAME") or os.getenv("ATLASSIAN_EMAIL")
+    jira_api_token = os.getenv("JIRA_API_TOKEN") or os.getenv("ATLASSIAN_API_TOKEN")
+
+    if not jira_username or not jira_api_token:
+        return {"error": "Jira credentials not configured", "ticket_key": ticket_key}
+
+    auth = HTTPBasicAuth(jira_username, jira_api_token)
+    headers = {"Accept": "application/json"}
+
+    # -----------------------------------------------------------------------
+    # 1. Fetch the parent ticket to extract its issuelinks list
+    # -----------------------------------------------------------------------
+    try:
+        parent_resp = requests.get(
+            f"{jira_url}/rest/api/3/issue/{ticket_key}?fields=issuelinks,summary",
+            auth=auth,
+            headers=headers,
+            timeout=10,
+        )
+        if parent_resp.status_code != 200:
+            return {
+                "error": f"Failed to fetch parent ticket: HTTP {parent_resp.status_code}",
+                "ticket_key": ticket_key,
+            }
+        parent_data = parent_resp.json()
+        raw_links = parent_data.get("fields", {}).get("issuelinks", [])
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Request failed: {str(e)}", "ticket_key": ticket_key}
+
+    if not raw_links:
+        return {
+            "parent_key": ticket_key,
+            "linked_issues": [],
+            "message": "No linked issues found on this ticket.",
+        }
+
+    # -----------------------------------------------------------------------
+    # 2. Collect linked issue keys (deduplicated)
+    # -----------------------------------------------------------------------
+    linked_keys: list[str] = []
+    link_metadata: dict[str, dict] = {}
+    for link in raw_links:
+        link_type = link.get("type", {})
+        direction = "inward" if "inwardIssue" in link else "outward"
+        linked_issue = link.get("inwardIssue") or link.get("outwardIssue") or {}
+        key = linked_issue.get("key", "")
+        if key and key not in linked_keys:
+            linked_keys.append(key)
+            link_metadata[key] = {
+                "link_type": link_type.get("name", ""),
+                "direction": direction,
+                "label": link_type.get("inward" if direction == "inward" else "outward", ""),
+            }
+
+    # -----------------------------------------------------------------------
+    # 3. Fetch each linked issue in detail
+    # -----------------------------------------------------------------------
+    linked_issues: list[dict] = []
+    for key in linked_keys:
+        try:
+            resp = requests.get(
+                f"{jira_url}/rest/api/3/issue/{key}",
+                auth=auth,
+                headers=headers,
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                linked_issues.append({
+                    "key": key,
+                    "error": f"HTTP {resp.status_code}",
+                    **link_metadata.get(key, {}),
+                })
+                continue
+            data = resp.json()
+            fields = data.get("fields", {})
+            raw_desc = fields.get("description", "")
+            description = _adf_to_text(raw_desc) if isinstance(raw_desc, dict) else (raw_desc or "")
+            ac_text = ""
+            for cf_key in ("customfield_10016", "customfield_10014", "customfield_10028"):
+                cf_val = fields.get(cf_key)
+                if cf_val:
+                    ac_text = _adf_to_text(cf_val) if isinstance(cf_val, dict) else str(cf_val)
+                    if ac_text:
+                        break
+            linked_issues.append({
+                "key": key,
+                "url": f"{jira_url}/browse/{key}",
+                "summary": fields.get("summary", ""),
+                "description": description,
+                "acceptance_criteria": ac_text,
+                "status": (fields.get("status") or {}).get("name", ""),
+                "priority": (fields.get("priority") or {}).get("name", ""),
+                "issue_type": (fields.get("issuetype") or {}).get("name", ""),
+                **link_metadata.get(key, {}),
+            })
+        except requests.exceptions.RequestException as e:
+            linked_issues.append({"key": key, "error": str(e), **link_metadata.get(key, {})})
+
+    return {
+        "parent_key": ticket_key,
+        "linked_count": len(linked_issues),
+        "linked_issues": linked_issues,
+    }
+

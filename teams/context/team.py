@@ -20,7 +20,7 @@ from teams.context.instructions import LEADER_INSTRUCTIONS
 context_team = Team(
     # Identity
     id="context",
-    name="Context Squad",
+    name="Discovery & Indexing Squad",
     mode=TeamMode.coordinate,
     # Model
     model=MODEL,

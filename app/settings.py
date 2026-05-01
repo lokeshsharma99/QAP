@@ -39,7 +39,7 @@ FOLLOWUP_MODEL = OpenRouter(
     id=_KILO_MODEL_ID,
     base_url="https://api.kilo.ai/api/openrouter/v1",
     api_key=_KILO_KEY,
-    max_tokens=512,
+    max_tokens=2048,
     supports_native_structured_outputs=False,
 )
 
@@ -74,13 +74,25 @@ _orig_parse = _agno_resp._parse_followups_response
 
 
 def _patched_parse_followups_response(model_response):
-    # Try the original parser first (handles structured + JSON content)
-    result = _orig_parse(model_response)
-    if result:
-        return result
+    # Strip <reasoning>...</reasoning> blocks that some models prepend before JSON
+    content = model_response.content or ''
+    content_stripped = _re.sub(r'<reasoning>.*?</reasoning>', '', content, flags=_re.DOTALL).strip()
+    if content_stripped != content:
+        # Temporarily swap content for the original parser
+        orig_content = model_response.content
+        model_response.content = content_stripped
+        result = _orig_parse(model_response)
+        model_response.content = orig_content
+        if result:
+            return result
+        content = content_stripped
+    else:
+        # Try the original parser first (handles structured + JSON content)
+        result = _orig_parse(model_response)
+        if result:
+            return result
 
     # Fallback: extract from plain text numbered/bulleted list
-    content = model_response.content or ''
     # Strip any markdown code fences and try JSON again
     stripped = _re.sub(r'```[a-z]*\n?', '', content).strip().rstrip('`').strip()
     try:
@@ -106,6 +118,18 @@ def _patched_parse_followups_response(model_response):
 
 _agno_resp._build_followup_messages = _patched_build_followup_messages
 _agno_resp._parse_followups_response = _patched_parse_followups_response
+
+
+def _patched_get_followups_response_format(model):
+    # Return None so Agno does NOT set response_format on the model call.
+    # The patched _build_followup_messages already appends explicit JSON
+    # instructions to the prompt, so the model returns parseable JSON as
+    # plain text. Passing response_format={"type":"json_object"} causes
+    # providers like SiliconFlow to reject the request (code 20024).
+    return None
+
+
+_agno_resp._get_followups_response_format = _patched_get_followups_response_format
 
 # ---------------------------------------------------------------------------
 # Additional LLM provider credentials (used by /model/switch endpoint)

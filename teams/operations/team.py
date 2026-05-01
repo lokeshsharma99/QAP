@@ -20,7 +20,7 @@ from teams.operations.instructions import LEADER_INSTRUCTIONS
 operations_team = Team(
     # Identity
     id="operations",
-    name="Operations Squad",
+    name="Self-Healing Squad",
     mode=TeamMode.coordinate,
     # Model
     model=MODEL,

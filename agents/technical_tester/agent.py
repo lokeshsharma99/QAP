@@ -27,7 +27,7 @@ from agents.technical_tester.tools import (
 )
 from db import get_culture_manager
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
-from db.session import get_automation_knowledge
+from db import get_automation_kb
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 # Create Knowledge Base
 # ---------------------------------------------------------------------------
 # Share automation knowledge base with other agents
-automation_knowledge = get_automation_knowledge()
+automation_knowledge = get_automation_kb()
 
 if automation_knowledge is not None:
     logger.info("Technical Tester: Automation knowledge base loaded")

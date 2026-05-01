@@ -1,6 +1,6 @@
-﻿'use client'
-import { useEffect, useState, useCallback } from 'react'
-import { motion } from 'framer-motion'
+'use client'
+import { useEffect, useState, useCallback, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '@/store'
 import { APIRoutes } from '@/api/routes'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   Activity, ChevronDown, ChevronRight, RefreshCw, CheckCircle, XCircle,
-  Clock, Search, AlertCircle, ArrowLeft, Cpu, Wrench, Bot, Hash, Copy
+  Clock, Search, AlertCircle, ArrowLeft, Cpu, Wrench, Bot, Copy,
+  Filter, SlidersHorizontal, TrendingUp
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -197,7 +198,7 @@ const SpanDetail = ({ span }: { span: Span }) => (
           className="rounded-lg bg-accent/50 px-3 py-2 cursor-pointer"
           onClick={() => copyText(value)}
         >
-          <div className="uppercase text-muted">{label}</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted">{label}</div>
           <div className="mt-0.5 font-mono truncate text-primary">{value}</div>
         </div>
       ))}
@@ -359,51 +360,68 @@ const TraceDetailView = ({ traceId, onBack }: { traceId: string; onBack: () => v
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center gap-3 border-b border-accent p-4 shrink-0">
-        <button onClick={onBack} className="rounded-lg p-1.5 text-muted hover:bg-accent hover:text-primary">
-          <ArrowLeft className="size-4" />
+      <div className="flex items-center gap-3 border-b border-accent px-4 py-3 shrink-0">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted hover:bg-accent hover:text-primary transition-colors"
+        >
+          <ArrowLeft className="size-3.5" />
+          All Traces
         </button>
+        <div className="h-4 w-px bg-accent" />
         <StatusIcon status={trace.status} />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-primary truncate">{trace.name}</div>
+          <div className="text-sm font-semibold text-primary truncate">{trace.name}</div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted mt-0.5">
             <span>{parseFloat(trace.duration ?? '0').toFixed(2)}s</span>
-            <span>·</span>
+            <span className="text-muted/30">·</span>
             <span>{trace.total_spans} spans</span>
-            {trace.agent_id && (
-              <span className="rounded-full bg-brand/10 px-2 py-0.5 text-brand">{trace.agent_id}</span>
-            )}
-            {trace.team_id && (
-              <span className="rounded-full bg-info/10 px-2 py-0.5 text-info">{trace.team_id}</span>
-            )}
-            {trace.error_count > 0 && (
-              <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-destructive">
-                <AlertCircle className="size-3" />{trace.error_count} errors
-              </span>
-            )}
+            <span className="text-muted/30">·</span>
+            <span>{dayjs(trace.start_time).format('D MMM HH:mm:ss')}</span>
           </div>
         </div>
-        <Button size="sm" variant="outline" onClick={fetchDetail} className="gap-1.5 shrink-0">
-          <RefreshCw className="size-3.5" />
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {trace.agent_id && (
+            <span className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">{trace.agent_id}</span>
+          )}
+          {trace.team_id && (
+            <span className="rounded-full border border-info/30 bg-info/10 px-2 py-0.5 text-xs font-medium text-info">{trace.team_id}</span>
+          )}
+          {trace.error_count > 0 && (
+            <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
+              <AlertCircle className="size-3" />{trace.error_count} error{trace.error_count > 1 ? 's' : ''}
+            </span>
+          )}
+          <button
+            onClick={fetchDetail}
+            className="rounded-lg p-1.5 text-muted hover:bg-accent hover:text-primary"
+            title="Refresh"
+          >
+            <RefreshCw className="size-3.5" />
+          </button>
+        </div>
       </div>
 
-      {/* Metadata row */}
-      <div className="grid grid-cols-2 gap-2 p-4 border-b border-accent shrink-0 md:grid-cols-4">
+      {/* Metadata chips */}
+      <div className="flex flex-wrap gap-2 px-4 py-2.5 border-b border-accent shrink-0 bg-background/30">
         {[
-          { label: 'Created At', value: dayjs(trace.created_at).format('D MMM YYYY, HH:mm:ss') },
           { label: 'Trace ID',   value: trace.trace_id },
-          { label: 'Run ID',     value: trace.run_id ?? '—' },
-          { label: 'Session ID', value: trace.session_id ?? '—' },
-        ].map(({ label, value }) => (
+          { label: 'Run ID',     value: trace.run_id ?? null },
+          { label: 'Session',    value: trace.session_id ?? null },
+          { label: 'Created',    value: dayjs(trace.created_at).format('D MMM YYYY, HH:mm:ss'), noCopy: true },
+        ].filter((m) => m.value !== null).map(({ label, value, noCopy }) => (
           <div
             key={label}
-            className="rounded-lg bg-accent/40 px-3 py-2 text-xs cursor-pointer hover:bg-accent/60"
-            onClick={() => value !== '—' && copyText(value)}
-            title={value !== '—' ? 'Click to copy' : undefined}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg bg-accent/50 px-2.5 py-1 text-xs',
+              !noCopy && 'cursor-pointer hover:bg-accent/80'
+            )}
+            onClick={() => !noCopy && value && copyText(value!)}
+            title={!noCopy ? 'Click to copy' : undefined}
           >
-            <div className="uppercase text-muted">{label}</div>
-            <div className="mt-0.5 font-mono truncate text-primary">{value}</div>
+            <span className="text-muted/60">{label}:</span>
+            <span className="font-mono text-primary truncate max-w-[140px]">{value}</span>
+            {!noCopy && <Copy className="size-2.5 text-muted/40 shrink-0" />}
           </div>
         ))}
       </div>
@@ -412,23 +430,31 @@ const TraceDetailView = ({ traceId, onBack }: { traceId: string; onBack: () => v
       <div className="flex flex-1 overflow-hidden">
         {/* Left: span tree */}
         <div className={cn('flex flex-col border-r border-accent overflow-hidden', activeSpan ? 'w-1/2' : 'flex-1')}>
-          {/* Tab row */}
-          <div className="flex items-center gap-1 border-b border-accent px-4 py-2 shrink-0">
+          {/* View mode tabs */}
+          <div className="flex items-center gap-1 border-b border-accent px-3 py-2 shrink-0 bg-background/20">
+            <span className="mr-1 text-[10px] uppercase tracking-wide text-muted/50 font-semibold">View</span>
             {(['tree', 'timeline'] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setViewMode(m)}
                 className={cn(
-                  'rounded-lg px-3 py-1 text-xs font-medium capitalize transition-colors',
+                  'rounded-lg px-2.5 py-1 text-xs font-medium capitalize transition-colors',
                   viewMode === m ? 'bg-accent text-primary' : 'text-muted hover:text-primary'
                 )}
               >
-                {m === 'tree' ? 'Tree' : 'Timeline'}
+                {m === 'tree' ? '🌲 Tree' : '⏱ Timeline'}
               </button>
             ))}
+            <div className="ml-auto flex items-center gap-3 text-[10px] text-muted/50">
+              <span className="flex items-center gap-1"><Cpu className="size-2.5 text-info" /> LLM</span>
+              <span className="flex items-center gap-1"><Wrench className="size-2.5 text-warning" /> Tool</span>
+              <span className="flex items-center gap-1"><Bot className="size-2.5 text-brand" /> Agent</span>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
-            {(trace.tree ?? []).map((span) => (
+            {(trace.tree ?? []).length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-xs text-muted/50">No spans recorded</div>
+            ) : (trace.tree ?? []).map((span) => (
               <SpanRow
                 key={span.id} span={span} depth={0}
                 selected={selectedSpanId} onSelect={setSelectedSpanId}
@@ -445,7 +471,9 @@ const TraceDetailView = ({ traceId, onBack }: { traceId: string; onBack: () => v
             <SpanDetail span={activeSpan} />
           ) : (
             <div className="space-y-4 p-4">
-              <p className="text-xs text-muted/60">Click a span to inspect its input, output, and metadata.</p>
+              <div className="rounded-xl border border-accent/50 bg-accent/20 px-4 py-3 text-xs text-muted">
+                👆 Click any span in the tree to inspect its input, output, tokens, and metadata.
+              </div>
               <IOView content={trace.input}  label="Trace Input"  />
               <IOView content={trace.output} label="Trace Output" />
             </div>
@@ -459,46 +487,70 @@ const TraceDetailView = ({ traceId, onBack }: { traceId: string; onBack: () => v
 // ---------------------------------------------------------------------------
 // TraceCard — summary row in list
 // ---------------------------------------------------------------------------
-const TraceCard = ({ trace, onClick }: { trace: TraceSummary; onClick: () => void }) => (
-  <div
-    onClick={onClick}
-    className={cn(
-      'cursor-pointer rounded-xl border bg-primaryAccent p-4 transition-colors hover:border-primary/20',
-      trace.error_count > 0 ? 'border-destructive/30' : 'border-accent'
-    )}
-  >
-    <div className="flex items-start gap-3">
-      <div className="mt-0.5"><StatusIcon status={trace.status} /></div>
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-primary truncate max-w-xs">{trace.name}</span>
-          {trace.agent_id && (
-            <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs text-brand">{trace.agent_id}</span>
-          )}
-          {trace.team_id && (
-            <span className="rounded-full bg-info/10 px-2 py-0.5 text-xs text-info">{trace.team_id}</span>
-          )}
-          {trace.error_count > 0 && (
-            <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
-              <AlertCircle className="size-3" />{trace.error_count} errors
-            </span>
-          )}
+const TraceCard = ({ trace, onClick }: { trace: TraceSummary; onClick: () => void }) => {
+  const dur = parseFloat(trace.duration ?? '0')
+  const isError = trace.error_count > 0
+
+  return (
+    <div
+      onClick={onClick}
+      className={cn(
+        'cursor-pointer rounded-xl border bg-primaryAccent p-4 transition-all hover:shadow-sm',
+        isError
+          ? 'border-destructive/30 hover:border-destructive/50'
+          : 'border-accent hover:border-primary/20'
+      )}
+    >
+      <div className="flex items-start gap-3">
+        {/* Status */}
+        <div className="mt-0.5 shrink-0">
+          <StatusIcon status={trace.status} />
         </div>
-        <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted">
-          <span>{dayjs(trace.start_time).format('D MMM HH:mm:ss')}</span>
-          <span>{parseFloat(trace.duration ?? '0').toFixed(2)}s</span>
-          <span>{trace.total_spans} spans</span>
-        </div>
-        {trace.input && (
-          <div className="mt-1.5 truncate text-xs text-muted/60 font-mono">
-            &quot;{trace.input.slice(0, 120)}{trace.input.length > 120 ? '…' : ''}&quot;
+
+        {/* Main info */}
+        <div className="flex-1 min-w-0">
+          {/* Name + badges */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-sm font-semibold text-primary truncate max-w-xs">{trace.name}</span>
+            {trace.agent_id && (
+              <span className="rounded-full border border-brand/30 bg-brand/10 px-1.5 py-0.5 text-[10px] font-medium text-brand">{trace.agent_id}</span>
+            )}
+            {trace.team_id && (
+              <span className="rounded-full border border-info/30 bg-info/10 px-1.5 py-0.5 text-[10px] font-medium text-info">{trace.team_id}</span>
+            )}
+            {isError && (
+              <span className="flex items-center gap-0.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive">
+                <AlertCircle className="size-2.5" />{trace.error_count} error{trace.error_count > 1 ? 's' : ''}
+              </span>
+            )}
           </div>
-        )}
+
+          {/* Meta row */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-muted">
+            <span title={dayjs(trace.start_time).format('D MMM YYYY HH:mm:ss')}>
+              {dayjs(trace.start_time).fromNow()}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="size-3" />{dur.toFixed(2)}s
+            </span>
+            <span className="flex items-center gap-1">
+              <Activity className="size-3" />{trace.total_spans} spans
+            </span>
+          </div>
+
+          {/* Input preview */}
+          {trace.input && (
+            <div className="mt-2 rounded-lg bg-accent/30 px-2.5 py-1.5 text-xs text-muted/70 font-mono truncate">
+              {trace.input.slice(0, 140)}{trace.input.length > 140 ? '…' : ''}
+            </div>
+          )}
+        </div>
+
+        <ChevronRight className="size-4 shrink-0 text-muted/30 mt-1" />
       </div>
-      <ChevronRight className="size-4 shrink-0 text-muted/40 mt-1" />
     </div>
-  </div>
-)
+  )
+}
 
 // ---------------------------------------------------------------------------
 // TracesPage — main export
@@ -508,12 +560,13 @@ export default function TracesPage() {
   const [traces, setTraces]   = useState<TraceSummary[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch]   = useState('')
-  const [filter, setFilter]   = useState<'all' | 'OK' | 'ERROR'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'OK' | 'ERROR'>('all')
+  const [agentFilter, setAgentFilter]   = useState<string>('all')
   const [selectedTrace, setSelectedTrace] = useState<string | null>(null)
   const [page, setPage]       = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  // DSL search
-  const [dslMode, setDslMode] = useState(false)
+  // Advanced DSL (power users)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [dslQuery, setDslQuery] = useState(JSON.stringify({ filters: [], limit: 20 }, null, 2))
   const [dslSearching, setDslSearching] = useState(false)
   const [dslResults, setDslResults] = useState<TraceSummary[] | null>(null)
@@ -527,7 +580,7 @@ export default function TracesPage() {
       const url = new URL(APIRoutes.GetTraces(selectedEndpoint))
       url.searchParams.set('limit', '20')
       url.searchParams.set('page', String(pg))
-      if (filter !== 'all') url.searchParams.set('status', filter)
+      if (statusFilter !== 'all') url.searchParams.set('status', statusFilter)
       const res = await fetch(url.toString(), { headers: authHeaders })
       if (!res.ok) throw new Error(res.statusText)
       const data = await res.json()
@@ -536,7 +589,7 @@ export default function TracesPage() {
       setPage(pg)
     } catch { /* silently handled */ }
     finally { setLoading(false) }
-  }, [selectedEndpoint, authToken, filter])
+  }, [selectedEndpoint, authToken, statusFilter])
 
   const handleDslSearch = async () => {
     if (!selectedEndpoint) return
@@ -558,21 +611,35 @@ export default function TracesPage() {
 
   useEffect(() => { fetchTraces(1) }, [fetchTraces])
 
-  const filtered = traces.filter((t) => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return (
-      t.name.toLowerCase().includes(q) ||
-      (t.agent_id ?? '').toLowerCase().includes(q) ||
-      (t.team_id  ?? '').toLowerCase().includes(q) ||
-      t.trace_id.includes(q)
-    )
-  })
+  // Derived values
+  const agentIds = useMemo(() => {
+    const ids = new Set<string>()
+    traces.forEach((t) => { if (t.agent_id) ids.add(t.agent_id); if (t.team_id) ids.add(t.team_id) })
+    return Array.from(ids).sort()
+  }, [traces])
 
-  const errCount    = traces.filter((t) => t.error_count > 0).length
+  const filtered = useMemo(() => {
+    const source = dslResults !== null ? dslResults : traces
+    return source.filter((t) => {
+      if (agentFilter !== 'all' && t.agent_id !== agentFilter && t.team_id !== agentFilter) return false
+      if (!search) return true
+      const q = search.toLowerCase()
+      return (
+        t.name.toLowerCase().includes(q) ||
+        (t.agent_id ?? '').toLowerCase().includes(q) ||
+        (t.team_id  ?? '').toLowerCase().includes(q) ||
+        t.trace_id.includes(q) ||
+        (t.input ?? '').toLowerCase().includes(q)
+      )
+    })
+  }, [traces, dslResults, search, agentFilter])
+
+  const okCount  = traces.filter((t) => t.status === 'OK').length
+  const errCount = traces.filter((t) => t.status === 'ERROR').length
+  const successRate = traces.length > 0 ? Math.round((okCount / traces.length) * 100) : null
   const avgDuration = traces.length > 0
     ? (traces.reduce((s, t) => s + parseFloat(t.duration ?? '0'), 0) / traces.length).toFixed(1)
-    : '0'
+    : null
 
   // ── Detail view ───────────────────────────────────────────────────────────
   if (selectedTrace) {
@@ -585,139 +652,227 @@ export default function TracesPage() {
 
   // ── List view ─────────────────────────────────────────────────────────────
   return (
-    <motion.div className="h-full overflow-y-auto p-6" {...PAGE_TRANSITION}>
-      <div className="mx-auto max-w-5xl space-y-6">
+    <motion.div className="flex h-full flex-col overflow-hidden" {...PAGE_TRANSITION}>
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-accent/50 px-6 py-4 shrink-0">
+        <div>
+          <h1 className="flex items-center gap-2 text-base font-semibold text-primary">
+            <Activity className="size-4 text-brand" />Traces
+          </h1>
+          <p className="mt-0.5 text-xs text-muted">Full observability — every agent run, span, token, and error</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => fetchTraces(1)} disabled={loading} className="gap-1.5 h-8 text-xs">
+          <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />Refresh
+        </Button>
+      </div>
 
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="flex items-center gap-2 text-lg font-medium text-primary">
-              <Activity className="size-5 text-brand" />Traces
-            </h1>
-            <p className="mt-1 text-xs text-muted">Full observability of every agent run — spans, tokens, errors, I/O</p>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => fetchTraces(1)} disabled={loading} className="gap-1.5">
-            <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />Refresh
-          </Button>
+      {/* Stats bar */}
+      <div className="grid grid-cols-4 gap-3 px-6 py-3 border-b border-accent/50 shrink-0">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)
+        ) : (
+          <>
+            <div className="rounded-xl border border-accent bg-primaryAccent px-4 py-2.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">Total Runs</div>
+              <div className="mt-0.5 text-2xl font-bold text-primary">{traces.length}</div>
+            </div>
+            <div className={cn(
+              'rounded-xl border px-4 py-2.5',
+              successRate !== null && successRate >= 90 ? 'border-positive/30 bg-positive/5' :
+              successRate !== null && successRate >= 70 ? 'border-warning/30 bg-warning/5' :
+              'border-accent bg-primaryAccent'
+            )}>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">Success Rate</div>
+              <div className={cn(
+                'mt-0.5 text-2xl font-bold',
+                successRate !== null && successRate >= 90 ? 'text-positive' :
+                successRate !== null && successRate >= 70 ? 'text-warning' : 'text-primary'
+              )}>
+                {successRate !== null ? `${successRate}%` : '—'}
+              </div>
+            </div>
+            <div className={cn(
+              'rounded-xl border px-4 py-2.5',
+              errCount > 0 ? 'border-destructive/30 bg-destructive/5' : 'border-accent bg-primaryAccent'
+            )}>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">With Errors</div>
+              <div className={cn('mt-0.5 text-2xl font-bold', errCount > 0 ? 'text-destructive' : 'text-primary')}>
+                {errCount}
+              </div>
+            </div>
+            <div className="rounded-xl border border-accent bg-primaryAccent px-4 py-2.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">Avg Duration</div>
+              <div className="mt-0.5 text-2xl font-bold text-primary">{avgDuration !== null ? `${avgDuration}s` : '—'}</div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-2 px-6 py-3 border-b border-accent/50 shrink-0 bg-background/30">
+        {/* Text search */}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted/50" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, agent, input…"
+            className="w-full rounded-xl border border-accent bg-primaryAccent pl-8 pr-3 py-1.5 text-xs text-primary outline-none focus:border-primary/30 placeholder:text-muted/40"
+          />
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Status filter pills */}
+        <div className="flex items-center gap-1 rounded-xl border border-accent bg-primaryAccent p-1">
+          {([
+            { id: 'all',   label: 'All',    count: traces.length },
+            { id: 'OK',    label: '✓ OK',   count: okCount },
+            { id: 'ERROR', label: '✗ Error', count: errCount },
+          ] as const).map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setStatusFilter(f.id)}
+              className={cn(
+                'flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
+                statusFilter === f.id ? 'bg-accent text-primary' : 'text-muted hover:text-primary'
+              )}
+            >
+              {f.label}
+              {f.count > 0 && (
+                <span className={cn(
+                  'rounded-full px-1 py-0.5 text-[9px] font-semibold leading-none',
+                  statusFilter === f.id
+                    ? f.id === 'ERROR' ? 'bg-destructive/20 text-destructive' : 'bg-primary/10 text-primary'
+                    : 'bg-accent text-muted/60'
+                )}>
+                  {f.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Agent / team filter */}
+        {agentIds.length > 0 && (
+          <div className="flex items-center gap-1.5 rounded-xl border border-accent bg-primaryAccent px-2 py-1">
+            <Filter className="size-3 text-muted/50 shrink-0" />
+            <select
+              value={agentFilter}
+              onChange={(e) => setAgentFilter(e.target.value)}
+              className="bg-transparent text-xs text-primary outline-none cursor-pointer"
+            >
+              <option value="all">All agents</option>
+              {agentIds.map((id) => <option key={id} value={id}>{id}</option>)}
+            </select>
+          </div>
+        )}
+
+        {/* Advanced toggle */}
+        <button
+          onClick={() => { setShowAdvanced(!showAdvanced); setDslResults(null) }}
+          className={cn(
+            'ml-auto flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-colors',
+            showAdvanced
+              ? 'border-brand/30 bg-brand/10 text-brand'
+              : 'border-accent bg-primaryAccent text-muted hover:text-primary'
+          )}
+        >
+          <SlidersHorizontal className="size-3" />
+          Advanced
+        </button>
+      </div>
+
+      {/* Advanced DSL panel */}
+      <AnimatePresence>
+        {showAdvanced && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }}
+            className="overflow-hidden border-b border-brand/20 bg-brand/5 shrink-0"
+          >
+            <div className="px-6 py-4 space-y-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-primary">DSL Filter Query</p>
+                  <p className="text-[10px] text-muted mt-0.5">POST to <code className="font-mono">/traces/search</code> — useful for precise filtering by agent, date range, session ID, etc.</p>
+                </div>
+                {dslResults !== null && (
+                  <button
+                    onClick={() => setDslResults(null)}
+                    className="rounded-lg border border-accent px-2 py-1 text-[10px] text-muted hover:bg-accent"
+                  >
+                    Clear Results
+                  </button>
+                )}
+              </div>
+              <textarea
+                value={dslQuery}
+                onChange={(e) => setDslQuery(e.target.value)}
+                rows={4}
+                className="w-full rounded-xl border border-accent bg-background px-3 py-2 font-mono text-xs text-primary outline-none resize-y focus:border-brand/30"
+                placeholder='{"filters":[{"field":"status","operator":"eq","value":"ERROR"}],"limit":20}'
+              />
+              <Button size="sm" onClick={handleDslSearch} disabled={dslSearching} className="gap-1.5 h-7 text-xs">
+                {dslSearching ? <RefreshCw className="size-3 animate-spin" /> : <Search className="size-3" />}
+                {dslSearching ? 'Searching…' : 'Run Query'}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Trace list */}
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="mx-auto max-w-4xl space-y-2">
           {loading ? (
-            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)
+            Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-accent bg-primaryAccent py-16 text-center">
+              <Activity className="size-10 text-muted/20 mb-3" />
+              <p className="text-sm font-medium text-muted">No traces found</p>
+              <p className="mt-1 text-xs text-muted/50">
+                {search || agentFilter !== 'all' || statusFilter !== 'all'
+                  ? 'Try adjusting your filters'
+                  : 'Traces appear here when agents run via Chat or a workflow trigger'}
+              </p>
+              {(search || agentFilter !== 'all' || statusFilter !== 'all') && (
+                <button
+                  onClick={() => { setSearch(''); setAgentFilter('all'); setStatusFilter('all') }}
+                  className="mt-3 rounded-xl border border-accent px-3 py-1.5 text-xs text-muted hover:bg-accent hover:text-primary"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
           ) : (
             <>
-              <div className="rounded-xl border border-accent bg-primaryAccent p-3">
-                <div className="text-xs text-muted uppercase tracking-wide">Runs</div>
-                <div className="text-2xl font-semibold text-primary">{traces.length}</div>
+              <div className="flex items-center justify-between pb-1">
+                <p className="text-xs text-muted/60">
+                  {dslResults !== null ? `${filtered.length} DSL results` : `${filtered.length} of ${traces.length} traces`}
+                  {agentFilter !== 'all' && <span className="ml-1 text-brand">· filtered by {agentFilter}</span>}
+                </p>
+                <div className="flex items-center gap-1 text-[10px] text-muted/40">
+                  <Cpu className="size-2.5 text-info" />LLM
+                  <Bot className="ml-1.5 size-2.5 text-brand" />Agent
+                  <Wrench className="ml-1.5 size-2.5 text-warning" />Tool
+                </div>
               </div>
-              <div className="rounded-xl border border-destructive/30 bg-primaryAccent p-3">
-                <div className="text-xs text-destructive uppercase tracking-wide">With Errors</div>
-                <div className="text-2xl font-semibold text-destructive">{errCount}</div>
-              </div>
-              <div className="rounded-xl border border-accent bg-primaryAccent p-3">
-                <div className="text-xs text-muted uppercase tracking-wide">Avg Duration</div>
-                <div className="text-2xl font-semibold text-primary">{avgDuration}s</div>
-              </div>
+              {filtered.map((t) => (
+                <TraceCard key={t.trace_id} trace={t} onClick={() => setSelectedTrace(t.trace_id)} />
+              ))}
             </>
           )}
         </div>
 
-        {/* Search + filter */}
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, agent, team, trace ID…"
-                disabled={dslMode}
-                className="w-full rounded-xl border border-accent bg-primaryAccent pl-8 pr-3 py-2 text-xs text-primary outline-none focus:border-primary/30 disabled:opacity-50"
-              />
-            </div>
-            <div className="flex gap-1 rounded-xl border border-accent bg-primaryAccent p-1">
-              {(['all', 'OK', 'ERROR'] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  disabled={dslMode}
-                  className={cn(
-                    'rounded-lg px-3 py-1 text-xs font-medium uppercase transition-colors disabled:opacity-40',
-                    filter === f ? 'bg-accent text-primary' : 'text-muted hover:text-primary'
-                  )}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-            <Button
-              size="sm"
-              variant={dslMode ? 'default' : 'outline'}
-              onClick={() => { setDslMode(!dslMode); setDslResults(null) }}
-              className="gap-1.5 text-xs"
-            >
-              DSL
-            </Button>
-          </div>
-
-          {dslMode && (
-            <div className="rounded-xl border border-brand/30 bg-primaryAccent p-3 space-y-2">
-              <div className="text-xs text-muted">JSON filter query — send POST to <code>/traces/search</code></div>
-              <textarea
-                value={dslQuery}
-                onChange={(e) => setDslQuery(e.target.value)}
-                rows={6}
-                className="w-full rounded-xl border border-accent bg-background px-3 py-2 font-mono text-xs text-primary outline-none resize-y focus:border-primary/30"
-                placeholder='{"filters":[{"field":"status","operator":"eq","value":"ERROR"}],"limit":20}'
-              />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={handleDslSearch} disabled={dslSearching} className="gap-1.5">
-                  {dslSearching ? <RefreshCw className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
-                  {dslSearching ? 'Searching…' : 'Run DSL Search'}
-                </Button>
-                {dslResults !== null && (
-                  <Button size="sm" variant="outline" onClick={() => setDslResults(null)}>Clear Results</Button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* List */}
-        <div className="space-y-2">
-          {loading ? (
-            Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)
-          ) : (dslResults !== null ? dslResults : filtered).length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-accent bg-primaryAccent py-16 text-center">
-              <Activity className="size-10 text-muted/20" />
-              <p className="mt-3 text-sm font-medium text-muted">No traces found</p>
-              <p className="mt-1 text-xs text-muted/60">Traces are recorded every time an agent or team runs.</p>
-            </div>
-          ) : (
-            (dslResults !== null ? dslResults : filtered).map((t) => (
-              <TraceCard key={t.trace_id} trace={t} onClick={() => setSelectedTrace(t.trace_id)} />
-            ))
-          )}
-        </div>
-
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between text-xs text-muted">
+        {!loading && totalPages > 1 && dslResults === null && (
+          <div className="mx-auto mt-4 flex max-w-4xl items-center justify-between text-xs text-muted">
             <span>Page {page} of {totalPages}</span>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => fetchTraces(page - 1)}>Previous</Button>
-              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => fetchTraces(page + 1)}>Next</Button>
+              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => fetchTraces(page - 1)} className="h-7 text-xs">← Previous</Button>
+              <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => fetchTraces(page + 1)} className="h-7 text-xs">Next →</Button>
             </div>
           </div>
         )}
-
-        {/* Legend */}
-        <div className="flex flex-wrap gap-4 text-xs text-muted/60">
-          <span className="flex items-center gap-1"><Hash className="size-3" />Trace ID = full run</span>
-          <span className="flex items-center gap-1"><Cpu className="size-3" />LLM spans show ⊙ token counts</span>
-          <span className="flex items-center gap-1"><Bot className="size-3" />AGENT</span>
-          <span className="flex items-center gap-1"><Wrench className="size-3" />TOOL</span>
-        </div>
       </div>
     </motion.div>
   )

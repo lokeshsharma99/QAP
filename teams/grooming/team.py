@@ -20,7 +20,7 @@ from teams.grooming.instructions import INSTRUCTIONS
 grooming_team = Team(
     # Identity
     id="grooming_team",
-    name="The Curators",
+    name="Backlog Grooming Squad",
     mode=TeamMode.coordinate,
 
     # Model

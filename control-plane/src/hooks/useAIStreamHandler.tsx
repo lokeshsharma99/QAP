@@ -133,6 +133,7 @@ const useAIChatStreamHandler = () => {
       })
 
       let lastContent = ''
+      let pendingFollowups: string[] | null = null
       let newSessionId = sessionId
       try {
         const endpointUrl = constructEndpointUrl(selectedEndpoint)
@@ -385,6 +386,7 @@ const useAIChatStreamHandler = () => {
               chunk.event === RunEvent.WorkflowCompleted
             ) {
               addChatEvent({ type: 'run_done', label: 'Run completed', ts: Date.now() })
+              const followupsToApply = pendingFollowups
               setMessages((prevMessages) => {
                 const newMessages = prevMessages.map((message, index) => {
                   if (index === prevMessages.length - 1 && message.role === 'agent') {
@@ -410,6 +412,8 @@ const useAIChatStreamHandler = () => {
                       videos: chunk.videos ?? message.videos,
                       response_audio: chunk.response_audio,
                       created_at: chunk.created_at ?? message.created_at,
+                      // Explicitly preserve followups collected from FollowupsCompleted event
+                      followups: message.followups ?? followupsToApply ?? undefined,
                       extra_data: {
                         reasoning_steps:
                           chunk.extra_data?.reasoning_steps ?? message.extra_data?.reasoning_steps,
@@ -473,6 +477,8 @@ const useAIChatStreamHandler = () => {
             ) {
               const followups = (chunk as RunResponse & { followups?: string[] }).followups
               if (followups && followups.length > 0) {
+                // Stash followups so RunCompleted handler can apply them reliably
+                pendingFollowups = followups
                 setMessages((prevMessages) => {
                   const newMessages = [...prevMessages]
                   const idx = newMessages.length - 1

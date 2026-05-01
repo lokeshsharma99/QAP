@@ -24,7 +24,6 @@ from agents.data_agent import data_agent
 from agents.engineer import engineer
 from agents.judge import judge
 from agents.scribe import scribe
-from contracts.workflow_inputs import JiraTicketInput
 
 
 # ---------------------------------------------------------------------------
@@ -57,7 +56,6 @@ jira_to_pr = Workflow(
     id="jira-to-pr",
     name="Jira to PR Pipeline",
     description="Jira ticket → Architect → Scribe → [Gherkin Judge Gate] → Data Agent → Engineer → GitHub PR",
-    input_schema=JiraTicketInput,
     steps=[
         # -------------------------------------------------------------------
         # Step 1 — Architect: parse Jira ticket → RequirementContext

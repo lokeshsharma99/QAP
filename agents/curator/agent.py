@@ -8,12 +8,12 @@ Agent for regression suite curation and maintenance.
 import logging
 from pathlib import Path
 
+from agno.agent import Agent
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.user_feedback import UserFeedbackTools
 
-from agents.base.semantica_agent import SemanticaAgent
 from agents.curator.instructions import INSTRUCTIONS
 from agents.curator.tools import (
     approve_deletion,
@@ -24,6 +24,7 @@ from agents.curator.tools import (
     request_batch_deletion_approval,
     request_deletion_approval,
 )
+from agents.architect.tools import add_jira_comment
 from db import get_culture_manager
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db.session import get_automation_kb
@@ -64,6 +65,7 @@ tools = [
     DeletionToolkit(),
     log_deletion_to_audit,
     generate_maintenance_report,
+    add_jira_comment,
 ]
 
 # ---------------------------------------------------------------------------
@@ -74,7 +76,7 @@ culture_manager = get_culture_manager()
 # ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
-curator = SemanticaAgent(
+curator = Agent(
     id="curator",
     name="Curator",
     role="Maintains regression suite by detecting obsolete tests and recommending deletions with HITL approval",
@@ -89,13 +91,30 @@ curator = SemanticaAgent(
         pii_detection_guardrail,
         prompt_injection_guardrail,
     ],
-    enable_agentic_memory=True,
-    learning=True,
-    add_learnings_to_context=True,
+    # Session state — tracks curation context across multi-turn conversations
+    session_state={
+        "deletion_requests": [],
+        "approved_deletions": [],
+        "rejected_deletions": [],
+        "maintenance_reports": [],
+        "current_batch_id": None,
+    },
+    enable_agentic_state=True,
+    add_session_state_to_context=True,
+    # Memory
+    update_memory_on_run=True,
+    enable_session_summaries=True,
+    add_session_summary_to_context=True,
+    # Culture
+    culture_manager=culture_manager,
+    add_culture_to_context=True,
+    enable_agentic_culture=True,
+    # Context
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
     num_history_runs=5,
+    # Output
     markdown=True,
     followups=True,
     followup_model=FOLLOWUP_MODEL,

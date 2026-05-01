@@ -16,7 +16,7 @@ from workflows.technical_testing.instructions import INSTRUCTIONS
 # ---------------------------------------------------------------------------
 technical_testing = Workflow(
     id="technical-testing",
-    name="Technical Testing",
+    name="Exploratory Test Generation",
     description="Generate rapid test suites using Playwright Test Agents for smoke testing, exploratory testing, and AUT validation",
     steps=[
         Step(

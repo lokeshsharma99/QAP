@@ -8,29 +8,38 @@ Role: Analyse PRs and GitHub Issues to identify missing coverage, obsolete tests
 """
 
 from agno.agent import Agent
-from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.impact_analyst.instructions import INSTRUCTIONS
+from app.ado_mcp import get_ado_mcp_for_impact_analyst
+from app.atlassian_mcp import get_atlassian_mcp_for_impact_analyst
 from app.github_mcp import get_github_mcp_for_impact_analyst
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
-from db import get_automation_kb, get_qap_learnings_kb, get_culture_manager
+from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from app.settings import MODEL, FOLLOWUP_MODEL, agent_db
+from contracts.impact_report import ImpactReport
+from db import get_automation_kb, get_culture_manager, get_qap_learnings_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
-# GitHub MCP Tools (optional — requires GITHUB_TOKEN in .env)
-# Impact Analyst reads PR diffs, issue descriptions, and changed file contents
-# to understand the change surface before querying the test KB.
+# MCP Tools
+# GitHub  — PR diffs, issue descriptions, changed file contents (change surface)
+# Atlassian — Jira ACs and Confluence domain knowledge (linked ticket context)
+# ADO     — Azure Repos PRs and work items (when AUT is on Azure Repos / ADO)
+# All three are optional: if credentials are absent the factory returns [].
 # ---------------------------------------------------------------------------
 _github_tools = get_github_mcp_for_impact_analyst()
+_atlassian_tools = get_atlassian_mcp_for_impact_analyst()
+_ado_tools = get_ado_mcp_for_impact_analyst()
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
 # Primary:  qap_learnings  (collective intelligence, native search_knowledge=True)
 # Analysis: automation_kb  (existing POMs, step defs, features — read-only)
+#           site_manifesto_kb (UI component locators — locator staleness check)
 # ---------------------------------------------------------------------------
 qap_learnings_kb = get_qap_learnings_kb()
 automation_kb = get_automation_kb()
+site_manifesto_kb = get_site_manifesto_kb()
 
 # ---------------------------------------------------------------------------
 # Culture Manager
@@ -52,13 +61,17 @@ impact_analyst = Agent(
     knowledge=qap_learnings_kb,
     search_knowledge=True,
     # Capabilities
-    # ReasoningTools: impact analysis reasoning (provides think/analyze once).
-    # KnowledgeTools(automation_kb): find existing test coverage — core for impact analysis.
-    # KnowledgeTools(site_manifesto_kb) dropped — automation_kb gives sufficient context.
+    # ReasoningTools: structured 2-phase reasoning (gather → classify).
+    # KnowledgeTools(automation_kb): find existing test coverage — core skill.
+    # KnowledgeTools(site_manifesto_kb): verify locator currency per changed component.
+    # GitHub / Atlassian / ADO MCP: fetch PR diffs, Jira ACs, ADO work items.
     tools=[
         ReasoningTools(add_instructions=True),
         KnowledgeTools(knowledge=automation_kb),
+        KnowledgeTools(knowledge=site_manifesto_kb),
         *_github_tools,
+        *_atlassian_tools,
+        *_ado_tools,
     ],
     learning=True,
     add_learnings_to_context=True,
@@ -94,6 +107,7 @@ impact_analyst = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
+    response_model=ImpactReport,
     markdown=True,
     followups=True,
     followup_model=FOLLOWUP_MODEL,

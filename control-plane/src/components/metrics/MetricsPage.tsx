@@ -6,7 +6,7 @@ import { APIRoutes } from '@/api/routes'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { BarChart2, RefreshCw, Cpu, Users, Bot, Activity } from 'lucide-react'
+import { BarChart2, RefreshCw, Activity } from 'lucide-react'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -165,30 +165,36 @@ const DonutChart = ({ slices, size = 120 }: { slices: DonutSlice[]; size?: numbe
 
   const cx = size / 2; const cy = size / 2
   const r = size * 0.38; const strokeW = size * 0.14
-  const circumference = 2 * Math.PI * r
 
-  let cumulative = 0
+  // Use arc paths for reliable multi-segment rendering across all browsers
+  const polarToCartesian = (angleDeg: number) => {
+    const rad = ((angleDeg - 90) * Math.PI) / 180
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+  }
+  const GAP_DEG = slices.length > 1 ? 1.5 : 0
+  let startAngle = 0
   const paths = slices.map((sl) => {
-    const fraction = sl.value / total
-    const dashArray = `${fraction * circumference} ${circumference}`
-    const offset = circumference - cumulative * circumference
-    cumulative += fraction
-    return { dashArray, offset, color: sl.color, label: sl.label, value: sl.value }
+    const fullSweep = (sl.value / total) * 360
+    const sweep = Math.max(fullSweep - GAP_DEG, 0.01)
+    const start = polarToCartesian(startAngle)
+    const end   = polarToCartesian(startAngle + sweep)
+    const largeArc = sweep > 180 ? 1 : 0
+    const d = `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`
+    startAngle += fullSweep
+    return { d, color: sl.color, fullCircle: sweep >= 359 }
   })
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       {/* background ring */}
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={strokeW} />
-      {paths.map((p, i) => (
-        <circle
-          key={i} cx={cx} cy={cy} r={r} fill="none"
-          stroke={p.color} strokeWidth={strokeW}
-          strokeDasharray={p.dashArray}
-          strokeDashoffset={p.offset}
-          strokeLinecap="butt"
-        />
-      ))}
+      {paths.map((p, i) =>
+        p.fullCircle ? (
+          <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={p.color} strokeWidth={strokeW} />
+        ) : (
+          <path key={i} d={p.d} fill="none" stroke={p.color} strokeWidth={strokeW} strokeLinecap="butt" />
+        )
+      )}
     </svg>
   )
 }
@@ -205,6 +211,7 @@ const CARDS = [
   { key: 'team_sessions',     label: 'Team Sessions',     color: '#EC4899', getValue: (e: MetricEntry) => e.team_sessions_count,           format: formatNum },
   { key: 'workflow_runs',     label: 'Workflow Runs',     color: '#06B6D4', getValue: (e: MetricEntry) => e.workflow_runs_count,            format: formatNum },
   { key: 'workflow_sessions', label: 'Workflow Sessions', color: '#10B981', getValue: (e: MetricEntry) => e.workflow_sessions_count,        format: formatNum },
+  { key: 'model_calls',       label: 'Model Calls',       color: '#FF4017', getValue: (e: MetricEntry) => e.model_metrics.reduce((s, m) => s + m.count, 0), format: formatNum },
 ] as const
 
 // ---------------------------------------------------------------------------
@@ -224,8 +231,8 @@ const MetricCard = ({ card, entries }: { card: typeof CARDS[number]; entries: Me
       <div className="px-4 pt-4 pb-1 flex items-start justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted">{card.label}</p>
-          <p className="mt-0.5 text-2xl font-semibold text-primary">{card.format(current)}</p>
-          <p className="text-xs text-muted/50 mt-0.5">30d total: {card.format(total30)}</p>
+          <p className="mt-0.5 text-2xl font-semibold text-primary">{card.format(total30)}</p>
+          <p className="text-xs text-muted/50 mt-0.5">latest: {card.format(current)}</p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <div className="size-2 rounded-full" style={{ backgroundColor: card.color }} />
@@ -369,7 +376,7 @@ const ModelRunsCard = ({ entries }: { entries: MetricEntry[] }) => {
 // ---------------------------------------------------------------------------
 const TokenBreakdownCard = ({ entries }: { entries: MetricEntry[] }) => {
   // Aggregate across all entries in range
-  const agg = { input: 0, output: 0, cache_read: 0, cache_write: 0, reasoning: 0, total: 0 }
+  const agg = { input: 0, output: 0, cache_read: 0, cache_write: 0, reasoning: 0 }
   for (const entry of entries) {
     const tm = entry.token_metrics
     agg.input      += tm.input_tokens    ?? 0
@@ -377,9 +384,7 @@ const TokenBreakdownCard = ({ entries }: { entries: MetricEntry[] }) => {
     agg.cache_read += tm.cache_read_tokens ?? 0
     agg.cache_write+= tm.cache_write_tokens ?? 0
     agg.reasoning  += tm.reasoning_tokens ?? 0
-    agg.total      += tm.total_tokens    ?? 0
   }
-  const total = agg.total
 
   const rows = [
     { label: 'Input',       value: agg.input,       color: '#3B82F6' },
@@ -388,6 +393,9 @@ const TokenBreakdownCard = ({ entries }: { entries: MetricEntry[] }) => {
     { label: 'Cache write', value: agg.cache_write, color: '#8B5CF6' },
     { label: 'Reasoning',   value: agg.reasoning,   color: '#EC4899' },
   ].filter((r) => r.value > 0)
+
+  // total = sum of all displayed rows — used for headline, donut centre, and percentages
+  const total = rows.reduce((s, r) => s + r.value, 0)
 
   const donutSlices: DonutSlice[] = rows.map((r) => ({ value: r.value, color: r.color, label: r.label }))
 
@@ -412,11 +420,13 @@ const TokenBreakdownCard = ({ entries }: { entries: MetricEntry[] }) => {
           {/* Donut + legend row */}
           <div className="flex items-center gap-4 mb-4">
             <div className="relative shrink-0">
-              <DonutChart slices={donutSlices} size={100} />
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-sm font-semibold text-primary">{formatNum(total)}</span>
-                <span className="text-[9px] uppercase text-muted/60">tokens</span>
-              </div>
+              <DonutChart slices={donutSlices} size={140} />
+              {rows.length > 0 && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-base font-bold text-primary leading-tight">{((rows[0].value / total) * 100).toFixed(0)}%</span>
+                  <span className="text-[9px] uppercase text-muted/60 mt-0.5 text-center max-w-[52px] leading-tight">{rows[0].label}</span>
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-1.5 flex-1">
               {rows.map((r) => {
@@ -475,9 +485,11 @@ export default function MetricsPage() {
   const [loading, setLoading]       = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError]           = useState<string | null>(null)
+  const [selectedMonths, setSelectedMonths] = useState(1)
+  const [selectedMonth, setSelectedMonth]   = useState<string | null>(null)
 
   const defaultEnd   = dayjs().format('YYYY-MM-DD')
-  const defaultStart = dayjs().subtract(29, 'day').format('YYYY-MM-DD')
+  const defaultStart = dayjs().subtract(1, 'month').format('YYYY-MM-DD')
   const [startDate, setStartDate] = useState(defaultStart)
   const [endDate, setEndDate]     = useState(defaultEnd)
 
@@ -510,24 +522,17 @@ export default function MetricsPage() {
         const body = await res.json().catch(() => ({}))
         throw new Error(body?.detail ?? `HTTP ${res.status}`)
       }
-      const fresh: MetricEntry[] = await res.json()
-      setData({ metrics: fresh, updated_at: new Date().toISOString() })
+      // Reload with the current date range so displayed data matches Reload
+      await fetchMetrics(startDate, endDate)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Recalculation failed')
     } finally { setRefreshing(false) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEndpoint, authToken])
+  }, [selectedEndpoint, authToken, startDate, endDate, fetchMetrics])
 
   useEffect(() => { fetchMetrics() }, [fetchMetrics])
 
   const entries = data?.metrics ?? []
-  const latest  = entries.length > 0 ? entries[entries.length - 1] : null
-
-  // Aggregate summary stats across selected range
-  const aggTokens    = entries.reduce((s, e) => s + e.token_metrics.total_tokens, 0)
-  const aggUsers     = latest?.users_count ?? 0
-  const aggAgentRuns = entries.reduce((s, e) => s + e.agent_runs_count, 0)
-  const aggModelCalls= entries.reduce((s, e) => s + e.model_metrics.reduce((ms, m) => ms + m.count, 0), 0)
 
   return (
     <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
@@ -546,16 +551,24 @@ export default function MetricsPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {/* Date range picker */}
-            <div className="flex items-center gap-1.5 rounded-lg border border-accent bg-primaryAccent px-2 py-1.5 text-xs text-muted">
-              <input type="date" value={startDate} max={endDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="bg-transparent text-xs text-primary outline-none cursor-pointer" />
-              <span className="text-muted/50">→</span>
-              <input type="date" value={endDate} min={startDate} max={dayjs().format('YYYY-MM-DD')}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="bg-transparent text-xs text-primary outline-none cursor-pointer" />
-              <Button size="sm" variant="ghost" onClick={() => fetchMetrics(startDate, endDate)} disabled={loading} className="h-5 px-1.5 text-xs">Go</Button>
+            {/* Month range presets */}
+            <div className="flex items-center gap-0.5 rounded-lg border border-accent bg-primaryAccent px-1.5 py-1">
+              {([1, 3, 6] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => {
+                    const end   = dayjs().format('YYYY-MM-DD')
+                    const start = dayjs().subtract(m, 'month').format('YYYY-MM-DD')
+                    setSelectedMonths(m)
+                    setSelectedMonth(null)
+                    setStartDate(start)
+                    setEndDate(end)
+                  }}
+                  className={cn('px-2.5 py-0.5 text-xs rounded transition-colors', selectedMonths === m && !selectedMonth ? 'bg-accent text-primary font-medium' : 'text-muted/70 hover:text-muted')}
+                >
+                  {m}M
+                </button>
+              ))}
             </div>
             <Button size="sm" variant="outline" onClick={() => fetchMetrics()} disabled={loading || refreshing} className="gap-1.5">
               <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />Reload
@@ -566,36 +579,48 @@ export default function MetricsPage() {
           </div>
         </div>
 
+        {/* Month-by-month filter pills */}
+        {(() => {
+          const pastMonths = Array.from({ length: 13 }, (_, i) => {
+            const d = dayjs().subtract(12 - i, 'month')
+            return { key: d.format('YYYY-MM'), label: d.format('MMM YY') }
+          })
+          return (
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {pastMonths.map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    const start = dayjs(key).startOf('month').format('YYYY-MM-DD')
+                    const end   = dayjs(key).endOf('month').isBefore(dayjs())
+                      ? dayjs(key).endOf('month').format('YYYY-MM-DD')
+                      : dayjs().format('YYYY-MM-DD')
+                    setSelectedMonth(key)
+                    setSelectedMonths(0)
+                    setStartDate(start)
+                    setEndDate(end)
+                    fetchMetrics(start, end)
+                  }}
+                  className={cn(
+                    'shrink-0 rounded-full border px-3 py-1 text-xs transition-colors',
+                    selectedMonth === key
+                      ? 'border-brand/60 bg-brand/10 text-brand font-medium'
+                      : 'border-accent bg-primaryAccent text-muted/70 hover:text-primary hover:border-accent'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )
+        })()}
+
         {/* Error banner */}
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">{error}</div>
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive">{error}</div>
         )}
 
-        {/* Summary stat strip */}
-        {loading && !data ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
-          </div>
-        ) : entries.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              { label: 'Total Tokens', value: formatNum(aggTokens),    icon: Cpu,      color: 'text-info',     sub: 'range total' },
-              { label: 'Users',        value: String(aggUsers),         icon: Users,    color: 'text-positive', sub: 'latest day' },
-              { label: 'Agent Runs',   value: formatNum(aggAgentRuns),  icon: Bot,      color: 'text-brand',    sub: 'range total' },
-              { label: 'Model Calls',  value: formatNum(aggModelCalls), icon: Activity, color: 'text-warning',  sub: 'range total' },
-            ].map(({ label, value, icon: Icon, color, sub }) => (
-              <div key={label} className="rounded-xl border border-accent bg-primaryAccent px-4 py-3">
-                <div className={cn('flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide mb-1', color)}>
-                  <Icon className="size-3.5" />{label}
-                </div>
-                <div className="text-2xl font-semibold text-primary">{value}</div>
-                <div className="text-xs text-muted/40 mt-0.5">{sub}</div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {/* 8 sparkline/bar cards */}
+        {/* 9 metric cards */}
         {loading && !data ? (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}

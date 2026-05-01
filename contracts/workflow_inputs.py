@@ -63,3 +63,78 @@ class DiscoveryInput(BaseModel):
         default=20,
         description="Maximum number of pages to crawl (default 20)",
     )
+
+
+class ImpactAssessmentInput(BaseModel):
+    """Input contract for the Impact Assessment workflow.
+
+    Used by: impact_assessment
+
+    Supports GitHub PRs, GitHub Issues, Jira tickets, and ADO work items.
+    At least one of pr_number, issue_number, jira_ticket_id, or ado_work_item_id
+    must be provided.
+    """
+
+    pr_number: int | None = Field(
+        default=None,
+        description="GitHub Pull Request number to analyse (e.g. 42)",
+    )
+    issue_number: int | None = Field(
+        default=None,
+        description="GitHub Issue number to analyse (e.g. 15)",
+    )
+    jira_ticket_id: str | None = Field(
+        default=None,
+        description="Jira ticket ID to fetch acceptance criteria from (e.g. GDS-5, QAP-42)",
+    )
+    ado_work_item_id: int | None = Field(
+        default=None,
+        description="Azure DevOps work item ID to fetch ACs from (e.g. 1234)",
+    )
+    repo: str = Field(
+        default="",
+        description=(
+            "GitHub repo in owner/name format. Defaults to the AUT repo set in env "
+            "(AUT_GITHUB_OWNER / AUT_GITHUB_REPO)."
+        ),
+    )
+    additional_context: str = Field(
+        default="",
+        description="Optional plain-text context to help the Impact Analyst (e.g. 'focus on checkout flow')",
+    )
+
+
+class PipelineFailureInput(BaseModel):
+    """Input contract for the Pipeline Failure Assessment workflow.
+
+    Used by: pipeline_failure_assessment
+
+    Supports GitHub Actions and Azure DevOps pipeline failures.
+    Provide run_id for a specific run, or leave blank to diagnose the latest
+    failed run for the configured AUT repo.
+    """
+
+    run_id: int | None = Field(
+        default=None,
+        description="GitHub Actions workflow run ID to diagnose (e.g. 12345678). "
+                    "Leave blank to use the latest failed run.",
+    )
+    ado_build_id: int | None = Field(
+        default=None,
+        description="Azure DevOps build / pipeline run ID to diagnose (e.g. 567).",
+    )
+    repo: str = Field(
+        default="",
+        description=(
+            "GitHub repo in owner/name format. Defaults to the AUT repo set in env "
+            "(AUT_GITHUB_OWNER / AUT_GITHUB_REPO)."
+        ),
+    )
+    workflow_name: str = Field(
+        default="",
+        description="Optional: filter to a specific GitHub Actions workflow name (e.g. 'CI Pipeline')",
+    )
+    additional_context: str = Field(
+        default="",
+        description="Optional hint to guide the Pipeline Analyst (e.g. 'only started failing on branch X')",
+    )

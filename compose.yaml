@@ -153,30 +153,24 @@ services:
       - qap-net
 
   # ---------------------------------------------------------------------------
-  # Atlassian MCP Server  (Jira + Confluence tools via Rovo MCP)
-  # mcp-remote proxies stdio → cloud-hosted mcp.atlassian.com/v1/mcp
-  # supergateway wraps it as streamable-HTTP on :8933
-  # Auth: Basic base64(email:api_token) injected at startup via wrapper script
+  # Atlassian MCP Server  (Jira + Confluence — sooperset/mcp-atlassian)
+  # https://github.com/sooperset/mcp-atlassian
+  # 72 Jira + Confluence tools via streamable-HTTP on :8933/mcp
+  # Auth: JIRA_USERNAME + JIRA_API_TOKEN (standard API token — no org-admin needed)
   # ---------------------------------------------------------------------------
   atlassian-mcp:
-    image: node:22-alpine
+    image: ghcr.io/sooperset/mcp-atlassian:latest
     container_name: atlassian-mcp
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        B64=$$(printf '%s:%s' "$$ATLASSIAN_EMAIL" "$$ATLASSIAN_API_TOKEN" | base64 | tr -d '\n')
-        export ATLASSIAN_AUTH_HEADER="Authorization:Basic $$B64"
-        printf '#!/bin/sh\nexec npx -y mcp-remote https://mcp.atlassian.com/v1/mcp --header "$$ATLASSIAN_AUTH_HEADER" --allow-http\n' > /tmp/atl.sh
-        chmod +x /tmp/atl.sh
-        exec npx -y supergateway \
-          --stdio /tmp/atl.sh \
-          --outputTransport streamableHttp \
-          --streamableHttpPath /mcp \
-          --port 8933
+    command: --transport streamable-http --port 8933 --stateless
     environment:
-      - ATLASSIAN_EMAIL=${ATLASSIAN_EMAIL:-}
-      - ATLASSIAN_API_TOKEN=${ATLASSIAN_API_TOKEN:-}
+      # Map ATLASSIAN_* vars from .env to the names mcp-atlassian expects
+      - JIRA_URL=${ATLASSIAN_URL:-}
+      - JIRA_USERNAME=${ATLASSIAN_EMAIL:-}
+      - JIRA_API_TOKEN=${ATLASSIAN_API_TOKEN:-}
+      - CONFLUENCE_URL=${ATLASSIAN_CONFLUENCE_URL:-}
+      - CONFLUENCE_USERNAME=${ATLASSIAN_EMAIL:-}
+      - CONFLUENCE_API_TOKEN=${ATLASSIAN_API_TOKEN:-}
     ports:
       - "8933:8933"
     networks:

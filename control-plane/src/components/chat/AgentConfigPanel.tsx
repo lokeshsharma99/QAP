@@ -149,6 +149,47 @@ const JsonArea = ({ value, onChange, placeholder }: {
 }
 
 // ---------------------------------------------------------------------------
+// Team metadata
+// ---------------------------------------------------------------------------
+const TEAM_META: Record<string, { purpose: string; responsibility: string; outputContract: string }> = {
+  'strategy': {
+    purpose: 'Spec Writing Squad — bridges Business Analysts and the Technical team.',
+    responsibility: 'Parse Jira tickets into structured RequirementContext (Architect), then author BDD Gherkin specs with full traceability to every acceptance criterion (Scribe).',
+    outputContract: 'RequirementContext → GherkinSpec',
+  },
+  'context': {
+    purpose: 'Discovery & Indexing Squad — maintain the Digital Twin of your AUT and codebase.',
+    responsibility: 'Crawl the AUT to generate the Site Manifesto with Accessibility Tree snapshots (Discovery), re-index Page Objects and Step Definitions into PgVector on every Git commit (Librarian).',
+    outputContract: 'SiteManifesto + PgVector Automation KB',
+  },
+  'engineering': {
+    purpose: 'Code Generation Squad — generate production-grade Playwright automation code.',
+    responsibility: 'Write modular POMs and Step Definitions using the Look-Before-You-Leap pattern (Engineer), provision fresh test data with PII masking and cleanup queries (Data Agent), submit GitHub PRs.',
+    outputContract: 'RunContext → POM + StepDefs → GitHub PR',
+  },
+  'operations': {
+    purpose: 'Self-Healing Squad — keep the regression suite green autonomously.',
+    responsibility: 'Classify failures from trace.zip as LOCATOR_STALE / LOGIC_CHANGE / DATA_MISMATCH / ENV_FAILURE (Detective), apply surgical one-locator healing patches verified 3× (Medic).',
+    outputContract: 'RCAReport → HealingPatch (verified 3×)',
+  },
+  'diagnostics': {
+    purpose: 'CI Failure Squad — correlate pipeline logs with Playwright traces.',
+    responsibility: 'Analyse GitHub Actions / ADO pipeline failures with log-level detail (CI Log Analyzer), cross-reference with Playwright trace analysis (Detective), create Jira/ADO tickets after HITL approval.',
+    outputContract: 'PipelineRCAReport + RCAReport → ADO ticket (HITL)',
+  },
+  'grooming_team': {
+    purpose: 'Backlog Grooming Squad — collaborative backlog refinement from three perspectives.',
+    responsibility: 'BA perspective on testability (Architect), SDET assessment of automation feasibility and edge cases (Impact Analyst), combined into actionable grooming assessment posted to Jira.',
+    outputContract: 'GroomingAssessment → Jira comment',
+  },
+  'intelligence': {
+    purpose: 'Impact Analysis Squad — answers “what needs to change?” and “why did this fail?”',
+    responsibility: 'Analyse PRs and Issues to identify missing/obsolete/stale tests and compute regression risk (Impact Analyst), analyse CI pipeline failures and produce remediation plans (Pipeline Analyst).',
+    outputContract: 'ImpactReport + PipelineRCAReport',
+  },
+}
+
+// ---------------------------------------------------------------------------
 // Main AgentConfigPanel
 // ---------------------------------------------------------------------------
 
@@ -352,6 +393,8 @@ export default function AgentConfigPanel({
 
   const hasOverride = !!agentOverrides[entityId]
 
+  const teamMeta = entityType === 'team' ? TEAM_META[entityId] : undefined
+
   if (loading) {
     return (
       <div className="space-y-2 p-3">
@@ -403,16 +446,38 @@ export default function AgentConfigPanel({
       {/* Scrollable form */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0">
 
+        {/* ── TEAM PURPOSE BANNER ── */}
+        {entityType === 'team' && teamMeta && (
+          <div className="mb-3 rounded-xl border border-info/20 bg-info/5 p-3 space-y-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-info/70 mb-0.5">Purpose</p>
+              <p className="text-xs text-primary leading-relaxed">{teamMeta.purpose}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-info/70 mb-0.5">Responsibility</p>
+              <p className="text-xs text-muted/80 leading-relaxed">{teamMeta.responsibility}</p>
+            </div>
+            <div className="flex items-center gap-2 pt-0.5">
+              <span className="text-[9px] font-semibold uppercase text-info/50">Output</span>
+              <span className="rounded-full bg-info/10 border border-info/20 px-2 py-0.5 text-[10px] font-mono text-info">{teamMeta.outputContract}</span>
+            </div>
+          </div>
+        )}
+
         {/* ── BASICS ── */}
         <div className="border-b border-accent/30 pb-2">
           <SectionHeader title="Basics" open={openBasics} onToggle={() => setOpenBasics(o => !o)} />
           {openBasics && (
             <div className="space-y-3 pt-1 pb-2">
-              <p className="text-[10px] text-muted/50">Configure the core identity and behaviour of this agent.</p>
+              <p className="text-[10px] text-muted/50">
+                {entityType === 'team'
+                  ? 'Configure the leader instructions and coordination behaviour of this team.'
+                  : 'Configure the core identity and behaviour of this agent.'}
+              </p>
 
               <div>
-                <Label>Agent Name</Label>
-                <Input value={name} onChange={setName} placeholder="Enter agent name" />
+                <Label>{entityType === 'team' ? 'Team Name' : 'Agent Name'}</Label>
+                <Input value={name} onChange={setName} placeholder={entityType === 'team' ? 'Enter team name' : 'Enter agent name'} />
               </div>
 
               <div>
@@ -455,11 +520,11 @@ export default function AgentConfigPanel({
               </div>
 
               <div>
-                <Label optional>Instructions</Label>
+                <Label optional>{entityType === 'team' ? 'Leader Instructions (System Prompt)' : 'Instructions'}</Label>
                 <Textarea
                   value={instructions}
                   onChange={setInstructions}
-                  placeholder="Enter instructions…"
+                  placeholder={entityType === 'team' ? 'Enter leader instructions that guide how this team coordinates its members…' : 'Enter instructions…'}
                   rows={5}
                 />
               </div>

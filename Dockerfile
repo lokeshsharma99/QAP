@@ -38,19 +38,20 @@ RUN apt-get update -qq && \
 #   mcp-remote                           — Atlassian Rovo MCP proxy (Architect, Scribe, CI Log Analyzer)
 #   @playwright/mcp                      — Playwright MCP (Discovery, Medic)
 #
-# Playwright Chromium is also installed with its system-level dependencies so
-# the headless npx stdio mode works inside the container without a separate
-# playwright-mcp service.  Browser binaries land in PLAYWRIGHT_BROWSERS_PATH.
+# NOTE: Chromium browser binaries are NOT baked into this image.
+# In Docker deployments use the dedicated playwright-mcp service (SSE transport)
+# started via: docker compose --profile mcp up -d
+# The PLAYWRIGHT_MCP_URL env var in compose.yaml points agents to that service.
+# For local / stdio fallback, install Chromium separately with:
+#   npx playwright install chromium --with-deps
 # ---------------------------------------------------------------------------
-ENV PLAYWRIGHT_BROWSERS_PATH=/usr/local/ms-playwright
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 RUN npm install -g \
         @modelcontextprotocol/server-github \
         @azure-devops/mcp \
         mcp-remote \
         @playwright/mcp@latest && \
-    npx playwright install chromium --with-deps && \
-    chmod -R 755 /usr/local/ms-playwright && \
     npm cache clean --force
 
 # ---------------------------------------------------------------------------

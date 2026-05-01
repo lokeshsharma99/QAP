@@ -56,6 +56,13 @@ export const APIRoutes = {
   UserMemoryStats: (base: string) => `${base}/user_memory_stats`,
   OptimizeMemories: (base: string) => `${base}/optimize-memories`,
 
+  // ── Culture ───────────────────────────────────────────────────────────────
+  GetCulture:           (base: string) => `${base}/culture`,
+  GetCultureEntry:      (base: string, id: string) => `${base}/culture/${id}`,
+  CreateCultureEntry:   (base: string) => `${base}/culture`,
+  DeleteCultureEntry:   (base: string, id: string) => `${base}/culture/${id}`,
+  GetCultureCategories: (base: string) => `${base}/culture/categories`,
+
   // ── Approvals ────────────────────────────────────────────────────────────
   GetApprovals:    (base: string) => `${base}/approvals`,
   ApprovalCount:   (base: string) => `${base}/approvals/count`,

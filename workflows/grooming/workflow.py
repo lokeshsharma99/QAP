@@ -10,16 +10,13 @@ from agno.workflow import Parallel, Step, Workflow
 from agents.architect import architect
 from agents.engineer import engineer
 from agents.judge import judge
-from contracts.workflow_inputs import JiraTicketInput
-
 # ---------------------------------------------------------------------------
 # Create Workflow
 # ---------------------------------------------------------------------------
 grooming = Workflow(
     id="grooming",
-    name="3 Amigos Grooming",
+    name="Backlog 3-Amigos Review",
     description="3 Amigos user story review: BA (Architect) + SDET (Judge) + Dev (Engineer) in parallel → synthesised verdict → Jira comment",
-    input_schema=JiraTicketInput,
     steps=[
         Parallel(
             Step(

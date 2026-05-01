@@ -20,7 +20,7 @@ from teams.strategy.instructions import LEADER_INSTRUCTIONS
 strategy_team = Team(
     # Identity
     id="strategy",
-    name="Strategy Squad",
+    name="Spec Writing Squad",
     mode=TeamMode.coordinate,
     # Model
     model=MODEL,

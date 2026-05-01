@@ -11,7 +11,7 @@ import useChatActions from '@/hooks/useChatActions'
 import {
   Server, KeyRound, Bot, Database, Globe, Wrench,
   ShieldCheck, RefreshCw, Save, Eye, EyeOff, CheckCircle2,
-  AlertCircle, CircleDot, Cpu, Zap, Users, GitBranch, WifiOff, Wifi
+  AlertCircle, CircleDot, Cpu, Zap, Users, GitBranch, WifiOff, Wifi, ChevronDown
 } from 'lucide-react'
 import AgentConfigPanel from '@/components/chat/AgentConfigPanel'
 
@@ -48,44 +48,33 @@ type NavTab = {
 
 const NAV_TABS: NavTab[] = [
   {
-    id: 'provider',
-    label: 'Provider & Model',
-    icon: Cpu,
-    sections: [], // rendered separately via ModelProviderSection
-  },
-  {
-    id: 'agents',
-    label: 'Agents',
-    icon: Users,
-    sections: [], // rendered separately via AgentSettingsSection
-  },
-  {
     id: 'connection',
     label: 'Connection',
     icon: Server,
     sections: [
       {
         id: 'connection',
-        title: 'Connection',
+        title: 'AgentOS Backend',
         icon: Server,
         fields: [
-          { key: '_endpoint', label: 'AgentOS Backend URL', placeholder: 'http://localhost:8000', description: 'The FastAPI AgentOS endpoint this UI connects to.' },
+          { key: '_endpoint', label: 'Backend URL', placeholder: 'http://localhost:8000', wide: true, description: 'The FastAPI AgentOS endpoint this UI connects to.' },
           { key: '_authToken', label: 'Auth Token', placeholder: 'Bearer token (optional)', secret: true, description: 'JWT Bearer token — required when RUNTIME_ENV=prd.' },
+          { key: 'RUNTIME_ENV', label: 'Runtime Environment', placeholder: 'dev', description: '"dev" enables hot-reload. "prd" enables JWT RBAC.' },
         ],
       },
     ],
   },
   {
-    id: 'llm',
-    label: 'LLM Keys',
-    icon: KeyRound,
+    id: 'models',
+    label: 'Models',
+    icon: Cpu,
     sections: [
       {
         id: 'kilo',
         title: 'Kilo AI (Default)',
         icon: Zap,
         fields: [
-          { key: 'KILO_API_KEY', label: 'Kilo API Key', placeholder: 'kilo-...', secret: true, description: 'Free tier works without a key. Get one at: app.kilo.ai — unlocks kilo-auto/balanced.' },
+          { key: 'KILO_API_KEY', label: 'API Key', placeholder: 'kilo-...', secret: true, description: 'Free tier works without a key. Get one at: app.kilo.ai' },
           { key: 'OPENROUTER_BASE_URL', label: 'Base URL', placeholder: 'https://api.kilo.ai/api/openrouter/v1', wide: true },
         ],
       },
@@ -94,8 +83,8 @@ const NAV_TABS: NavTab[] = [
         title: 'GitHub Copilot (Local Proxy)',
         icon: Bot,
         fields: [
-          { key: 'GITHUB_COPILOT_BASE_URL', label: 'Proxy Base URL', placeholder: 'http://127.0.0.1:3030/v1', wide: true, description: 'The Copilot Chat VS Code extension exposes an OpenAI-compatible server on 127.0.0.1:3030.' },
-          { key: 'GITHUB_COPILOT_API_KEY', label: 'API Key', placeholder: 'optional', secret: true, description: 'Not required — the extension handles auth. Leave as "optional".' },
+          { key: 'GITHUB_COPILOT_BASE_URL', label: 'Proxy Base URL', placeholder: 'http://127.0.0.1:3030/v1', wide: true, description: 'VS Code Copilot Chat extension exposes an OpenAI-compatible server on 127.0.0.1:3030.' },
+          { key: 'GITHUB_COPILOT_API_KEY', label: 'API Key', placeholder: 'optional', secret: true },
         ],
       },
       {
@@ -103,7 +92,7 @@ const NAV_TABS: NavTab[] = [
         title: 'NVIDIA NIM',
         icon: Cpu,
         fields: [
-          { key: 'NVIDIA_API_KEY', label: 'NVIDIA API Key', placeholder: 'nvapi-...', secret: true, description: 'Get a free key at: build.nvidia.com — supports Qwen3 Coder, Llama 3.3, Nemotron, Phi-3, Gemma 2.' },
+          { key: 'NVIDIA_API_KEY', label: 'API Key', placeholder: 'nvapi-...', secret: true, description: 'Get a free key at: build.nvidia.com — supports Qwen3 Coder, Llama 3.3, Nemotron.' },
         ],
       },
       {
@@ -111,15 +100,15 @@ const NAV_TABS: NavTab[] = [
         title: 'Ollama',
         icon: Bot,
         fields: [
-          { key: 'OLLAMA_API_KEY', label: 'Ollama API Key', placeholder: 'd73713...', secret: true },
-          { key: 'OLLAMA_BASE_URL', label: 'Ollama Base URL', placeholder: 'http://host.docker.internal:11434' },
+          { key: 'OLLAMA_API_KEY', label: 'API Key', placeholder: 'd73713...', secret: true },
+          { key: 'OLLAMA_BASE_URL', label: 'Base URL', placeholder: 'http://host.docker.internal:11434' },
           { key: 'OLLAMA_MODEL', label: 'Model', placeholder: 'minimax-m2.7:cloud' },
           { key: 'OLLAMA_MODELS', label: 'Available Models (comma-separated)', placeholder: 'minimax-m2.7:cloud,glm-5.1:cloud', wide: true },
         ],
       },
       {
         id: 'fallback',
-        title: 'Fallback LLM Keys',
+        title: 'Fallback Keys (OpenAI / Anthropic / Google)',
         icon: KeyRound,
         fields: [
           { key: 'OPENAI_API_KEY', label: 'OpenAI API Key', placeholder: 'sk-...', secret: true },
@@ -130,82 +119,70 @@ const NAV_TABS: NavTab[] = [
     ],
   },
   {
+    id: 'agents',
+    label: 'Agents',
+    icon: Users,
+    sections: [],
+  },
+  {
     id: 'integrations',
     label: 'Integrations',
     icon: Wrench,
     sections: [
       {
-        id: 'integrations',
-        title: 'Integrations',
+        id: 'github',
+        title: 'GitHub & Search',
         icon: Wrench,
         fields: [
-          { key: 'GITHUB_TOKEN', label: 'GitHub Token', placeholder: 'ghp_...', secret: true, description: 'Used by Engineer agent for PR creation. Also enables GitHub MCP (repos, issues, actions).' },
+          { key: 'GITHUB_TOKEN', label: 'GitHub Token', placeholder: 'ghp_...', secret: true, description: 'Used by Engineer for PR creation. Also enables GitHub MCP (repos, issues, actions).' },
           { key: 'SERPER_API_KEY', label: 'Serper API Key (Search)', placeholder: 'a8e7e6...', secret: true },
         ],
       },
       {
-        id: 'mcp_servers',
-        title: 'MCP Servers',
+        id: 'playwright_mcp',
+        title: 'Playwright MCP',
         icon: GitBranch,
         fields: [
-          { key: '_mcp_info', label: 'GitHub MCP', placeholder: 'Enabled when GITHUB_TOKEN is set — uses @modelcontextprotocol/server-github via npx', description: 'Active on: Architect, Discovery, Engineer, Detective, Pipeline Analyst, Impact Analyst' },
-          { key: '_ado_mcp_info', label: 'Azure DevOps MCP', placeholder: 'Enabled when AZURE_DEVOPS_URL + AZURE_DEVOPS_PAT are set — uses @azure-devops/mcp via npx', description: 'Active on: Pipeline Analyst (pipelines), CI Log Analyzer (pipelines + work-items), Architect (work-items)' },
-          { key: '_atlassian_mcp_info', label: 'Atlassian Rovo MCP', placeholder: 'Enabled when ATLASSIAN_EMAIL + ATLASSIAN_API_TOKEN are set — uses mcp-remote proxy to mcp.atlassian.com', description: 'Active on: Architect (Jira), Scribe (Jira + Confluence), CI Log Analyzer (Jira bugs)' },
-          { key: '_playwright_mcp_info', label: 'Playwright MCP', placeholder: 'Auto-mode: set PLAYWRIGHT_MCP_URL for Docker service, or leave unset to spawn npx headless inline', description: 'Active on: Discovery (AUT crawling, Site Manifesto), Medic (verify healed locators on live AUT)' },
-          { key: 'PLAYWRIGHT_MCP_URL', label: 'Playwright MCP Service URL (optional)', placeholder: 'http://playwright-mcp:8931', description: 'Leave blank to use inline npx headless mode. Set to http://playwright-mcp:8931 when using: docker compose --profile mcp up -d' },
+          { key: 'PLAYWRIGHT_MCP_URL', label: 'MCP Service URL (optional)', placeholder: 'http://playwright-mcp:8931', wide: true, description: 'Leave blank for inline npx headless. Set to http://playwright-mcp:8931 when using: docker compose --profile mcp up -d' },
         ],
       },
     ],
   },
   {
-    id: 'aut',
-    label: 'AUT',
-    icon: Globe,
+    id: 'infrastructure',
+    label: 'Infrastructure',
+    icon: Database,
     sections: [
       {
         id: 'aut',
         title: 'Application Under Test (AUT)',
         icon: Globe,
         fields: [
-          { key: 'AUT_BASE_URL', label: 'AUT Base URL', placeholder: 'https://example.com/', wide: true },
-          { key: 'AUT_AUTH_USER', label: 'AUT Auth Username', placeholder: 'admin@example.com' },
-          { key: 'AUT_AUTH_PASS', label: 'AUT Auth Password', placeholder: '••••••••', secret: true },
+          { key: 'AUT_BASE_URL', label: 'Base URL', placeholder: 'https://example.com/', wide: true },
+          { key: 'AUT_AUTH_USER', label: 'Auth Username', placeholder: 'admin@example.com' },
+          { key: 'AUT_AUTH_PASS', label: 'Auth Password', placeholder: '••••••••', secret: true },
         ],
       },
-    ],
-  },
-  {
-    id: 'database',
-    label: 'Database',
-    icon: Database,
-    sections: [
       {
         id: 'database',
         title: 'Database (PostgreSQL)',
         icon: Database,
         fields: [
-          { key: 'DB_USER', label: 'DB User', placeholder: 'ai' },
-          { key: 'DB_PASS', label: 'DB Password', placeholder: '••••••••', secret: true },
-          { key: 'DB_HOST', label: 'DB Host', placeholder: 'localhost' },
-          { key: 'DB_PORT', label: 'DB Port', placeholder: '5432' },
-          { key: 'DB_DATABASE', label: 'DB Name', placeholder: 'ai' },
+          { key: 'DB_USER', label: 'User', placeholder: 'ai' },
+          { key: 'DB_PASS', label: 'Password', placeholder: '••••••••', secret: true },
+          { key: 'DB_HOST', label: 'Host', placeholder: 'localhost' },
+          { key: 'DB_PORT', label: 'Port', placeholder: '5432' },
+          { key: 'DB_DATABASE', label: 'Database', placeholder: 'ai' },
         ],
       },
-    ],
-  },
-  {
-    id: 'trackers',
-    label: 'Issue Trackers',
-    icon: ShieldCheck,
-    sections: [
       {
         id: 'jira',
         title: 'Jira',
         icon: ShieldCheck,
         fields: [
-          { key: 'JIRA_URL', label: 'Jira URL', placeholder: 'https://yourorg.atlassian.net', wide: true },
-          { key: 'JIRA_USERNAME', label: 'Jira Username / Email', placeholder: 'user@example.com' },
-          { key: 'JIRA_API_TOKEN', label: 'Jira API Token', placeholder: 'ATATT3x...', secret: true },
+          { key: 'JIRA_URL', label: 'URL', placeholder: 'https://yourorg.atlassian.net', wide: true },
+          { key: 'JIRA_USERNAME', label: 'Username / Email', placeholder: 'user@example.com' },
+          { key: 'JIRA_API_TOKEN', label: 'API Token', placeholder: 'ATATT3x...', secret: true },
         ],
       },
       {
@@ -213,9 +190,9 @@ const NAV_TABS: NavTab[] = [
         title: 'Confluence',
         icon: ShieldCheck,
         fields: [
-          { key: 'CONFLUENCE_URL', label: 'Confluence URL', placeholder: 'https://yourorg.atlassian.net/wiki', wide: true },
-          { key: 'CONFLUENCE_EMAIL', label: 'Confluence Email', placeholder: 'user@example.com' },
-          { key: 'CONFLUENCE_API_TOKEN', label: 'Confluence API Token', placeholder: 'ATATT3x...', secret: true },
+          { key: 'CONFLUENCE_URL', label: 'URL', placeholder: 'https://yourorg.atlassian.net/wiki', wide: true },
+          { key: 'CONFLUENCE_EMAIL', label: 'Email', placeholder: 'user@example.com' },
+          { key: 'CONFLUENCE_API_TOKEN', label: 'API Token', placeholder: 'ATATT3x...', secret: true },
         ],
       },
       {
@@ -223,38 +200,23 @@ const NAV_TABS: NavTab[] = [
         title: 'Azure DevOps',
         icon: ShieldCheck,
         fields: [
-          { key: 'AZURE_DEVOPS_URL', label: 'Azure DevOps URL', placeholder: 'https://dev.azure.com/yourorg', wide: true, description: 'Org name is auto-extracted for the ADO MCP server (@azure-devops/mcp).' },
+          { key: 'AZURE_DEVOPS_URL', label: 'URL', placeholder: 'https://dev.azure.com/yourorg', wide: true, description: 'Org name is auto-extracted for the ADO MCP server.' },
           { key: 'AZURE_DEVOPS_EMAIL', label: 'Email', placeholder: 'user@example.com' },
           { key: 'AZURE_DEVOPS_PAT', label: 'Personal Access Token', placeholder: 'PAT...', secret: true, description: 'Also used as AZURE_DEVOPS_EXT_PAT for headless MCP auth (no browser required).' },
-          { key: 'AZURE_DEVOPS_PROJECT', label: 'Default Project Name', placeholder: 'MyProject' },
+          { key: 'AZURE_DEVOPS_PROJECT', label: 'Default Project', placeholder: 'MyProject' },
         ],
       },
       {
         id: 'atlassian_mcp',
-        title: 'Atlassian Rovo MCP (Jira + Confluence)',
+        title: 'Atlassian Rovo MCP',
         icon: ShieldCheck,
         fields: [
-          { key: 'ATLASSIAN_URL', label: 'Atlassian Site URL', placeholder: 'https://yourorg.atlassian.net', wide: true, description: 'Your Atlassian Cloud site. Admin must enable API token auth in Atlassian Administration → Security → Rovo MCP Server settings.' },
-          { key: 'ATLASSIAN_EMAIL', label: 'Atlassian Email', placeholder: 'user@example.com' },
-          { key: 'ATLASSIAN_API_TOKEN', label: 'Atlassian API Token', placeholder: 'ATATT3x...', secret: true, description: 'Create at: id.atlassian.com/manage-profile/security/api-tokens' },
-          { key: 'ATLASSIAN_CLOUD_ID', label: 'Cloud ID (optional)', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', description: 'Skips discovery round-trips. Find at: yourorg.atlassian.net/_edge/tenant_info' },
-          { key: 'ATLASSIAN_JIRA_PROJECT', label: 'Default Jira Project Key (optional)', placeholder: 'QAP' },
-          { key: 'ATLASSIAN_CONFLUENCE_SPACE', label: 'Default Confluence SpaceId (optional)', placeholder: '123456' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'runtime',
-    label: 'Runtime',
-    icon: CircleDot,
-    sections: [
-      {
-        id: 'runtime',
-        title: 'Runtime',
-        icon: CircleDot,
-        fields: [
-          { key: 'RUNTIME_ENV', label: 'Runtime Environment', placeholder: 'dev', description: '"dev" enables hot-reload. "prd" enables JWT RBAC.' },
+          { key: 'ATLASSIAN_URL', label: 'Site URL', placeholder: 'https://yourorg.atlassian.net', wide: true },
+          { key: 'ATLASSIAN_EMAIL', label: 'Email', placeholder: 'user@example.com' },
+          { key: 'ATLASSIAN_API_TOKEN', label: 'API Token', placeholder: 'ATATT3x...', secret: true, description: 'Create at: id.atlassian.com/manage-profile/security/api-tokens' },
+          { key: 'ATLASSIAN_CLOUD_ID', label: 'Cloud ID (optional)', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' },
+          { key: 'ATLASSIAN_JIRA_PROJECT', label: 'Default Jira Project Key', placeholder: 'QAP' },
+          { key: 'ATLASSIAN_CONFLUENCE_SPACE', label: 'Default Confluence SpaceId', placeholder: '123456' },
         ],
       },
     ],
@@ -817,6 +779,68 @@ const Section = ({
 }
 
 // ---------------------------------------------------------------------------
+// CollapsibleSection — accordion-style section (for LLM keys, issue trackers)
+// ---------------------------------------------------------------------------
+
+const CollapsibleSection = ({
+  section,
+  values,
+  backendValues,
+  onChange,
+  defaultOpen = false,
+}: {
+  section: SectionDef
+  values: Record<string, string>
+  backendValues: Record<string, string>
+  onChange: (key: string, value: string) => void
+  defaultOpen?: boolean
+}) => {
+  const [open, setOpen] = useState(defaultOpen)
+  const Icon = section.icon
+  const isConfigured = section.fields.some(
+    (f) => !f.key.startsWith('_') && values[f.key] && values[f.key] !== '' && values[f.key] !== MASK
+  )
+
+  return (
+    <div className="rounded-2xl border border-primary/10 bg-primaryAccent overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between px-5 py-3 text-left hover:bg-accent/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Icon className="size-3.5 text-brand" />
+          <span className="text-xs font-semibold text-primary">{section.title}</span>
+          {isConfigured && (
+            <span className="rounded-full bg-positive/10 px-1.5 py-0.5 text-[10px] font-medium text-positive">
+              Configured
+            </span>
+          )}
+        </div>
+        <ChevronDown
+          className={cn('size-3.5 text-muted/50 transition-transform duration-200', open && 'rotate-180')}
+        />
+      </button>
+      {open && (
+        <div className="border-t border-primary/10 px-5 py-4">
+          <div className="grid grid-cols-2 gap-3">
+            {section.fields.map((f) => (
+              <FieldInput
+                key={f.key}
+                field={f}
+                value={values[f.key] ?? ''}
+                onChange={(v) => onChange(f.key, v)}
+                fromBackend={!!backendValues[f.key] && backendValues[f.key] === MASK}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main SettingsPage
 // ---------------------------------------------------------------------------
 
@@ -836,7 +860,7 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoadingBackend, setIsLoadingBackend] = useState(false)
   const [endpointStatus, setEndpointStatus] = useState<'checking' | 'ok' | 'error'>('checking')
-  const [activeTab, setActiveTab] = useState('provider')
+  const [activeTab, setActiveTab] = useState('connection')
 
   // Initialise from store on mount
   useEffect(() => {
@@ -1050,22 +1074,16 @@ export default function SettingsPage() {
         {/* Content area */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className={cn('mx-auto space-y-4', activeTab === 'agents' ? 'max-w-3xl' : 'max-w-2xl')}>
-            {activeTab === 'provider' ? (
-              <ModelProviderSection
-                endpointUrl={constructEndpointUrl(values['_endpoint'] ?? selectedEndpoint)}
-                authToken={values['_authToken'] ?? authToken}
-              />
-            ) : activeTab === 'agents' ? (
-              <AgentSettingsSection
-                endpointUrl={constructEndpointUrl(values['_endpoint'] ?? selectedEndpoint)}
-                authToken={values['_authToken'] ?? authToken}
-              />
-            ) : activeTab === 'integrations' ? (
+            {activeTab === 'models' ? (
               <>
-                {activeNavTab.sections
-                  .filter((s) => s.id !== 'mcp_servers')
-                  .map((section) => (
-                    <Section
+                <ModelProviderSection
+                  endpointUrl={constructEndpointUrl(values['_endpoint'] ?? selectedEndpoint)}
+                  authToken={values['_authToken'] ?? authToken}
+                />
+                <div className="space-y-1.5">
+                  <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted/40">API Key Overrides</p>
+                  {activeNavTab.sections.map((section) => (
+                    <CollapsibleSection
                       key={section.id}
                       section={section}
                       values={values}
@@ -1073,10 +1091,52 @@ export default function SettingsPage() {
                       onChange={handleChange}
                     />
                   ))}
+                </div>
+              </>
+            ) : activeTab === 'agents' ? (
+              <AgentSettingsSection
+                endpointUrl={constructEndpointUrl(values['_endpoint'] ?? selectedEndpoint)}
+                authToken={values['_authToken'] ?? authToken}
+              />
+            ) : activeTab === 'integrations' ? (
+              <>
+                {activeNavTab.sections.map((section) => (
+                  <Section
+                    key={section.id}
+                    section={section}
+                    values={values}
+                    backendValues={backendValues}
+                    onChange={handleChange}
+                  />
+                ))}
                 <MCPStatusSection
                   endpointUrl={constructEndpointUrl(values['_endpoint'] ?? selectedEndpoint)}
                   authToken={values['_authToken'] ?? authToken}
                 />
+              </>
+            ) : activeTab === 'infrastructure' ? (
+              <>
+                {activeNavTab.sections.filter((s) => ['aut', 'database'].includes(s.id)).map((section) => (
+                  <Section
+                    key={section.id}
+                    section={section}
+                    values={values}
+                    backendValues={backendValues}
+                    onChange={handleChange}
+                  />
+                ))}
+                <div className="space-y-1.5">
+                  <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted/40">Issue Trackers</p>
+                  {activeNavTab.sections.filter((s) => !['aut', 'database'].includes(s.id)).map((section) => (
+                    <CollapsibleSection
+                      key={section.id}
+                      section={section}
+                      values={values}
+                      backendValues={backendValues}
+                      onChange={handleChange}
+                    />
+                  ))}
+                </div>
               </>
             ) : (
               activeNavTab.sections.map((section) => (

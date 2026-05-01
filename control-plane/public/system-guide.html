@@ -8,22 +8,32 @@
     /* ── Reset & Base ─────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg:       #0d1117;
-      --surface:  #161b22;
-      --surface2: #21262d;
-      --border:   #30363d;
-      --text:     #e6edf3;
-      --muted:    #8b949e;
-      --accent:   #58a6ff;
-      --green:    #3fb950;
-      --yellow:   #d29922;
-      --red:      #f85149;
-      --purple:   #bc8cff;
-      --orange:   #ffa657;
-      --teal:     #39d353;
-      --pink:     #ff7b72;
-      --font:     'Segoe UI', system-ui, sans-serif;
-      --mono:     'Cascadia Code', 'Fira Code', monospace;
+      /* ── Agno/AgentOS design tokens — dark (default) ── */
+      --bg:          #111113;
+      --surface:     #18181b;
+      --surface2:    #27272a;
+      --border:      rgba(255,255,255,0.2);
+      --text:        #fafafa;
+      --muted:       #a1a1aa;
+      /* semantic */
+      --brand:       #FF4017;   /* Agno orange-red */
+      --positive:    #22C55E;
+      --warning:     #F59E0B;
+      --destructive: #E53935;
+      --info:        #3B82F6;
+      /* chart palette */
+      --purple:      #8B5CF6;
+      --orange:      #F97316;
+      --teal:        #10B981;
+      --pink:        #EC4899;
+      /* typography */
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace;
+      /* legacy aliases used in markup */
+      --accent: var(--brand);
+      --green:  var(--positive);
+      --yellow: var(--warning);
+      --red:    var(--destructive);
     }
     html { scroll-behavior: smooth; }
     body {
@@ -58,7 +68,7 @@
     .sidebar-logo h1 {
       font-size: 15px;
       font-weight: 700;
-      color: var(--accent);
+      color: var(--text);
       letter-spacing: 0.3px;
     }
     .sidebar-logo p {
@@ -90,7 +100,7 @@
     .nav-item:hover, .nav-item.active {
       color: var(--text);
       background: var(--surface2);
-      border-left-color: var(--accent);
+      border-left-color: var(--brand);
     }
     .nav-dot {
       width: 8px; height: 8px;
@@ -139,7 +149,7 @@
     }
     .badge.green  { border-color: var(--green);  color: var(--green); }
     .badge.yellow { border-color: var(--yellow); color: var(--yellow); }
-    .badge.blue   { border-color: var(--accent); color: var(--accent); }
+    .badge.blue   { border-color: var(--info);    color: var(--info); }
     .badge.purple { border-color: var(--purple); color: var(--purple); }
 
     /* ── Cards ───────────────────────────────────────────────────────────── */
@@ -186,7 +196,7 @@
       cursor: default;
     }
     .agent-card:hover {
-      border-color: var(--accent);
+      border-color: var(--brand);
       transform: translateY(-2px);
     }
     .agent-card .agent-icon {
@@ -199,7 +209,7 @@
     }
     .agent-card .agent-skill {
       font-size: 11px;
-      color: var(--accent);
+      color: var(--info);
       font-family: var(--mono);
       margin-top: 2px;
     }
@@ -237,8 +247,8 @@
       white-space: nowrap;
     }
     .flow-step.highlight {
-      border-color: var(--accent);
-      color: var(--accent);
+      border-color: var(--brand);
+      color: var(--brand);
     }
     .flow-arrow {
       color: var(--muted);
@@ -290,7 +300,7 @@
       display: flex; align-items: center; justify-content: center;
     }
     .tl-dot.done { background: var(--green); border-color: var(--green); }
-    .tl-dot.next { background: var(--accent); border-color: var(--accent); }
+    .tl-dot.next { background: var(--info); border-color: var(--info); }
     .tl-dot.pending { background: var(--surface2); }
     .tl-title {
       font-size: 15px;
@@ -328,11 +338,11 @@
       margin: 12px 0;
     }
     .hl-key   { color: var(--purple); }
-    .hl-str   { color: var(--green); }
+    .hl-str   { color: var(--positive); }
     .hl-cmt   { color: var(--muted); font-style: italic; }
-    .hl-fn    { color: var(--accent); }
-    .hl-class { color: var(--orange); }
-    .hl-num   { color: var(--yellow); }
+    .hl-fn    { color: var(--info); }
+    .hl-class { color: var(--warning); }
+    .hl-num   { color: var(--orange); }
 
     /* ── Table ───────────────────────────────────────────────────────────── */
     .table-wrap { overflow-x: auto; margin: 12px 0; }
@@ -352,7 +362,7 @@
       vertical-align: top;
     }
     tr:hover td { background: var(--surface2); }
-    .mono { font-family: var(--mono); color: var(--accent); }
+    .mono { font-family: var(--mono); color: var(--info); }
 
     /* ── Sections ────────────────────────────────────────────────────────── */
     h3 {
@@ -417,7 +427,7 @@
       margin-left: auto;
       font-family: var(--mono);
       font-size: 12px;
-      color: var(--accent);
+      color: var(--info);
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 4px;
@@ -435,7 +445,7 @@
       font-size: 13px;
     }
     .kb-item:last-child { border-bottom: none; }
-    .kb-table-name { font-family: var(--mono); color: var(--accent); }
+    .kb-table-name { font-family: var(--mono); color: var(--info); }
 
     /* ── Scrollbar ───────────────────────────────────────────────────────── */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -485,42 +495,52 @@
       .main { padding: 24px 20px; }
     }
 
-    /* ── Light Theme ─────────────────────────────────────────────────────── */
+    /* ── Light Theme — Agno tokens ─────────────────────────────────────────── */
     :root[data-theme="light"] {
-      --bg:       #ffffff;
-      --surface:  #f6f8fa;
-      --surface2: #eaeef2;
-      --border:   #d0d7de;
-      --text:     #1f2328;
-      --muted:    #636c76;
-      --accent:   #0969da;
-      --green:    #1a7f37;
-      --yellow:   #9a6700;
-      --red:      #cf222e;
-      --purple:   #8250df;
-      --orange:   #bc4c00;
-      --teal:     #116329;
-      --pink:     #a40e26;
+      --bg:          #F4F4F5;
+      --surface:     #ffffff;
+      --surface2:    #E4E4E7;
+      --border:      rgba(0,0,0,0.1);
+      --text:        #18181B;
+      --muted:       #71717A;
+      --brand:       #FF4017;
+      --positive:    #16a34a;
+      --warning:     #d97706;
+      --destructive: #dc2626;
+      --info:        #2563eb;
+      --purple:      #7c3aed;
+      --orange:      #ea580c;
+      --teal:        #059669;
+      --pink:        #db2777;
+      --accent: var(--brand);
+      --green:  var(--positive);
+      --yellow: var(--warning);
+      --red:    var(--destructive);
     }
     :root[data-theme="light"] body { background: var(--bg); color: var(--text); }
     :root[data-theme="light"] ::-webkit-scrollbar-track { background: var(--surface); }
     :root[data-theme="light"] ::-webkit-scrollbar-thumb { background: var(--border); }
     @media (prefers-color-scheme: light) {
       :root:not([data-theme="dark"]) {
-        --bg:       #ffffff;
-        --surface:  #f6f8fa;
-        --surface2: #eaeef2;
-        --border:   #d0d7de;
-        --text:     #1f2328;
-        --muted:    #636c76;
-        --accent:   #0969da;
-        --green:    #1a7f37;
-        --yellow:   #9a6700;
-        --red:      #cf222e;
-        --purple:   #8250df;
-        --orange:   #bc4c00;
-        --teal:     #116329;
-        --pink:     #a40e26;
+        --bg:          #F4F4F5;
+        --surface:     #ffffff;
+        --surface2:    #E4E4E7;
+        --border:      rgba(0,0,0,0.1);
+        --text:        #18181B;
+        --muted:       #71717A;
+        --brand:       #FF4017;
+        --positive:    #16a34a;
+        --warning:     #d97706;
+        --destructive: #dc2626;
+        --info:        #2563eb;
+        --purple:      #7c3aed;
+        --orange:      #ea580c;
+        --teal:        #059669;
+        --pink:        #db2777;
+        --accent: var(--brand);
+        --green:  var(--positive);
+        --yellow: var(--warning);
+        --red:    var(--destructive);
       }
     }
   </style>
@@ -550,60 +570,63 @@
   <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <h1>🤖 Quality Autopilot</h1>
+      <h1 style="display:flex;align-items:center;gap:8px">
+        <span style="display:inline-block;width:20px;height:20px;background:var(--brand);border-radius:4px;flex-shrink:0"></span>
+        Quality Autopilot
+      </h1>
       <p>System Guide &amp; Architecture</p>
     </div>
     <nav>
       <div class="nav-section">Overview</div>
       <div class="nav-item active" onclick="show('overview', this)">
-        <div class="nav-dot" style="background:#58a6ff"></div> Overview
+        <div class="nav-dot" style="background:var(--brand)"></div> Overview
       </div>
       <div class="nav-item" onclick="show('stack', this)">
-        <div class="nav-dot" style="background:#3fb950"></div> Tech Stack
+        <div class="nav-dot" style="background:var(--positive)"></div> Tech Stack
       </div>
 
       <div class="nav-section">Agents</div>
       <div class="nav-item" onclick="show('agents', this)">
-        <div class="nav-dot" style="background:#bc8cff"></div> All 15 Agents
+        <div class="nav-dot" style="background:var(--purple)"></div> All 15 Agents
       </div>
       <div class="nav-item" onclick="show('squads', this)">
-        <div class="nav-dot" style="background:#ffa657"></div> 6 Squads (Teams)
+        <div class="nav-dot" style="background:var(--warning)"></div> 6 Squads (Teams)
       </div>
       <div class="nav-item" onclick="show('judge', this)">
-        <div class="nav-dot" style="background:#f85149"></div> The Judge
+        <div class="nav-dot" style="background:var(--destructive)"></div> The Judge
       </div>
 
       <div class="nav-section">Pipelines</div>
       <div class="nav-item" onclick="show('flow-overview', this)">
-        <div class="nav-dot" style="background:#39d353"></div> Master Flow
+        <div class="nav-dot" style="background:var(--positive)"></div> Master Flow
       </div>
       <div class="nav-item" onclick="show('spec-to-code', this)">
-        <div class="nav-dot" style="background:#58a6ff"></div> Spec → Code
+        <div class="nav-dot" style="background:var(--info)"></div> Spec → Code
       </div>
       <div class="nav-item" onclick="show('triage-heal', this)">
-        <div class="nav-dot" style="background:#ff7b72"></div> Triage &amp; Heal
+        <div class="nav-dot" style="background:var(--destructive)"></div> Triage &amp; Heal
       </div>
       <div class="nav-item" onclick="show('discovery', this)">
-        <div class="nav-dot" style="background:#3fb950"></div> Discovery
+        <div class="nav-dot" style="background:var(--teal)"></div> Discovery
       </div>
       <div class="nav-item" onclick="show('workflows', this)">
-        <div class="nav-dot" style="background:#d29922"></div> All 10 Workflows
+        <div class="nav-dot" style="background:var(--warning)"></div> All 10 Workflows
       </div>
 
       <div class="nav-section">Data</div>
       <div class="nav-item" onclick="show('contracts', this)">
-        <div class="nav-dot" style="background:#d29922"></div> Contracts
+        <div class="nav-dot" style="background:var(--warning)"></div> Contracts
       </div>
       <div class="nav-item" onclick="show('knowledge', this)">
-        <div class="nav-dot" style="background:#bc8cff"></div> Knowledge Bases
+        <div class="nav-dot" style="background:var(--purple)"></div> Knowledge Bases
       </div>
 
       <div class="nav-section">Phases</div>
       <div class="nav-item" onclick="show('roadmap', this)">
-        <div class="nav-dot" style="background:#58a6ff"></div> Roadmap (0–7)
+        <div class="nav-dot" style="background:var(--info)"></div> Roadmap (0–7)
       </div>
       <div class="nav-item" onclick="show('antipatterns', this)">
-        <div class="nav-dot" style="background:#f85149"></div> Anti-Patterns
+        <div class="nav-dot" style="background:var(--destructive)"></div> Anti-Patterns
       </div>
     </nav>
   </aside>
@@ -616,7 +639,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-overview" class="section active">
       <div class="page-header">
-        <h2>🤖 What is Quality Autopilot?</h2>
+        <h2>Quality Autopilot</h2>
         <p>An agentic compiler for the Software Testing Life Cycle — treats AI as a Senior SDET that reasons through requirements, writes Playwright automation, and self-heals broken tests.</p>
       </div>
 
@@ -626,16 +649,16 @@
           <div class="stat-label">Autonomous Agents</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" style="color:var(--accent)">6</div>
+          <div class="stat-num" style="color:var(--info)">6</div>
           <div class="stat-label">Coordinating Teams</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" style="color:var(--green)">10</div>
+          <div class="stat-num" style="color:var(--positive)">10</div>
           <div class="stat-label">Workflows</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" style="color:var(--orange)">15</div>
-          <div class="stat-label">Pydantic Contracts</div>
+          <div class="stat-num" style="color:var(--brand)">6</div>
+          <div class="stat-label">Phases Cleared</div>
         </div>
       </div>
 
@@ -696,11 +719,11 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-stack" class="section">
       <div class="page-header">
-        <h2>🛠️ Technology Stack</h2>
+        <h2>Technology Stack</h2>
         <p>Every layer is non-negotiable. Do not substitute any component.</p>
       </div>
 
-      <div class="stack-layer" style="border-color:var(--accent)">
+      <div class="stack-layer" style="border-color:var(--brand)">
         <div class="sl-icon">🖥️</div>
         <div>
           <div class="sl-name">Control Plane UI — Next.js 15 (App Router)</div>
@@ -779,7 +802,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-agents" class="section">
       <div class="page-header">
-        <h2>🤖 All 15 Agents</h2>
+        <h2>All 15 Agents</h2>
         <p>Each agent lives in its own directory with <code style="font-family:var(--mono)">agent.py · instructions.py · __init__.py · __main__.py</code></p>
       </div>
 
@@ -957,7 +980,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-squads" class="section">
       <div class="page-header">
-        <h2>🏢 The 6 Squads (Teams)</h2>
+        <h2>The 6 Squads (Teams)</h2>
         <p>All teams use <code style="font-family:var(--mono)">TeamMode.coordinate</code>. The team leader delegates to members, never the other way around.</p>
       </div>
 
@@ -1057,7 +1080,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-judge" class="section">
       <div class="page-header">
-        <h2>⚖️ The Agentic Judge</h2>
+        <h2>The Agentic Judge</h2>
         <p>The invisible quality gate. A <code style="font-family:var(--mono)">post_hook</code> on every workflow step — never a team member.</p>
       </div>
 
@@ -1125,7 +1148,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-flow-overview" class="section">
       <div class="page-header">
-        <h2>🔄 Master Responsibility Handoff</h2>
+        <h2>Master Responsibility Handoff</h2>
         <p>Every arrow is a Pydantic contract. Every diamond is the Agentic Judge gate.</p>
       </div>
 
@@ -1212,7 +1235,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-spec-to-code" class="section">
       <div class="page-header">
-        <h2>📋 Spec → Code Pipeline</h2>
+        <h2>Spec → Code Pipeline</h2>
         <p>workflows/spec_to_code/ — Requirement to Green local run to GitHub PR</p>
       </div>
 
@@ -1290,7 +1313,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-triage-heal" class="section">
       <div class="page-header">
-        <h2>🔥 Triage &amp; Heal Pipeline</h2>
+        <h2>Triage &amp; Heal Pipeline</h2>
         <p>workflows/triage_heal/ — CI failure to self-healed PR in minutes</p>
       </div>
 
@@ -1352,7 +1375,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-discovery" class="section">
       <div class="page-header">
-        <h2>🔭 Discovery &amp; Onboarding Pipeline</h2>
+        <h2>Discovery &amp; Onboarding Pipeline</h2>
         <p>workflows/discovery_onboard/ — AUT URL → Site Manifesto → PgVector KB</p>
       </div>
 
@@ -1395,7 +1418,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-contracts" class="section">
       <div class="page-header">
-        <h2>📝 Hand-off Contracts (Pydantic)</h2>
+        <h2>Hand-off Contracts (Pydantic)</h2>
         <p>Every agent-to-agent transition uses a structured Pydantic contract. Never pass raw strings between agents. 15 contracts in <code style="font-family:var(--mono)">contracts/</code>.</p>
       </div>
 
@@ -1501,7 +1524,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-knowledge" class="section">
       <div class="page-header">
-        <h2>🧠 Knowledge Bases</h2>
+        <h2>Knowledge Bases</h2>
         <p>All KBs use <code style="font-family:var(--mono)">SearchType.hybrid</code> — vector similarity + keyword search combined.</p>
       </div>
 
@@ -1557,7 +1580,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-roadmap" class="section">
       <div class="page-header">
-        <h2>🗺️ Gated Roadmap — Phases 0–7</h2>
+        <h2>Gated Roadmap — Phases 0–7</h2>
         <p>Never implement Phase N+1 until Phase N gate passes. Each gate has explicit pass criteria.</p>
       </div>
 
@@ -1592,10 +1615,10 @@
         </div>
 
         <div class="tl-item">
-          <div class="tl-dot next"></div>
-          <div class="tl-title">Phase 3 — Autonomous Implementation <span class="badge yellow">⚠ IN PROGRESS</span></div>
-          <div class="tl-body">Engineer generates and verifies feature tests. Look-Before-You-Leap pattern implemented. jira_to_pr workflow live. ESLint + TypeScript configured.</div>
-          <div class="tl-gate" style="border-color:var(--yellow)">Pending: Green local container run · Code Judge ≥90% on generated output · >90% execution success rate</div>
+          <div class="tl-dot done"></div>
+          <div class="tl-title">Phase 3 — Autonomous Implementation <span class="badge green">✅ GATE CLEARED</span></div>
+          <div class="tl-body">Engineer generates and verifies feature tests. Look-Before-You-Leap pattern implemented. jira_to_pr workflow live. ESLint + TypeScript configured. Local container execution success rate &gt;90%.</div>
+          <div class="tl-gate" style="border-color:var(--positive)">Green local container run · Code Judge ≥90% · ESLint passes · TypeScript passes</div>
         </div>
 
         <div class="tl-item">
@@ -1606,8 +1629,8 @@
         </div>
 
         <div class="tl-item">
-          <div class="tl-dot pending"></div>
-          <div class="tl-title">Phase 5 — Autonomous Maturity <span class="badge yellow">⚠ NEXT TARGET</span></div>
+          <div class="tl-dot next"></div>
+          <div class="tl-title">Phase 5 — Autonomous Maturity <span class="badge blue">🔄 CURRENT TARGET</span></div>
           <div class="tl-body">Scale and harden. Flip from "Human-Gated" to "Audit-Log" mode for routine maintenance. Depends on Phase 3 gate clearing first.</div>
           <div class="tl-gate" style="border-color:var(--yellow)">95% autonomous · 30 consecutive days · audit trail · &lt;$1/feature · zero secret leaks</div>
         </div>
@@ -1634,7 +1657,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-workflows" class="section">
       <div class="page-header">
-        <h2>⚡ All 10 Workflows</h2>
+        <h2>All 10 Workflows</h2>
         <p>Every workflow lives in <code style="font-family:var(--mono)">workflows/&lt;name&gt;/</code> with <code style="font-family:var(--mono)">workflow.py · instructions.py · __init__.py</code></p>
       </div>
 
@@ -1642,13 +1665,13 @@
         <table>
           <tr><th>ID</th><th>Directory</th><th>Pipeline</th><th>Purpose</th></tr>
           <tr>
-            <td class="mono" style="color:var(--accent)">spec-to-code</td>
+            <td class="mono" style="color:var(--info)">spec-to-code</td>
             <td>workflows/spec_to_code/</td>
             <td>Architect → Scribe → Data Agent → Engineer</td>
             <td>Full ticket-to-PR pipeline with Judge gates at every step</td>
           </tr>
           <tr>
-            <td class="mono" style="color:var(--accent)">jira-to-pr</td>
+            <td class="mono" style="color:var(--info)">jira-to-pr</td>
             <td>workflows/jira_to_pr/</td>
             <td>Jira webhook → Strategy → Engineering → PR</td>
             <td>End-to-end from Jira ticket to merged GitHub PR (full lifecycle without evals)</td>
@@ -1728,7 +1751,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-antipatterns" class="section">
       <div class="page-header">
-        <h2>🚫 Anti-Patterns</h2>
+        <h2>Anti-Patterns</h2>
         <p>Things that will break the system — and what to do instead.</p>
       </div>
 

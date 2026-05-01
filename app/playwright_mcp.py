@@ -156,13 +156,39 @@ def _get_playwright_mcp_singleton() -> list:
 # Per-agent factory functions
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Per-agent tool subsets
+# ---------------------------------------------------------------------------
+
+# Discovery: full access — needs to navigate, click, type, and take snapshots
+# to build the complete Site Manifesto from the live AUT.
+# (None = no filtering, all 23 browser tools available)
+_DISCOVERY_PLAYWRIGHT_TOOLS: list[str] | None = None
+
+# Medic: read-only verification — after applying a locator patch, the Medic
+# navigates to the page and takes a snapshot to confirm the element resolves.
+# No input, form-fill, or destructive browser operations needed.
+_MEDIC_PLAYWRIGHT_TOOLS: list[str] = [
+    "browser_navigate",       # go to the page under test
+    "browser_navigate_back",  # return to previous page if needed
+    "browser_snapshot",       # capture accessibility tree to verify locator
+    "browser_take_screenshot", # visual confirmation of the healed element
+    "browser_wait_for",       # wait for element / text before snapshotting
+    "browser_close",          # clean up browser session after verification
+]
+
+
+# ---------------------------------------------------------------------------
+# Per-agent factory functions
+# ---------------------------------------------------------------------------
+
 def get_playwright_mcp_for_discovery() -> list:
     """
     Playwright MCP tools for the Discovery agent.
 
     Discovery uses these to crawl the AUT in a real browser, capture
     accessibility snapshots of each page/component, and build the Site Manifesto.
-    Full read-write access: navigate, click, snapshot, screenshot.
+    Full read-write access: navigate, click, snapshot, screenshot, type, fill.
     """
     return _get_playwright_mcp_singleton()
 
@@ -173,6 +199,22 @@ def get_playwright_mcp_for_medic() -> list:
 
     Medic uses these after applying a healing patch to verify the fixed locator
     resolves correctly on the live AUT.
-    Primarily read-only: navigate + snapshot.
+    Read-only subset: navigate + snapshot + screenshot only (6 tools vs 23).
     """
-    return _get_playwright_mcp_singleton()
+    mcp_url = os.getenv("PLAYWRIGHT_MCP_URL", "").rstrip("/")
+    if mcp_url and _playwright_mcp_reachable(mcp_url):
+        from agno.tools.mcp.params import StreamableHTTPClientParams
+        return [
+            MCPTools(
+                server_params=StreamableHTTPClientParams(url=f"{mcp_url}/mcp"),
+                transport="streamable-http",
+                tool_name_prefix="pw_",
+                include_tools=_MEDIC_PLAYWRIGHT_TOOLS,
+            )
+        ]
+    # No service available — Medic cannot do live verification
+    _log.info(
+        "Playwright MCP unavailable — Medic live-verification disabled. "
+        "Start with: docker compose --profile mcp up -d"
+    )
+    return []

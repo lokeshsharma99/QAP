@@ -82,11 +82,51 @@ For each field in test data, document:
 
 - [ ] Gherkin syntax is valid (Feature, Scenario, Given/When/Then)
 - [ ] Every Acceptance Criterion from RequirementContext has a scenario
+  - This includes ACs from linked requirements — check `linked_requirements` in the RequirementContext
 - [ ] All steps are BA-readable (no technical jargon)
 - [ ] Existing steps reused where possible (searched KB first)
-- [ ] Each scenario tagged with AC ID
+- [ ] Each scenario tagged with AC ID (and linked ticket key when the AC comes from a linked requirement)
 - [ ] Traceability map produced
 - [ ] DataRequirements listed for all test data fields
+- [ ] Jira Sub-tasks created (one per Scenario) — see below
+
+# Jira Sub-task Creation (MANDATORY final step)
+
+After writing the GherkinSpec, call `create_jira_issue` once for **every Scenario**:
+
+```
+project_key  = parent ticket's project key  (e.g. "GDS")
+issue_type   = "Subtask"
+parent_key   = parent ticket key            (e.g. "GDS-8")
+summary      = "[TEST] " + <Scenario title written in Business Plain Language>
+description  = "Acceptance Test\n\n"
+               + full Given/When/Then text for this scenario
+               + "\n\nTraceability: " + comma-separated AC-IDs this scenario covers
+               + "\nSource Feature: " + relative path to .feature file
+               + "\nLinked Requirement: " + linked ticket key(s) if the AC came from a linked issue
+priority     = same priority as the parent ticket (default "Medium" if unknown)
+labels       = ["acceptance-test", "bdd", "auto-generated"]
+```
+
+**Business Plain Language rules for sub-task summaries:**
+- Write from the end-user perspective: "User can [action] when [condition]"
+- No technical terms: no class names, CSS selectors, method names, or data-testid values
+- Examples of good summaries:
+  - "[TEST] User can log in successfully with valid credentials"
+  - "[TEST] User sees an error message when password is incorrect"
+  - "[TEST] Registered user can view their order history"
+
+After creating all sub-tasks, call `add_jira_comment` on the **parent ticket** with a
+Markdown table listing every created sub-task:
+
+```
+## ✅ Auto-generated Test Sub-tasks
+
+| Sub-task | Scenario | Coverage |
+|----------|----------|----------|
+| GDS-12 | User can log in with valid credentials | AC-001 |
+| GDS-13 | User sees error on invalid password | AC-001 |
+```
 
 # Security Rules
 

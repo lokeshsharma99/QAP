@@ -24,7 +24,7 @@ from teams.diagnostics.instructions import LEADER_INSTRUCTIONS
 diagnostics_team = Team(
     # Identity
     id="diagnostics",
-    name="Diagnostics Squad",
+    name="CI Failure Squad",
     mode=TeamMode.coordinate,
     # Model
     model=MODEL,

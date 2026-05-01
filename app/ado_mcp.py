@@ -150,12 +150,9 @@ def _make_ado_mcp(domains: list[str], tool_name_prefix: str) -> MCPTools:
 
 
 # ---------------------------------------------------------------------------
-# Singleton — one shared ADO MCP process for all agents.
-# Using a single instance avoids spawning multiple npx processes at startup.
-# All domains needed by any agent are included in the superset.
-# Returns [] when AZURE_DEVOPS_URL or AZURE_DEVOPS_PAT are not configured so
-# that no MCPTools object is registered with AgentOS and no startup auth
-# attempt is made in headless / Docker environments.
+# Singleton — one shared ADO MCP process for stdio fallback (dev mode).
+# All domains included in the superset so no tool filtering is lost on fallback.
+# Returns [] when AZURE_DEVOPS_URL or AZURE_DEVOPS_PAT are not configured.
 # ---------------------------------------------------------------------------
 _ADO_MCP_SINGLETON: MCPTools | None = None
 
@@ -165,9 +162,7 @@ def _get_ado_mcp_singleton() -> list:
 
     Priority:
     1. HTTP — connect to the ado-mcp Docker service (ADO_MCP_URL).
-       The service wraps @azure-devops/mcp stdio via supergateway SSE.
     2. stdio fallback — spawn npx @azure-devops/mcp locally inside qap-api.
-       Used when the ado-mcp container is not running.
     Returns [] when neither AZURE_DEVOPS_URL nor AZURE_DEVOPS_EXT_PAT are set.
     """
     ado_url = os.getenv("AZURE_DEVOPS_URL", "").rstrip("/")
@@ -193,7 +188,6 @@ def _get_ado_mcp_singleton() -> list:
 
     # ---------------------------------------------------------------------------
     # Mode 1 — SSE connection to the ado-mcp Docker service (preferred).
-    # The service uses supergateway to wrap @azure-devops/mcp stdio as SSE HTTP.
     # ---------------------------------------------------------------------------
     ado_mcp_url = os.getenv("ADO_MCP_URL", "").rstrip("/")
     if ado_mcp_url and _ado_mcp_service_reachable(ado_mcp_url):
@@ -223,24 +217,137 @@ def _get_ado_mcp_singleton() -> list:
 
 
 # ---------------------------------------------------------------------------
+# Service availability cache
+# Probes the ADO MCP HTTP service at most once per process startup.
+# ---------------------------------------------------------------------------
+_ADO_SERVICE_CHECKED: bool = False
+_ADO_SERVICE_AVAILABLE: bool = False
+_ADO_SERVICE_URL: str = ""
+
+
+def _get_ado_service_availability() -> tuple[bool, str]:
+    """Return (http_available, service_url), probing the TCP port at most once."""
+    global _ADO_SERVICE_CHECKED, _ADO_SERVICE_AVAILABLE, _ADO_SERVICE_URL
+    if not _ADO_SERVICE_CHECKED:
+        mcp_url = os.getenv("ADO_MCP_URL", "").rstrip("/")
+        _ADO_SERVICE_URL = mcp_url
+        _ADO_SERVICE_AVAILABLE = bool(mcp_url and _ado_mcp_service_reachable(mcp_url))
+        if mcp_url and not _ADO_SERVICE_AVAILABLE:
+            log_warning(
+                "ADO_MCP_URL is set to %s but the service is not reachable. "
+                "Falling back to npx stdio. Start: docker compose up -d ado-mcp",
+                mcp_url,
+            )
+        _ADO_SERVICE_CHECKED = True
+    return _ADO_SERVICE_AVAILABLE, _ADO_SERVICE_URL
+
+
+def _make_ado_mcp_http_filtered(include_tools: list[str]) -> MCPTools | None:
+    """Create a per-agent filtered MCPTools for HTTP mode.
+
+    Returns None when credentials are missing or the HTTP service is unavailable.
+    ``include_tools`` uses raw ADO MCP tool names (without the ``ado_`` prefix).
+    """
+    ado_url = os.getenv("AZURE_DEVOPS_URL", "").rstrip("/")
+    ado_ext_pat = os.getenv("AZURE_DEVOPS_EXT_PAT", "")
+    if not ado_url or not ado_ext_pat:
+        return None
+
+    available, mcp_url = _get_ado_service_availability()
+    if not available:
+        return None
+
+    return MCPTools(
+        url=mcp_url,
+        transport="streamable-http",
+        tool_name_prefix="ado_",
+        include_tools=include_tools,
+        timeout_seconds=60,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Per-agent tool subsets
+# Only the ADO MCP tools each agent actually needs (65 total → 6-12 per agent).
+# Tool names are the raw names from the MCP server (without the ado_ prefix).
+# ---------------------------------------------------------------------------
+
+# Architect: reads ADO work items as requirements — no pipeline or repo access
+_ARCHITECT_ADO_TOOLS = [
+    "core_list_projects",              # discover available projects
+    "wit_get_work_item",               # read a specific work item by ID
+    "wit_get_work_items_batch_by_ids", # bulk-fetch linked work items
+    "wit_my_work_items",               # list work items assigned to the current user
+    "wit_list_backlogs",               # list sprint / backlog contents
+    "wit_list_backlog_work_items",     # expand backlog to get individual items
+    "wit_query_by_wiql",               # WIQL query for flexible work item search
+    "wit_list_work_item_comments",     # read discussion / acceptance criteria notes
+    "wit_get_work_item_type",          # resolve work item type metadata (story / bug)
+]
+
+# Pipeline Analyst: CI build logs and run status — no work item writes
+_PIPELINE_ANALYST_ADO_TOOLS = [
+    "core_list_projects",              # discover available projects
+    "core_list_project_teams",         # resolve team context
+    "pipelines_get_builds",            # list pipeline builds for a definition
+    "pipelines_get_build_log",         # fetch the full build log
+    "pipelines_get_build_log_by_id",   # fetch a specific log section by ID
+    "pipelines_get_build_changes",     # commits associated with a build
+    "pipelines_get_build_status",      # quick pass/fail status check
+    "pipelines_list_runs",             # list pipeline runs (new Runs API)
+    "pipelines_get_run",               # get details of a specific run
+    "pipelines_list_artifacts",        # list build artifacts (Allure, JUnit, etc.)
+    "pipelines_download_artifact",     # download an artifact for parsing
+]
+
+# CI Log Analyzer: reads logs + creates / updates work items for RCA tickets
+_CI_LOG_ANALYZER_ADO_TOOLS = [
+    "core_list_projects",              # discover available projects
+    "pipelines_get_builds",            # list recent builds
+    "pipelines_get_build_log",         # fetch full log
+    "pipelines_get_build_log_by_id",   # fetch targeted log section
+    "pipelines_get_build_status",      # quick status check
+    "pipelines_list_runs",             # list runs (new API)
+    "pipelines_get_run",               # inspect specific run
+    "pipelines_list_artifacts",        # find test result artifacts
+    "pipelines_download_artifact",     # download for parsing
+    "wit_create_work_item",            # create RCA bug ticket after HITL approval
+    "wit_update_work_item",            # update work item with findings
+    "wit_get_work_item",               # check for existing tickets before creating
+    "wit_add_work_item_comment",       # attach RCA findings as a comment
+    "wit_query_by_wiql",               # search for duplicate open bugs
+    "wit_get_work_item_type",          # resolve work item type before creation
+]
+
+# Impact Analyst: work item AC extraction + ADO repo PR analysis
+_IMPACT_ANALYST_ADO_TOOLS = [
+    "core_list_projects",                          # discover projects
+    "wit_get_work_item",                           # read linked work items for ACs
+    "wit_get_work_items_batch_by_ids",             # bulk fetch linked items
+    "wit_list_backlog_work_items",                 # enumerate sprint items
+    "wit_query_by_wiql",                           # flexible work item search
+    "repo_get_pull_request_by_id",                 # read PR under analysis
+    "repo_get_pull_request_changes",               # get changed files in the PR
+    "repo_list_pull_requests_by_repo_or_project",  # find PRs for a repo
+    "repo_list_directory",                         # browse repo structure
+    "repo_get_file_content",                       # read source files
+]
+
+
+# ---------------------------------------------------------------------------
 # Per-agent factory functions
-# Each returns a list so agents can unpack: tools=[..., *get_ado_mcp_for_X()]
-# Returns [] when AZURE_DEVOPS_URL / AZURE_DEVOPS_PAT are not configured.
 # ---------------------------------------------------------------------------
 
 def get_ado_mcp_for_pipeline_analyst() -> list:
     """
     ADO MCP tools for the Pipeline Analyst agent.
 
-    Domains: core, pipelines, repositories.
-
-    Pipeline Analyst uses these to:
-    - List and inspect ADO pipeline runs across projects
-    - Download job / step logs for failed pipeline runs
-    - Read recent commits and diffs correlated with the failure
-    - Fetch build definitions and pipeline YAML configuration
-    - Compare the current run against the last passing run
+    Curated to 11 tools: build/run status, log fetching, artifact access.
+    No work-item writes — Pipeline Analyst is read-only for CI correlation.
     """
+    http = _make_ado_mcp_http_filtered(_PIPELINE_ANALYST_ADO_TOOLS)
+    if http:
+        return [http]
     return _get_ado_mcp_singleton()
 
 
@@ -248,15 +355,12 @@ def get_ado_mcp_for_ci_log_analyzer() -> list:
     """
     ADO MCP tools for the CI Log Analyzer agent.
 
-    Domains: core, pipelines, work-items.
-
-    CI Log Analyzer uses these to:
-    - Fetch pipeline run logs and test results for RCA analysis
-    - Read the timeline / step breakdown of failed builds
-    - Create ADO work items (bugs / tasks) after HITL approval
-    - Update existing work items with RCA findings and remediation notes
-    - Search for duplicate open bugs before creating new ones
+    Curated to 15 tools: log reads + work-item create/update for RCA tickets.
+    Work-item writes are only invoked after HITL approval in the UI.
     """
+    http = _make_ado_mcp_http_filtered(_CI_LOG_ANALYZER_ADO_TOOLS)
+    if http:
+        return [http]
     return _get_ado_mcp_singleton()
 
 
@@ -264,12 +368,23 @@ def get_ado_mcp_for_architect() -> list:
     """
     ADO MCP tools for the Architect agent.
 
-    Domains: core, work-items.
-
-    Architect uses these to:
-    - Fetch ADO work items (User Stories, Bugs, Tasks) as requirements
-    - Read acceptance criteria from work item descriptions
-    - Read linked test cases to understand existing coverage
-    - Query sprint / backlog for priority context before producing Execution Plan
+    Curated to 9 tools: work-item reads only — no pipeline or repo toolsets.
+    Architect reads ADO User Stories / Bugs / Epics as requirements.
     """
+    http = _make_ado_mcp_http_filtered(_ARCHITECT_ADO_TOOLS)
+    if http:
+        return [http]
+    return _get_ado_mcp_singleton()
+
+
+def get_ado_mcp_for_impact_analyst() -> list:
+    """
+    ADO MCP tools for the Impact Analyst agent.
+
+    Curated to 10 tools: work-item AC extraction + ADO repo PR diff analysis.
+    No pipeline toolset — CI correlation is handled by Pipeline Analyst.
+    """
+    http = _make_ado_mcp_http_filtered(_IMPACT_ANALYST_ADO_TOOLS)
+    if http:
+        return [http]
     return _get_ado_mcp_singleton()

@@ -436,6 +436,64 @@ const ReasoningBlock = ({ steps }: { steps: NonNullable<ChatMessage['extra_data'
 // ---------------------------------------------------------------------------
 // FollowupSuggestions — clickable suggestion pills rendered after a response
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// RouteSuggestion — card rendered when Concierge emits a ```route block
+// ---------------------------------------------------------------------------
+interface RouteDirective {
+  route_to: string
+  mode: 'agent' | 'team' | 'workflow'
+  name: string
+  reason: string
+  starter_prompt?: string
+}
+
+const RouteSuggestion = ({ directive, onRoute }: { directive: RouteDirective; onRoute: (d: RouteDirective) => void }) => {
+  const ModeIcon = directive.mode === 'workflow' ? GitBranch : directive.mode === 'team' ? Users : Bot
+  const modeColor = directive.mode === 'workflow' ? 'text-positive border-positive/30 bg-positive/5'
+    : directive.mode === 'team' ? 'text-info border-info/30 bg-info/5'
+    : 'text-brand border-brand/30 bg-brand/5'
+  const buttonColor = directive.mode === 'workflow' ? 'bg-positive/10 text-positive hover:bg-positive/20 border-positive/30'
+    : directive.mode === 'team' ? 'bg-info/10 text-info hover:bg-info/20 border-info/30'
+    : 'bg-brand/10 text-brand hover:bg-brand/20 border-brand/30'
+  return (
+    <motion.div
+      className={`my-2 max-w-2xl rounded-xl border p-4 ${modeColor}`}
+      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg border ${modeColor}`}>
+          <ModeIcon className="size-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-xs font-semibold text-primary">{directive.name}</span>
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase ${modeColor}`}>
+              {directive.mode}
+            </span>
+          </div>
+          <p className="text-xs text-muted/80 leading-relaxed mb-3">{directive.reason}</p>
+          {directive.starter_prompt && (
+            <div className="mb-3 rounded-lg border border-accent bg-background/60 px-3 py-2">
+              <p className="text-[10px] font-medium uppercase text-muted/60 mb-1">Starter prompt</p>
+              <p className="text-xs text-muted/80 leading-relaxed font-mono whitespace-pre-wrap">{directive.starter_prompt}</p>
+            </div>
+          )}
+          <button
+            onClick={() => onRoute(directive)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${buttonColor}`}
+          >
+            <ModeIcon className="size-3" />
+            Switch to {directive.name}
+            <ChevronRight className="size-3" />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 const FollowupSuggestions = ({ suggestions, onSelect }: { suggestions: string[]; onSelect: (s: string) => void }) => (
   <motion.div
     className="flex flex-wrap gap-1.5 pt-2"
@@ -485,8 +543,8 @@ const ThinkingBubble = ({ latestEvent }: { latestEvent: import('@/store').ChatEv
   )
 }
 
-const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null, onFollowupClick }: {
-  msg: ChatMessage; index: number; isActiveStreaming?: boolean; latestEvent?: import('@/store').ChatEvent | null; onFollowupClick?: (s: string) => void
+const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null, onFollowupClick, onRoute }: {
+  msg: ChatMessage; index: number; isActiveStreaming?: boolean; latestEvent?: import('@/store').ChatEvent | null; onFollowupClick?: (s: string) => void; onRoute?: (d: RouteDirective) => void
 }) => {
   const isUser = msg.role === 'user'
   return (
@@ -560,6 +618,14 @@ const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null
                     )
                   }
                   const lang = className?.replace('language-', '') || ''
+                  if (lang === 'route') {
+                    try {
+                      const directive = JSON.parse(String(children).trim()) as RouteDirective
+                      if (directive.route_to && directive.mode && onRoute) {
+                        return <RouteSuggestion directive={directive} onRoute={onRoute} />
+                      }
+                    } catch { /* fall through to CodeBlock */ }
+                  }
                   if (lang === 'mermaid') {
                     return <MermaidBlock code={String(children).trim()} />
                   }
@@ -693,7 +759,7 @@ const ModeSelector = () => {
             'relative z-10 w-1/3 py-1 text-xs font-medium uppercase text-center transition-colors duration-150',
             mode === m ? 'text-primaryAccent' : 'text-muted hover:text-primary'
           )}
-        >{m}</button>
+        >{m === 'workflow' ? 'flow' : m}</button>
       ))}
     </div>
   )
@@ -717,7 +783,7 @@ const EntitySelector = () => {
   const entities = mode === 'team' ? teams : mode === 'workflow' ? workflows : agents
   const currentValue = mode === 'team' ? teamId : mode === 'workflow' ? workflowId : agentId
   const currentName = entities.find((e) => (e as { id: string }).id === currentValue)
-  const displayName = (currentName as { name?: string; id: string } | undefined)?.name || currentValue || `Select ${mode}`
+  const displayName = (currentName as { name?: string; id: string } | undefined)?.name || currentValue || `Select ${mode === 'workflow' ? 'flow' : mode}`
 
   const filtered = entities.filter((e) => {
     const name = ((e as { name?: string; id: string }).name || (e as { id: string }).id).toLowerCase()
@@ -1086,6 +1152,230 @@ const Card = ({ children }: { children: React.ReactNode }) => (
   <div className="rounded-xl border border-accent bg-background p-3 space-y-0.5 text-xs">{children}</div>
 )
 
+// ---------------------------------------------------------------------------
+// Agent metadata (descriptions for Details panel)
+// ---------------------------------------------------------------------------
+const AGENT_META: Record<string, { skill: string; description: string; jiraAccess: string; squad: string }> = {
+  'architect': {
+    skill: 'semantic_search',
+    description: 'Parses Jira tickets, ADO work items, or plain-text requirements into a structured RequirementContext (Execution Plan). Queries the codebase KB to determine which Page Objects are affected and whether this is a new feature or existing coverage.',
+    jiraAccess: 'Read — jira_get_issue, jira_search, confluence_search, confluence_get_page',
+    squad: 'Spec Writing Squad',
+  },
+  'scribe': {
+    skill: 'gherkin_formatter',
+    description: 'Translates the Architect\'s RequirementContext into strictly formatted BDD Gherkin specs with full AC traceability. Ensures steps are BA-readable and reusable across feature files. Validates all acceptance criteria are covered.',
+    jiraAccess: 'Read — jira_get_issue (AC cross-check), confluence_search',
+    squad: 'Spec Writing Squad',
+  },
+  'discovery': {
+    skill: 'ui_crawler',
+    description: 'Launches a browser, authenticates with the AUT, and crawls every registered route. Extracts the Accessibility Tree snapshot per page — recording data-testid, role, and text locators for every interactable element — then persists the Site Manifesto to PgVector.',
+    jiraAccess: 'None',
+    squad: 'Discovery & Indexing Squad',
+  },
+  'librarian': {
+    skill: 'vector_indexing',
+    description: 'Watches the automation/ directory and re-indexes Page Objects, Step Definitions, and utilities into the PgVector codebase KB on every Git commit. Also detects obsolete scenarios, unused steps, and orphaned Page Objects.',
+    jiraAccess: 'None',
+    squad: 'Discovery & Indexing Squad',
+  },
+  'engineer': {
+    skill: 'file_writer',
+    description: 'Authors modular Playwright POMs and Cucumber Step Definitions following the Look-Before-You-Leap pattern: checks Site Manifesto → queries codebase KB → verifies selectors via MCP → writes code → submits GitHub PR. No hardcoded sleeps, no CSS/XPath locators.',
+    jiraAccess: 'None',
+    squad: 'Code Generation Squad',
+  },
+  'data-agent': {
+    skill: 'data_factory',
+    description: 'Provisions fresh test users, seeds database records, and sets up API mocks before each test run. Applies PII masking, validates unique constraints, and produces a RunContext with cleanup queries for safe teardown.',
+    jiraAccess: 'None',
+    squad: 'Code Generation Squad',
+  },
+  'detective': {
+    skill: 'trace_analyzer',
+    description: 'Pulls Playwright trace.zip from CI failures and classifies the root cause: LOCATOR_STALE (broken selector), DATA_MISMATCH, TIMING_FLAKE, ENV_FAILURE, or LOGIC_CHANGE (real app bug requiring human review). Confidence > 90% auto-routes to Medic.',
+    jiraAccess: 'None',
+    squad: 'Self-Healing Squad',
+  },
+  'medic': {
+    skill: 'surgical_editor',
+    description: 'Applies surgical one-locator patches to Page Objects when the Detective classifies a failure as LOCATOR_STALE. Strictly forbidden from changing business logic, assertions, or test flow. Every patch must pass 3 consecutive verification runs.',
+    jiraAccess: 'None',
+    squad: 'Self-Healing Squad',
+  },
+  'judge': {
+    skill: 'adversarial_review',
+    description: 'Quality gate that runs the Definition of Done checklist against every artifact — Gherkin specs, automation code, test data, and healing patches. Confidence ≥ 90% → auto-approve. Confidence < 90% → triggers HITL approval queue. Never bypassed.',
+    jiraAccess: 'None',
+    squad: 'Cross-cutting (Quality Gate)',
+  },
+  'ci_log_analyzer': {
+    skill: 'rca_analysis',
+    description: 'Analyses Azure DevOps CI pipeline logs end-to-end: fetches pipeline run logs via ADO MCP, performs historical RCA using the RCA knowledge base, deduplicates against existing Jira bugs, and creates a new Jira bug (or ADO work item) after HITL approval in the Approvals queue.',
+    jiraAccess: 'Write — jira_search, jira_get_issue, jira_create_issue, jira_add_comment, jira_transition_issue',
+    squad: 'CI Failure Squad',
+  },
+  'healing_judge': {
+    skill: 'healing_validation',
+    description: 'Adversarial reviewer specifically for Medic healing patches. Verifies the diff is truly surgical (one locator line changed), that no business logic was touched, and that the test passed 3 consecutive times post-patch before approving the PR.',
+    jiraAccess: 'None',
+    squad: 'Self-Healing Squad',
+  },
+  'technical_tester': {
+    skill: 'test_generation',
+    description: 'Rapid exploratory tester using Playwright Test Agents. Does not require a Gherkin spec — autonomously plans a test session, generates Playwright tests, executes them, and heals any failures on the fly. Ideal for smoke tests and new-feature sanity checks.',
+    jiraAccess: 'None',
+    squad: 'Code Generation Squad',
+  },
+  'impact-analyst': {
+    skill: 'impact_analysis',
+    description: 'Analyses GitHub PRs and Issues against the existing automation suite. Identifies missing coverage, obsolete tests, and stale locators. Assigns P0–P3 regression risk and produces a recommended action list for the Engineer and Scribe.',
+    jiraAccess: 'Read — jira_get_issue, jira_search, confluence_search',
+    squad: 'Impact Analysis Squad',
+  },
+  'pipeline-analyst': {
+    skill: 'pipeline_analysis',
+    description: 'Analyses GitHub Actions pipeline logs for trend-level insights — flakiness scoring, failure classification (LOCATOR_CHANGE / ENV_FAILURE / FLAKY_TEST / DATA_ISSUE), and produces a PipelineRCAReport with a prioritised remediation plan.',
+    jiraAccess: 'Read — jira_search, jira_get_issue',
+    squad: 'Impact Analysis Squad',
+  },
+  'curator': {
+    skill: 'kb_maintenance',
+    description: 'Monitors the PgVector knowledge base and automation codebase for drift. Detects obsolete scenarios, unused step definitions, and orphaned Page Objects. Presents deletion recommendations for HITL approval before any KB content is removed.',
+    jiraAccess: 'None',
+    squad: 'Discovery & Indexing Squad',
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Workflow & Team metadata
+// ---------------------------------------------------------------------------
+const WORKFLOW_META: Record<string, { description: string; pipeline: string[]; inputFormat: string; placeholder: string; squad: string }> = {
+  'spec-to-code': {
+    description: 'Converts a Jira ticket or plain requirement into validated Playwright automation code. Architect parses the ticket, Scribe writes the Gherkin spec, Judge validates quality at two checkpoints, Data Agent provisions test data, and Engineer writes the POM + Step Definitions.',
+    pipeline: ['Architect → RequirementContext', 'Scribe → GherkinSpec (.feature)', '⚖️ Gherkin Judge Gate (≥90% auto)', 'Data Agent → RunContext', 'Engineer → POM + StepDefs', '⚖️ Code Judge Gate (≥90% auto)', 'Engineer → GitHub PR'],
+    inputFormat: 'Jira issue key (e.g. GDS-4) or a plain-text requirement description',
+    placeholder: 'GDS-4\n\nor: "Add login page with MFA — must support TOTP and email fallback"',
+    squad: 'Code Generation Squad',
+  },
+  'jira-to-pr': {
+    description: 'Full end-to-end pipeline from Jira ticket to GitHub PR. Includes real Judge gates using JudgeVerdict confidence scoring (≥0.90 auto-approve, <0.90 human review).',
+    pipeline: ['Architect → RequirementContext', 'Scribe → GherkinSpec', '⚖️ Gherkin Judge (JudgeVerdict)', 'Data Agent → RunContext', 'Engineer → POM + StepDefs', '⚖️ Code Judge (JudgeVerdict)', 'Engineer → GitHub PR'],
+    inputFormat: 'Jira issue key',
+    placeholder: 'GDS-4\nor: QAP-123',
+    squad: 'Code Generation Squad',
+  },
+  'discovery-onboard': {
+    description: 'Crawls an AUT, extracts the Accessibility Tree from every page, identifies interactable elements with data-testid / role / text locators, and stores the Site Manifesto in PgVector so the Engineering squad can use it.',
+    pipeline: ['Discovery Agent → crawl AUT (login + navigate ≥3 pages)', 'Accessibility Tree extraction per page', 'SiteManifesto → PgVector KB'],
+    inputFormat: 'Full AUT URL including protocol',
+    placeholder: 'https://demo.nopcommerce.com/',
+    squad: 'Discovery & Indexing Squad',
+  },
+  'triage-heal': {
+    description: 'Analyses a failing Playwright test — parses trace.zip or CI log, classifies the root cause (LOCATOR_STALE, DATA_MISMATCH, TIMING_FLAKE, ENV_FAILURE, LOGIC_CHANGE), and if auto-healable applies a surgical patch verified 3 consecutive times.',
+    pipeline: ['Detective → RCAReport (classify failure)', '↳ LOCATOR_STALE: Medic → HealingPatch (×3 verify loop)', '↳ else: Human escalation with RCA summary'],
+    inputFormat: 'CI error message, test name, or pasted failure log',
+    placeholder: '[FAILED] LoginTest — Element not found: data-testid="login-btn"\n\nor: paste full CI log output',
+    squad: 'Self-Healing Squad',
+  },
+  'automation-scaffold': {
+    description: 'Scaffolds a complete BDD+POM Playwright automation framework from scratch — creates directory structure, config files, BasePage class, and example feature/step/POM files.',
+    pipeline: ['Engineer → Directory structure', 'cucumber.conf.ts + playwright.config.ts + tsconfig.json', 'BasePage.ts (common methods)', 'example.feature + example.steps.ts + HomePage.ts'],
+    inputFormat: 'project_name, base_url, and optional browser/headless settings',
+    placeholder: 'project_name=MyApp base_url=https://myapp.com browser=chromium headless=true',
+    squad: 'Code Generation Squad',
+  },
+  'full-lifecycle': {
+    description: 'End-to-end STLC pipeline using all 9 agents — from Jira ticket through spec, AUT discovery, code generation, test execution, failure analysis, and healing with a final quality gate.',
+    pipeline: ['Architect', 'Scribe', '⚖️ Spec Judge', 'Discovery', 'Librarian', 'Data Agent', 'Engineer (POM)', 'Engineer (StepDefs)', '⚖️ Code Judge', 'Engineer (Execute)', 'Detective', 'Medic', 'Healing Judge', '⚖️ Final Judge', 'Scribe (Report)'],
+    inputFormat: 'Jira issue key or plain requirement text',
+    placeholder: 'GDS-4\n\nor: "Build full test suite for the checkout flow"',
+    squad: 'All Squads',
+  },
+  'full-regression': {
+    description: 'Runs the full regression loop — generates automation from requirements, executes tests, triages failures, applies surgical healing patches, and updates the knowledge base with learnings.',
+    pipeline: ['Engineer → Generate automation', 'Engineer → Execute tests', 'Detective → Analyze failures', 'Medic → Healing patch', 'Healing Judge → Validate patch', 'Medic → Verify 3×', 'Librarian → Update KB'],
+    inputFormat: 'Feature or module description',
+    placeholder: 'Run full regression for the checkout module',
+    squad: 'Code Generation Squad + Self-Healing Squad',
+  },
+  'grooming': {
+    description: '3 Amigos user story review — BA (Architect), SDET (Judge), and Dev (Engineer) assess the ticket in parallel, then synthesise a verdict and post it back to Jira.',
+    pipeline: ['Parallel: BA Assessment (Architect)', 'Parallel: SDET Assessment (Judge)', 'Parallel: Dev Assessment (Engineer)', 'Synthesize → GroomingAssessment', 'Post verdict comment to Jira'],
+    inputFormat: 'Jira issue key',
+    placeholder: 'GDS-5',
+    squad: 'Spec Writing Squad',
+  },
+  'impact-assessment': {
+    description: 'Analyses a PR or GitHub Issue against the existing test suite. Classifies gaps as missing_coverage, obsolete, or needs_update, assigns P0–P3 priority, and produces a recommended action list for the Engineer and Scribe.',
+    pipeline: ['Impact Analyst → fetch PR/Issue diff', 'Query Automation KB + Site Manifesto KB', 'Classify gaps (missing / obsolete / stale)', 'Compute regression risk', 'ImpactReport → recommended actions'],
+    inputFormat: 'GitHub PR number or Issue URL',
+    placeholder: 'PR #42\nor: https://github.com/org/repo/issues/12',
+    squad: 'Impact Analysis Squad',
+  },
+  'pipeline-failure-assessment': {
+    description: 'Analyses a failed GitHub Actions or ADO pipeline run — classifies the root cause and produces a PipelineRCAReport with a prioritised remediation plan.',
+    pipeline: ['Pipeline Analyst → fetch pipeline logs', 'Classify failure (LOCATOR_CHANGE / ENV_FAILURE / FLAKY_TEST / DATA_ISSUE)', 'PipelineRCAReport with remediation plan', 'Optional: Create ADO/Jira ticket (HITL approval)'],
+    inputFormat: 'Pipeline run URL or pasted CI log',
+    placeholder: 'https://github.com/org/repo/actions/runs/12345\nor: paste CI log output',
+    squad: 'CI Failure Squad',
+  },
+  'regression_maintenance': {
+    description: 'Scheduled locator health check — scans Page Objects for stale selectors against the live AUT, applies surgical healing for LOCATOR_STALE failures, and updates the knowledge base.',
+    pipeline: ['Operations team scan all Page Objects', 'Detective → identify stale locators', 'Medic → auto-heal (LOCATOR_STALE)', 'Librarian → Update KB with learnings'],
+    inputFormat: 'AUT URL or component scope (optional — leave blank to scan all)',
+    placeholder: 'https://myapp.com/checkout\n\nor: leave blank to scan all registered pages',
+    squad: 'Self-Healing Squad',
+  },
+  'technical-testing': {
+    description: 'Rapid exploratory test generation via Playwright — the Technical Tester autonomously plans, generates, executes, and verifies tests for a given feature or page without requiring a pre-existing Gherkin spec.',
+    pipeline: ['Technical Tester → Test plan', 'Technical Tester → Generate Playwright tests (no POM required)', 'Technical Tester → Execute + verify', 'Technical Tester → Heal if needed'],
+    inputFormat: 'Plain English description of what to test',
+    placeholder: 'Test the search functionality on the product listing page\n\nor: Verify that the checkout flow works end-to-end for a guest user',
+    squad: 'Code Generation Squad',
+  },
+}
+
+const TEAM_META: Record<string, { purpose: string; responsibility: string; outputContract: string }> = {
+  'strategy': {
+    purpose: 'Spec Writing Squad — bridges Business Analysts and the Technical team.',
+    responsibility: 'Parse Jira tickets into structured RequirementContext (Architect), then author BDD Gherkin specs with full traceability to every acceptance criterion (Scribe).',
+    outputContract: 'RequirementContext → GherkinSpec',
+  },
+  'context': {
+    purpose: 'Discovery & Indexing Squad — maintain the Digital Twin of your AUT and codebase.',
+    responsibility: 'Crawl the AUT to generate the Site Manifesto with Accessibility Tree snapshots (Discovery), re-index Page Objects and Step Definitions into PgVector on every Git commit (Librarian).',
+    outputContract: 'SiteManifesto + PgVector Automation KB',
+  },
+  'engineering': {
+    purpose: 'Code Generation Squad — generate production-grade Playwright automation code.',
+    responsibility: 'Write modular POMs and Step Definitions using the Look-Before-You-Leap pattern (Engineer), provision fresh test data with PII masking and cleanup queries (Data Agent), submit GitHub PRs.',
+    outputContract: 'RunContext → POM + StepDefs → GitHub PR',
+  },
+  'operations': {
+    purpose: 'Self-Healing Squad — keep the regression suite green autonomously.',
+    responsibility: 'Classify failures from trace.zip as LOCATOR_STALE / LOGIC_CHANGE / DATA_MISMATCH / ENV_FAILURE (Detective), apply surgical one-locator healing patches verified 3× (Medic).',
+    outputContract: 'RCAReport → HealingPatch (verified 3×)',
+  },
+  'diagnostics': {
+    purpose: 'CI Failure Squad — correlate pipeline logs with Playwright traces.',
+    responsibility: 'Analyse GitHub Actions / ADO pipeline failures with log-level detail (CI Log Analyzer), cross-reference with Playwright trace analysis (Detective), create Jira/ADO tickets after HITL approval.',
+    outputContract: 'PipelineRCAReport + RCAReport → ADO ticket (HITL)',
+  },
+  'grooming_team': {
+    purpose: 'Backlog Grooming Squad — collaborative backlog refinement from three perspectives.',
+    responsibility: 'BA perspective on testability (Architect), SDET assessment of automation feasibility and edge cases (Impact Analyst), combined into actionable grooming assessment posted to Jira.',
+    outputContract: 'GroomingAssessment → Jira comment',
+  },
+  'intelligence': {
+    purpose: 'Impact Analysis Squad — answers "what needs to change?" and "why did this fail?"',
+    responsibility: 'Analyse PRs and Issues to identify missing/obsolete/stale tests and compute regression risk (Impact Analyst), analyse CI pipeline failures and produce remediation plans (Pipeline Analyst).',
+    outputContract: 'ImpactReport + PipelineRCAReport',
+  },
+}
+
 const StepTree = ({ steps, depth = 0 }: { steps: WorkflowStep[]; depth?: number }) => (
   <div className={cn('space-y-1', depth > 0 && 'ml-3 border-l border-accent/40 pl-2')}>
     {steps.map((s, i) => (
@@ -1119,7 +1409,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
   const [teamDetail, setTeamDetail] = useState<TeamFullDetail | null>(null)
   const [workflowDetail, setWorkflowDetail] = useState<WorkflowFullDetail | null>(null)
   const [loading, setLoading] = useState(false)
-  const [panelView, setPanelView] = useState<'sessions' | 'details'>('details')
+  const [panelView, setPanelView] = useState<'sessions' | 'details'>('sessions')
   const [memories, setMemories] = useState<Array<{id: string; memory?: string; summary?: string; topics?: string[]; agent_id?: string; created_at?: string; updated_at?: string}>>([])  
   const [memoriesLoading, setMemoriesLoading] = useState(false)
 
@@ -1373,8 +1663,26 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
           transition={{ duration: 0.18, ease: 'easeOut' }}
         >
           {loading && <div className="p-3 space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-8 rounded-xl" />)}</div>}
-          {!loading && agentDetail && (
+          {!loading && agentDetail && (() => {
+            const meta = AGENT_META[agentDetail.id]
+            return (
             <div className="p-3 space-y-4">
+              {/* Static description banner from AGENT_META */}
+              {meta && (
+                <div className="rounded-xl border border-info/20 bg-info/5 p-3 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand">{meta.skill}</span>
+                    <span className="rounded-full border border-accent px-2 py-0.5 text-[10px] font-medium text-muted">{meta.squad}</span>
+                  </div>
+                  <p className="text-xs text-primary leading-relaxed">{meta.description}</p>
+                  {meta.jiraAccess !== 'None' && (
+                    <div className="pt-1 border-t border-accent/40">
+                      <span className="text-[10px] font-semibold uppercase text-muted tracking-wide">Jira Access</span>
+                      <p className="text-xs font-mono text-info mt-0.5">{meta.jiraAccess}</p>
+                    </div>
+                  )}
+                </div>
+              )}
               <Section icon={<Bot className="size-3.5 text-brand" />} title="Agent Details">
                 <Card>
                   <KV label="Agent Id" value={agentDetail.id} />
@@ -1405,11 +1713,13 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
                   </Card>
                 </Section>
               )}
-              {agentDetail.memory && (
-                <Section icon={<MemoryStick className="size-3.5 text-brand" />} title="Memory Config">
+              {(agentDetail.memory || agentDetail.sessions) && (
+                <Section icon={<MemoryStick className="size-3.5 text-brand" />} title="Memory & Session Config">
                   <Card>
-                    {agentDetail.memory.enable_agentic_memory !== undefined && <KV label="agentic_memory" value={String(agentDetail.memory.enable_agentic_memory)} />}
-                    {agentDetail.memory.enable_user_memories !== undefined && <KV label="user_memories" value={String(agentDetail.memory.enable_user_memories)} />}
+                    {agentDetail.memory?.enable_agentic_memory !== undefined && <KV label="agentic_memory" value={String(agentDetail.memory.enable_agentic_memory)} />}
+                    {agentDetail.memory?.enable_user_memories !== undefined && <KV label="user_memories" value={String(agentDetail.memory.enable_user_memories)} />}
+                    {agentDetail.sessions?.add_history_to_context !== undefined && <KV label="history_context" value={String(agentDetail.sessions.add_history_to_context)} />}
+                    {agentDetail.sessions?.num_history_runs !== undefined && <KV label="history_runs" value={String(agentDetail.sessions.num_history_runs)} />}
                   </Card>
                 </Section>
               )}
@@ -1419,7 +1729,8 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
                 </Section>
               )}
             </div>
-          )}
+            )
+          })()}
           {!loading && !agentDetail && (
             <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted/40">Select an agent to view details</div>
           )}
@@ -1541,39 +1852,78 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
           transition={{ duration: 0.18, ease: 'easeOut' }}
         >
           {loading && <div className="p-3 space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-8 rounded-xl" />)}</div>}
-          {!loading && workflowDetail && (
-            <div className="p-3 space-y-4">
-              {/* Workflow summary card */}
-              <div className="rounded-xl border border-positive/20 bg-positive/5 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <GitBranch className="size-4 text-positive shrink-0" />
-                  <span className="text-xs font-semibold text-primary">{workflowDetail.name}</span>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[10px]">
-                    <span className="text-muted/60 w-8">ID</span>
-                    <span className="font-mono text-muted truncate">{workflowDetail.id}</span>
-                  </div>
-                  {workflowDetail.db_id && (
-                    <div className="flex items-center gap-2 text-[10px]">
-                      <span className="text-muted/60 w-8">DB</span>
-                      <span className="font-mono text-muted truncate">{workflowDetail.db_id}</span>
+          {!loading && workflowDetail && (() => {
+            const wid = workflowDetail.id
+            const meta = WORKFLOW_META[wid]
+            return (
+              <div className="p-3 space-y-3">
+                {/* Header */}
+                <div className="rounded-xl border border-positive/20 bg-positive/5 p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                      <GitBranch className="size-4 text-positive shrink-0" />
+                      <span className="text-xs font-semibold text-primary">{workflowDetail.name}</span>
                     </div>
-                  )}
-                  <div className="flex items-center gap-2 text-[10px]">
-                    <span className="text-muted/60 w-8">Steps</span>
-                    <span className="font-mono text-positive">{workflowDetail.steps?.length ?? 0} steps defined</span>
+                    {meta?.squad && (
+                      <span className="shrink-0 rounded-full bg-positive/10 border border-positive/20 px-2 py-0.5 text-[9px] font-semibold uppercase text-positive tracking-wide">
+                        {meta.squad}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted/70 leading-relaxed">
+                    {meta?.description ?? workflowDetail.description ?? 'No description available.'}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted/50">
+                    <span className="font-mono">id: {workflowDetail.id}</span>
+                    <span>·</span>
+                    <span>{workflowDetail.steps?.length ?? 0} steps</span>
                   </div>
                 </div>
+
+                {/* Pipeline */}
+                {meta?.pipeline && (
+                  <Section icon={<Layers className="size-3.5 text-positive" />} title="Pipeline">
+                    <div className="rounded-xl border border-accent bg-background p-3">
+                      <div className="flex flex-col gap-1">
+                        {meta.pipeline.map((step, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <div className="flex flex-col items-center shrink-0 mt-0.5">
+                              <span className="flex size-4 items-center justify-center rounded-full bg-positive/10 text-[9px] font-bold text-positive">{i + 1}</span>
+                              {i < meta.pipeline.length - 1 && <div className="w-px flex-1 bg-accent/60 mt-0.5 h-3" />}
+                            </div>
+                            <span className="text-xs text-primary leading-relaxed pb-1">{step}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Section>
+                )}
+
+                {/* Input format */}
+                <Section icon={<Play className="size-3.5 text-positive" />} title="How to Run">
+                  <div className="space-y-2">
+                    {meta?.inputFormat && (
+                      <div className="rounded-xl border border-accent bg-background p-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Input Format</p>
+                        <p className="text-xs text-primary">{meta.inputFormat}</p>
+                      </div>
+                    )}
+                    {meta?.placeholder && (
+                      <div className="rounded-xl border border-accent/50 bg-accent/20 p-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Example</p>
+                        <pre className="text-xs text-muted whitespace-pre-wrap font-mono">{meta.placeholder}</pre>
+                      </div>
+                    )}
+                    {!meta && (
+                      <div className="rounded-xl border border-accent bg-background p-3 text-xs text-muted leading-relaxed">
+                        Type your input in the chat box and press Send. The workflow will execute all steps automatically.
+                      </div>
+                    )}
+                  </div>
+                </Section>
               </div>
-              {/* How to run */}
-              <Section icon={<Play className="size-3.5 text-positive" />} title="How to run">
-                <div className="rounded-xl border border-accent bg-background p-3 text-xs text-muted leading-relaxed">
-                  Type your input in the chat box and press Send. The workflow will execute all its steps automatically.
-                </div>
-              </Section>
-            </div>
-          )}
+            )
+          })()}
           {!loading && !workflowDetail && (
             <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted/40">Select a workflow to view its overview</div>
           )}
@@ -1639,6 +1989,13 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
 // ---------------------------------------------------------------------------
 
 const AGENT_PROMPTS: Record<string, string[]> = {
+  // Concierge
+  concierge: [
+    'Generate test cases from a Jira ticket',
+    'Fix a failing test in CI',
+    'Onboard a new app to automation',
+    'Analyse a CI pipeline failure',
+  ],
   // Squad 1 – Strategy
   architect:         ['Analyze this Jira ticket: PROJ-123', 'Which Page Objects are affected by the checkout redesign?', 'Parse this requirement and produce an execution plan'],
   scribe:            ['Write a Gherkin spec for user login with MFA', 'Convert this acceptance criterion into BDD steps', 'Generate reusable step definitions for the cart flow'],
@@ -1682,16 +2039,39 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showActivity, setShowActivity] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
-  const { messages, isStreaming, isEndpointActive, rightPanelOpen, setRightPanelOpen, chatEvents } = useStore()
+  const { messages, isStreaming, isEndpointActive, rightPanelOpen, setRightPanelOpen, chatEvents, setMode, setMessages } = useStore()
   const { handleStreamResponse, cancelRun } = useAIChatStreamHandler()
   const { clearChat } = useChatActions()
   const { getSessions, getSession } = useSessionLoader()
-  const [agentId] = useQueryState('agent')
-  const [teamId] = useQueryState('team')
-  const [workflowId] = useQueryState('workflow')
+  const [agentId, setAgentId] = useQueryState('agent')
+  const [teamId, setTeamId] = useQueryState('team')
+  const [workflowId, setWorkflowId] = useQueryState('workflow')
   const [sessionId, setSessionId] = useQueryState('session')
-  const [dbId] = useQueryState('db_id')
+  const [dbId, setDbId] = useQueryState('db_id')
   const { mode } = useStore()
+
+  // Route suggestion handler — switches mode + entity when user clicks "Switch to X"
+  const handleRoute = (d: RouteDirective) => {
+    setMessages([])
+    setSessionId(null)
+    setMode(d.mode)
+    if (d.mode === 'agent')    { setAgentId(d.route_to); setTeamId(null); setWorkflowId(null); setDbId(null) }
+    else if (d.mode === 'team')     { setTeamId(d.route_to); setAgentId(null); setWorkflowId(null); setDbId(null) }
+    else                            { setWorkflowId(d.route_to); setAgentId(null); setTeamId(null); setDbId(null) }
+    if (d.starter_prompt) setTimeout(() => { setInputMessage(d.starter_prompt!); textareaRef.current?.focus() }, 100)
+  }
+
+  // First-visit: auto-select Concierge and show welcome message
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (agentId || teamId || workflowId || sessionId) return
+    const visited = localStorage.getItem('qap_visited')
+    if (visited) return
+    localStorage.setItem('qap_visited', '1')
+    setMode('agent')
+    setAgentId('concierge')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!agentId && !teamId) return
@@ -1705,11 +2085,6 @@ export default function ChatPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
-
-  // Auto-show activity stream when a run starts so users see live events
-  useEffect(() => {
-    if (isStreaming) setShowActivity(true)
-  }, [isStreaming])
 
   // Auto-resize textarea as content grows
   useEffect(() => {
@@ -1859,15 +2234,17 @@ export default function ChatPage() {
                     className="text-[1.125rem] font-medium leading-[1.35rem] tracking-[-0.01em] text-primary"
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.16 }}
                   >
-                    {(agentId || teamId || workflowId) ? 'New Session' : 'Quality Autopilot'}
+                    {agentId === 'concierge' ? 'Welcome to Quality Autopilot'
+                      : (agentId || teamId || workflowId) ? 'New Session' : 'Quality Autopilot'}
                   </motion.p>
                   <motion.p
                     className="text-center text-[0.875rem] font-normal leading-[21px] tracking-[-0.02em] text-muted"
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.22 }}
                   >
                     {!isEndpointActive ? 'Connect to your AgentOS endpoint to start chatting.'
-                      : !hasEntity ? 'Select an agent, team, or workflow from the sidebar to begin.'
-                        : 'Enter your input to get started with your agent.'}
+                      : agentId === 'concierge' ? "I'm your Concierge — tell me what you need and I'll route you to the right agent, team, or workflow."
+                        : !hasEntity ? 'Select an agent, team, or workflow from the sidebar to begin.'
+                          : 'Enter your input to get started with your agent.'}
                   </motion.p>
                 </motion.div>
 
@@ -1908,7 +2285,7 @@ export default function ChatPage() {
                   const latestEvent = isActiveStreaming && chatEvents.length > 0
                     ? chatEvents[chatEvents.length - 1]
                     : null
-                  return <MessageItem key={i} msg={msg} index={i} isActiveStreaming={isActiveStreaming} latestEvent={latestEvent} onFollowupClick={(s) => { setInputMessage(s); setTimeout(() => textareaRef.current?.focus(), 0) }} />
+                  return <MessageItem key={i} msg={msg} index={i} isActiveStreaming={isActiveStreaming} latestEvent={latestEvent} onFollowupClick={(s) => { setInputMessage(s); setTimeout(() => textareaRef.current?.focus(), 0) }} onRoute={handleRoute} />
                 })}
               </motion.div>
             )}

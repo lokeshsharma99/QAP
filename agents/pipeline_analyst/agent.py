@@ -18,8 +18,10 @@ from agno.tools.scheduler import SchedulerTools
 from agents.pipeline_analyst.instructions import INSTRUCTIONS
 from agents.pipeline_analyst.tools import download_ci_artifact, parse_allure_results, parse_junit_xml
 from app.ado_mcp import get_ado_mcp_for_pipeline_analyst
+from app.atlassian_mcp import get_atlassian_mcp_for_pipeline_analyst
 from app.github_mcp import get_github_mcp_for_pipeline_analyst
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from contracts.pipeline_rca_report import PipelineRCAReport
 from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -36,6 +38,13 @@ _github_tools = get_github_mcp_for_pipeline_analyst()
 # definitions, and repo diffs to diagnose CI failures.
 # ---------------------------------------------------------------------------
 _ado_tools = get_ado_mcp_for_pipeline_analyst()
+
+# ---------------------------------------------------------------------------
+# Atlassian MCP Tools (requires ATLASSIAN_EMAIL + ATLASSIAN_API_TOKEN in .env)
+# Domains: JiraWorkItem — look up Jira issues linked to failing CI run to
+# understand intended behaviour before classifying FUNCTIONALITY_CHANGE.
+# ---------------------------------------------------------------------------
+_atlassian_tools = get_atlassian_mcp_for_pipeline_analyst()
 
 # ---------------------------------------------------------------------------
 # Knowledge Bases
@@ -77,6 +86,7 @@ pipeline_analyst = Agent(
         KnowledgeTools(knowledge=rca_kb),
         *_github_tools,
         *_ado_tools,
+        *_atlassian_tools,
         download_ci_artifact,
         parse_junit_xml,
         parse_allure_results,
@@ -118,6 +128,7 @@ pipeline_analyst = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
+    response_model=PipelineRCAReport,
     markdown=True,
     followups=True,
     followup_model=FOLLOWUP_MODEL,

@@ -20,7 +20,7 @@ from teams.engineering.instructions import LEADER_INSTRUCTIONS
 engineering_team = Team(
     # Identity
     id="engineering",
-    name="Engineering Squad",
+    name="Code Generation Squad",
     mode=TeamMode.coordinate,
     # Model
     model=MODEL,

@@ -2,44 +2,38 @@
 app/atlassian_mcp.py
 ====================
 
-Factory functions returning Agno MCPTools instances wired to the official
-Atlassian Rovo MCP Server (cloud-hosted, no local install required).
+Factory functions returning Agno MCPTools instances wired to the
+sooperset/mcp-atlassian server (https://github.com/sooperset/mcp-atlassian).
 
-The Atlassian Rovo MCP Server runs at:
-    https://mcp.atlassian.com/v1/mcp
+This replaces the official Atlassian Rovo MCP which exposed only 2 tools and
+required org-admin permission to enable API token auth.  The sooperset server
+exposes 72 Jira + Confluence tools and works out-of-the-box with a standard
+API token.
 
-It is accessed via the `mcp-remote` stdio proxy with API token authentication
-(headless — no browser required).  The proxy pattern keeps transport consistent
-with the GitHub and Azure DevOps MCP implementations (all stdio via npx).
+REPLACED: https://mcp.atlassian.com/v1/mcp (Rovo MCP — org-admin required)
 
-Supported Atlassian products:
-  Jira        — issues, sprints, boards, work items, acceptance criteria
-  Confluence  — pages, spaces, search, create / update docs
-  Compass     — components, dependencies, service catalog
+Transport (priority order)
+--------------------------
+1. HTTP  — connect to the atlassian-mcp Docker service at ATLASSIAN_MCP_URL
+           (http://atlassian-mcp:8933/mcp).  No subprocess overhead.
+2. stdio — spawn ``uvx mcp-atlassian`` locally (fallback for local dev outside
+           Docker).  Requires ``uvx`` / ``uv`` installed in PATH.
 
-Authentication setup
---------------------
-1. Create an Atlassian API token at:
-   https://id.atlassian.com/manage-profile/security/api-tokens
-2. Ask your Atlassian org admin to enable API token auth:
-   Atlassian Administration → Security → Rovo MCP Server settings
-3. Set in .env:
-     ATLASSIAN_URL=https://yourorg.atlassian.net
-     ATLASSIAN_EMAIL=user@example.com
-     ATLASSIAN_API_TOKEN=ATATT3x...
-   Optional (reduces tool calls per session):
-     ATLASSIAN_CLOUD_ID=      # found via https://yourorg.atlassian.net/_edge/tenant_info
-     ATLASSIAN_JIRA_PROJECT=  # default Jira project key e.g. QAP
-     ATLASSIAN_CONFLUENCE_SPACE=  # default Confluence spaceId
-
-Usage by agent
+Authentication
 --------------
-  Architect       — Jira (read issues / ACs as requirements)
-  Scribe          — Jira + Confluence (verify ACs, attach .feature links)
-  CI Log Analyzer — Jira (create bugs from RCA after HITL approval)
+Credentials are read from the same env vars already set in your .env:
+  ATLASSIAN_URL        → JIRA_URL for the server
+  ATLASSIAN_EMAIL      → JIRA_USERNAME + CONFLUENCE_USERNAME
+  ATLASSIAN_API_TOKEN  → JIRA_API_TOKEN + CONFLUENCE_API_TOKEN
+  ATLASSIAN_CONFLUENCE_URL (optional) → CONFLUENCE_URL (defaults to ATLASSIAN_URL/wiki)
+
+Supported products
+------------------
+  Jira        — jira_get_issue, jira_search, jira_create_issue, jira_add_comment, ...
+  Confluence  — confluence_search, confluence_get_page, confluence_create_page, ...
+  (72 tools total — see https://mcp-atlassian.soomiles.com/docs/tools-reference)
 """
 
-import base64
 import logging
 import os
 import socket
@@ -50,73 +44,13 @@ from mcp.client.stdio import StdioServerParameters
 
 _log = logging.getLogger(__name__)
 
-# Atlassian Rovo MCP remote endpoint
-_ATLASSIAN_MCP_URL = "https://mcp.atlassian.com/v1/mcp"
-
-
 # ---------------------------------------------------------------------------
-# Internal helper
+# Service availability cache
+# Probes the atlassian-mcp HTTP service at most once per process startup.
 # ---------------------------------------------------------------------------
-
-def _make_atlassian_mcp(tool_name_prefix: str) -> MCPTools:
-    """
-    Build an MCPTools instance connecting to the Atlassian Rovo MCP Server
-    via the mcp-remote stdio proxy with API token (Basic auth) authentication.
-
-    Parameters
-    ----------
-    tool_name_prefix:
-        Short prefix added to every exposed tool name to avoid collisions.
-    """
-    email = os.getenv("ATLASSIAN_EMAIL", "")
-    api_token = os.getenv("ATLASSIAN_API_TOKEN", "")
-
-    if not email or not api_token:
-        _log.warning(
-            "ATLASSIAN_EMAIL or ATLASSIAN_API_TOKEN not set — Atlassian MCP unavailable. "
-            "Set both in .env and ensure your org admin has enabled API token auth in "
-            "Atlassian Administration → Security → Rovo MCP Server settings."
-        )
-        raise ValueError("Atlassian credentials not configured")
-
-    # mcp-remote expects the Authorization header value as: Basic <base64(email:token)>
-    b64_creds = base64.b64encode(f"{email}:{api_token}".encode()).decode()
-    auth_header = f"Authorization:Basic {b64_creds}"
-
-    server_params = StdioServerParameters(
-        command="npx",
-        args=[
-            "-y",
-            "mcp-remote",
-            _ATLASSIAN_MCP_URL,
-            "--header",
-            auth_header,
-            # Suppress interactive prompts; fail fast in headless mode
-            "--allow-http",
-        ],
-        env={**os.environ},
-    )
-
-    return MCPTools(
-        server_params=server_params,
-        transport="stdio",
-        tool_name_prefix=tool_name_prefix,
-        timeout_seconds=30,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Per-agent factory functions
-# Each returns a list so agents can unpack: tools=[..., *get_atlassian_mcp_for_X()]
-# Returns [] when ATLASSIAN_EMAIL / ATLASSIAN_API_TOKEN are not configured.
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Singleton — one shared Atlassian MCP process for all agents.
-# Using a single instance avoids spawning multiple npx/mcp-remote processes
-# at startup (which caused simultaneous connection timeouts).
-# ---------------------------------------------------------------------------
-_ATLASSIAN_MCP_SINGLETON: MCPTools | None = None
+_ATLASSIAN_SERVICE_CHECKED: bool = False
+_ATLASSIAN_SERVICE_AVAILABLE: bool = False
+_ATLASSIAN_SERVICE_URL: str = ""
 
 
 def _atlassian_mcp_service_reachable(url: str) -> bool:
@@ -131,68 +65,171 @@ def _atlassian_mcp_service_reachable(url: str) -> bool:
         return False
 
 
-def _get_atlassian_mcp_singleton() -> MCPTools:
-    """Return the module-level singleton.
+def _get_atlassian_service_availability() -> tuple[bool, str]:
+    """Return (http_available, service_url), probing the TCP port at most once."""
+    global _ATLASSIAN_SERVICE_CHECKED, _ATLASSIAN_SERVICE_AVAILABLE, _ATLASSIAN_SERVICE_URL
+    if not _ATLASSIAN_SERVICE_CHECKED:
+        mcp_url = os.getenv("ATLASSIAN_MCP_URL", "").rstrip("/")
+        _ATLASSIAN_SERVICE_URL = mcp_url
+        _ATLASSIAN_SERVICE_AVAILABLE = bool(mcp_url and _atlassian_mcp_service_reachable(mcp_url))
+        if mcp_url and not _ATLASSIAN_SERVICE_AVAILABLE:
+            _log.warning(
+                "ATLASSIAN_MCP_URL is set to %s but the service is not reachable. "
+                "Falling back to uvx stdio. Start: docker compose up -d atlassian-mcp",
+                mcp_url,
+            )
+        _ATLASSIAN_SERVICE_CHECKED = True
+    return _ATLASSIAN_SERVICE_AVAILABLE, _ATLASSIAN_SERVICE_URL
 
-    Priority:
-    1. HTTP — connect to the atlassian-mcp Docker service (ATLASSIAN_MCP_URL).
-       The service wraps mcp-remote stdio via supergateway streamable-HTTP.
-    2. stdio fallback — spawn npx mcp-remote locally inside qap-api.
-       Used when the atlassian-mcp container is not running.
-    Raises ValueError when credentials are not configured.
+
+# ---------------------------------------------------------------------------
+# Internal helper — HTTP mode (per-agent filtered)
+# ---------------------------------------------------------------------------
+
+def _make_atlassian_mcp_http_filtered(include_tools: list[str]) -> MCPTools | None:
+    """Create a per-agent filtered MCPTools for the atlassian-mcp HTTP service.
+
+    ``include_tools`` uses raw server tool names (e.g. ``["jira_get_issue"]``).
+    Tools are exposed without an additional prefix since ``jira_`` and
+    ``confluence_`` prefixes already make them self-documenting.
+
+    Returns None when the HTTP service is unreachable.
     """
-    email = os.getenv("ATLASSIAN_EMAIL", "")
-    api_token = os.getenv("ATLASSIAN_API_TOKEN", "")
+    available, mcp_url = _get_atlassian_service_availability()
+    if not available:
+        return None
+
+    return MCPTools(
+        url=mcp_url,
+        transport="streamable-http",
+        include_tools=include_tools,
+        timeout_seconds=60,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Internal helper — stdio fallback (local dev outside Docker)
+# ---------------------------------------------------------------------------
+
+def _make_atlassian_mcp_stdio() -> MCPTools:
+    """Spawn mcp-atlassian via ``uvx`` as a stdio subprocess (local dev fallback).
+
+    Raises ValueError when ATLASSIAN_EMAIL / ATLASSIAN_API_TOKEN are not set.
+    """
+    jira_url = os.getenv("ATLASSIAN_URL") or os.getenv("JIRA_URL", "")
+    email = os.getenv("ATLASSIAN_EMAIL") or os.getenv("JIRA_USERNAME", "")
+    api_token = os.getenv("ATLASSIAN_API_TOKEN") or os.getenv("JIRA_API_TOKEN", "")
+    confluence_url = (
+        os.getenv("ATLASSIAN_CONFLUENCE_URL")
+        or os.getenv("CONFLUENCE_URL")
+        or (f"{jira_url}/wiki" if jira_url else "")
+    )
 
     if not email or not api_token:
-        _log.warning(
-            "ATLASSIAN_EMAIL or ATLASSIAN_API_TOKEN not set — Atlassian MCP unavailable. "
-            "Set both in .env and ensure your org admin has enabled API token auth in "
-            "Atlassian Administration → Security → Rovo MCP Server settings."
-        )
-        raise ValueError("Atlassian credentials not configured")
-
-    global _ATLASSIAN_MCP_SINGLETON
-    if _ATLASSIAN_MCP_SINGLETON is not None:
-        return _ATLASSIAN_MCP_SINGLETON
-
-    # -------------------------------------------------------------------------
-    # Mode 1 — streamable-HTTP connection to the atlassian-mcp Docker service.
-    # -------------------------------------------------------------------------
-    atlassian_mcp_url = os.getenv("ATLASSIAN_MCP_URL", "").rstrip("/")
-    if atlassian_mcp_url and _atlassian_mcp_service_reachable(atlassian_mcp_url):
-        _ATLASSIAN_MCP_SINGLETON = MCPTools(
-            url=atlassian_mcp_url,
-            transport="streamable-http",
-            tool_name_prefix="atl_",
-            timeout_seconds=60,
-        )
-        return _ATLASSIAN_MCP_SINGLETON
-
-    if atlassian_mcp_url:
-        _log.warning(
-            "ATLASSIAN_MCP_URL is set to %s but the service is not reachable. "
-            "Falling back to npx stdio. Start with: docker compose up -d atlassian-mcp",
-            atlassian_mcp_url,
+        raise ValueError(
+            "ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN must be set for Atlassian MCP. "
+            "See example.env for setup instructions."
         )
 
-    # -------------------------------------------------------------------------
-    # Mode 2 — stdio fallback: spawn npx mcp-remote inside qap-api.
-    # -------------------------------------------------------------------------
-    _ATLASSIAN_MCP_SINGLETON = _make_atlassian_mcp(tool_name_prefix="atl_")
-    return _ATLASSIAN_MCP_SINGLETON
+    subprocess_env = {
+        **os.environ,
+        "JIRA_URL": jira_url,
+        "JIRA_USERNAME": email,
+        "JIRA_API_TOKEN": api_token,
+        "CONFLUENCE_URL": confluence_url,
+        "CONFLUENCE_USERNAME": email,
+        "CONFLUENCE_API_TOKEN": api_token,
+    }
 
+    server_params = StdioServerParameters(
+        command="uvx",
+        args=["mcp-atlassian", "--transport", "stdio"],
+        env=subprocess_env,
+    )
+
+    return MCPTools(
+        server_params=server_params,
+        transport="stdio",
+        timeout_seconds=60,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Singleton for stdio mode (avoid spawning multiple subprocesses)
+# ---------------------------------------------------------------------------
+_ATLASSIAN_MCP_STDIO_SINGLETON: MCPTools | None = None
+
+
+def _get_atlassian_mcp_singleton() -> MCPTools:
+    """Return shared stdio singleton (fallback for local dev outside Docker)."""
+    global _ATLASSIAN_MCP_STDIO_SINGLETON
+    if _ATLASSIAN_MCP_STDIO_SINGLETON is None:
+        _ATLASSIAN_MCP_STDIO_SINGLETON = _make_atlassian_mcp_stdio()
+    return _ATLASSIAN_MCP_STDIO_SINGLETON
+
+
+# ---------------------------------------------------------------------------
+# Per-agent tool subsets
+#
+# Tool names match the mcp-atlassian server's native names.
+# See: https://mcp-atlassian.soomiles.com/docs/tools-reference
+#
+# Read-only:  jira_get_issue, jira_search, confluence_search, confluence_get_page
+# Write:      jira_create_issue, jira_update_issue, jira_add_comment,
+#             jira_transition_issue
+# ---------------------------------------------------------------------------
+
+# Architect: parse Jira requirements + Confluence domain context (read-only)
+_ARCHITECT_ATLASSIAN_TOOLS = [
+    "jira_get_issue",        # fetch full issue (summary, description, ACs, priority)
+    "jira_search",           # JQL search for related issues in the project
+    "confluence_search",     # find domain knowledge and architecture docs
+    "confluence_get_page",   # read specific test-strategy or spec page
+]
+
+# Scribe: cross-check ACs; find reusable Gherkin steps in Confluence (read-only)
+_SCRIBE_ATLASSIAN_TOOLS = [
+    "jira_get_issue",        # verify ACs after Architect handoff
+    "confluence_search",     # find step libraries and test-strategy docs
+    "confluence_get_page",   # read the test-strategy doc content
+]
+
+# CI Log Analyzer: duplicate detection + ticket creation / commenting after HITL
+_CI_LOG_ANALYZER_ATLASSIAN_TOOLS = [
+    "jira_search",           # find duplicate open bugs by summary / project
+    "jira_get_issue",        # inspect existing issue before creating a duplicate
+    "jira_create_issue",     # create new bug ticket (after HITL approval)
+    "jira_add_comment",      # add RCA comment to existing ticket
+    "jira_transition_issue", # move ticket to In Progress / In Review
+]
+
+# Impact Analyst: trace PR changes back to Jira ACs (read-only)
+_IMPACT_ANALYST_ATLASSIAN_TOOLS = [
+    "jira_get_issue",        # get ACs from the issue linked to the PR
+    "jira_search",           # find other related issues in the project
+    "confluence_search",     # find domain / test-coverage docs
+]
+
+# Pipeline Analyst: link CI failures to Jira issues to understand intent (read-only)
+_PIPELINE_ANALYST_ATLASSIAN_TOOLS = [
+    "jira_search",           # look up issues by project / component
+    "jira_get_issue",        # get full issue detail (intended behaviour)
+]
+
+
+# ---------------------------------------------------------------------------
+# Per-agent factory functions
+# Each returns a list so agents can unpack: tools=[..., *get_atlassian_mcp_for_X()]
+# HTTP mode:   returns a new per-agent filtered MCPTools.
+# stdio mode:  returns the shared singleton (all tools exposed).
+# Returns []   when credentials are not configured or service is unavailable.
+# ---------------------------------------------------------------------------
 
 def get_atlassian_mcp_for_architect() -> list:
-    """
-    Atlassian MCP tools for the Architect agent.
-
-    Architect uses these to:
-    - Fetch Jira issues (User Stories, Epics, Bugs) as requirement sources
-    - Read acceptance criteria from Jira descriptions and sub-tasks
-    - Query Confluence knowledge bases for domain / business context
-    - Understand sprint / backlog priority before producing an Execution Plan
-    """
+    """Atlassian MCP tools for the Architect agent (Jira + Confluence read)."""
+    http = _make_atlassian_mcp_http_filtered(_ARCHITECT_ATLASSIAN_TOOLS)
+    if http:
+        return [http]
     try:
         return [_get_atlassian_mcp_singleton()]
     except Exception:
@@ -200,14 +237,10 @@ def get_atlassian_mcp_for_architect() -> list:
 
 
 def get_atlassian_mcp_for_scribe() -> list:
-    """
-    Atlassian MCP tools for the Scribe agent.
-
-    Scribe uses these to:
-    - Cross-check all Jira ACs are covered in the generated Gherkin spec
-    - Read Confluence test strategy / regression docs for reusable step patterns
-    - Comment on Jira issues linking to generated .feature files
-    """
+    """Atlassian MCP tools for the Scribe agent (AC cross-check + Confluence)."""
+    http = _make_atlassian_mcp_http_filtered(_SCRIBE_ATLASSIAN_TOOLS)
+    if http:
+        return [http]
     try:
         return [_get_atlassian_mcp_singleton()]
     except Exception:
@@ -215,15 +248,34 @@ def get_atlassian_mcp_for_scribe() -> list:
 
 
 def get_atlassian_mcp_for_ci_log_analyzer() -> list:
-    """
-    Atlassian MCP tools for the CI Log Analyzer agent.
-
-    CI Log Analyzer uses these to:
-    - Search for duplicate open Jira bugs before creating new ones
-    - Create Jira bug tickets from RCA findings (after HITL approval)
-    - Attach RCA report text to Jira issue descriptions and comments
-    """
+    """Atlassian MCP tools for the CI Log Analyzer (dup check + ticket creation)."""
+    http = _make_atlassian_mcp_http_filtered(_CI_LOG_ANALYZER_ATLASSIAN_TOOLS)
+    if http:
+        return [http]
     try:
         return [_get_atlassian_mcp_singleton()]
     except Exception:
         return []
+
+
+def get_atlassian_mcp_for_impact_analyst() -> list:
+    """Atlassian MCP tools for the Impact Analyst (Jira AC tracing)."""
+    http = _make_atlassian_mcp_http_filtered(_IMPACT_ANALYST_ATLASSIAN_TOOLS)
+    if http:
+        return [http]
+    try:
+        return [_get_atlassian_mcp_singleton()]
+    except Exception:
+        return []
+
+
+def get_atlassian_mcp_for_pipeline_analyst() -> list:
+    """Atlassian MCP tools for the Pipeline Analyst (CI failure → Jira linking)."""
+    http = _make_atlassian_mcp_http_filtered(_PIPELINE_ANALYST_ATLASSIAN_TOOLS)
+    if http:
+        return [http]
+    try:
+        return [_get_atlassian_mcp_singleton()]
+    except Exception:
+        return []
+

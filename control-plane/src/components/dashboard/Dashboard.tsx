@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import {
   Activity, ExternalLink, Bot, Users,
   ShieldCheck, Zap, MessageSquare, Wrench, BarChart2, RefreshCw,
-  AlertCircle, ChevronRight, BookOpen, FlaskConical
+  AlertCircle, ChevronRight, BookOpen, FlaskConical, AlertTriangle, Clock
 } from 'lucide-react'
 import { APIRoutes } from '@/api/routes'
 import { constructEndpointUrl } from '@/lib/constructEndpointUrl'
@@ -26,26 +26,64 @@ interface TraceSummary {
   start_time: string
   agent_id?: string
   team_id?: string
+  workflow_id?: string
+  session_id?: string
   error_count: number
 }
 
-/** Convert raw trace name like "Engineer.arun" → "Engineer"
- *  or agent_id like "data_agent" / "ci-log-analyzer" → "Data Agent" / "Ci Log Analyzer" */
-const fmtRunName = (name?: string, agentId?: string, teamId?: string): string => {
-  const raw = name || agentId || teamId || 'run'
-  // strip method suffix: .arun / .run / .astream / .stream / .aprint
-  const stripped = raw.replace(/\.(arun|run|astream|stream|aprint|print)$/i, '')
-  // prettify snake_case and kebab-case → Title Case
-  return stripped
+/** Strip .arun/.run suffix then prettify snake_case/kebab → Title Case */
+const prettify = (raw: string) =>
+  raw
+    .replace(/\.(arun|run|astream|stream|aprint|print)$/i, '')
     .replace(/[-_]/g, ' ')
     .replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1))
+
+/** Extract ticket ref like GDS-4, QAP-12, PROJ-100 from a string */
+const extractTicket = (s?: string): string | null => {
+  if (!s) return null
+  const m = s.match(/\b([A-Z]{2,8}-\d+)\b/)
+  return m ? m[1] : null
 }
 
-const traceStatusColor = (status: string) => {
-  if (status === 'success' || status === 'ok') return 'text-positive'
-  if (status === 'error'   || status === 'failed') return 'text-destructive'
-  if (status === 'running') return 'text-warning'
-  return 'text-muted'
+/** Determine entity type and display name */
+const resolveRun = (t: TraceSummary): { label: string; type: 'agent' | 'team' | 'workflow'; ticket: string | null } => {
+  const ticket = extractTicket(t.name) || extractTicket(t.session_id)
+  if (t.workflow_id) return { label: prettify(t.workflow_id), type: 'workflow', ticket }
+  if (t.team_id)     return { label: prettify(t.team_id),     type: 'team',     ticket }
+  if (t.agent_id)    return { label: prettify(t.agent_id),    type: 'agent',    ticket }
+  return { label: prettify(t.name || 'Run'), type: 'agent', ticket }
+}
+
+const TYPE_CONFIG = {
+  agent:    { icon: Bot,   color: 'text-brand',       bg: 'bg-brand/10'     },
+  team:     { icon: Users, color: 'text-purple-400',  bg: 'bg-purple-400/10'},
+  workflow: { icon: Zap,   color: 'text-warning',     bg: 'bg-warning/10'   },
+}
+
+const STATUS_CONFIG: Record<string, { label: string; dot: string; text: string }> = {
+  success:  { label: 'Passed',  dot: 'bg-positive',     text: 'text-positive'     },
+  ok:       { label: 'Passed',  dot: 'bg-positive',     text: 'text-positive'     },
+  error:    { label: 'Failed',  dot: 'bg-destructive',  text: 'text-destructive'  },
+  failed:   { label: 'Failed',  dot: 'bg-destructive',  text: 'text-destructive'  },
+  running:  { label: 'Running', dot: 'bg-warning animate-pulse', text: 'text-warning' },
+}
+const statusCfg = (status: string, errorCount: number) => {
+  if (errorCount > 0) return STATUS_CONFIG['error']
+  return STATUS_CONFIG[status] ?? { label: 'Unknown', dot: 'bg-muted/40', text: 'text-muted' }
+}
+
+/** Format duration: "12.3s", "2m 4s", "45ms" */
+const fmtDuration = (raw?: string): string => {
+  if (!raw) return '—'
+  // already formatted
+  if (/[ms]/.test(raw)) return raw
+  const ms = parseFloat(raw)
+  if (isNaN(ms)) return raw
+  if (ms < 1000)   return `${ms}ms`
+  if (ms < 60000)  return `${(ms / 1000).toFixed(1)}s`
+  const mins = Math.floor(ms / 60000)
+  const secs = Math.round((ms % 60000) / 1000)
+  return `${mins}m ${secs}s`
 }
 
 const RecentTracesCard = ({ endpoint, authToken }: { endpoint: string; authToken: string }) => {
@@ -55,13 +93,14 @@ const RecentTracesCard = ({ endpoint, authToken }: { endpoint: string; authToken
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const url = `${constructEndpointUrl(endpoint)}/traces?limit=6`
+      const url = `${constructEndpointUrl(endpoint)}/traces?limit=8`
       const res = await fetch(url, {
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
       })
       if (res.ok) {
         const data = await res.json()
-        setTraces(Array.isArray(data) ? data.slice(0, 6) : (data.data ?? data.traces ?? []).slice(0, 6))
+        const raw = Array.isArray(data) ? data : (data.data ?? data.traces ?? [])
+        setTraces(raw.slice(0, 8))
       }
     } catch { /* offline */ }
     finally { setLoading(false) }
@@ -69,15 +108,29 @@ const RecentTracesCard = ({ endpoint, authToken }: { endpoint: string; authToken
 
   useEffect(() => { load() }, [load])
 
+  const failed  = traces.filter(t => t.status === 'error' || t.status === 'failed' || t.error_count > 0).length
+  const running = traces.filter(t => t.status === 'running').length
+
   return (
     <div className="flex flex-col flex-1 rounded-xl border border-accent bg-primaryAccent p-4">
+      {/* Header */}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="size-4 text-brand" />
           <h3 className="text-xs font-medium uppercase text-primary">Recent Runs</h3>
+          {running > 0 && (
+            <span className="flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
+              <span className="size-1.5 rounded-full bg-warning animate-pulse" />{running} running
+            </span>
+          )}
+          {failed > 0 && (
+            <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+              <AlertTriangle className="size-3" />{failed} failed
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={load} className="text-muted hover:text-primary">
+          <button onClick={load} title="Refresh" className="text-muted hover:text-primary transition-colors">
             <RefreshCw className="size-3.5" />
           </button>
           <Link href="/traces" className="flex items-center gap-1 text-xs text-muted hover:text-primary">
@@ -86,24 +139,76 @@ const RecentTracesCard = ({ endpoint, authToken }: { endpoint: string; authToken
         </div>
       </div>
 
+      {/* Column headers */}
+      {!loading && traces.length > 0 && (
+        <div className="mb-1 flex items-center gap-2 px-2 text-[9px] font-semibold uppercase tracking-widest text-muted/40">
+          <span className="w-5 shrink-0" />
+          <span className="flex-1">Agent / Team / Workflow</span>
+          <span className="w-16 text-center">Status</span>
+          <span className="w-12 text-right">Duration</span>
+          <span className="w-14 text-right">When</span>
+        </div>
+      )}
+
       {loading ? (
-        <div className="space-y-1.5">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-8" />)}</div>
+        <div className="space-y-1.5">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-9" />)}</div>
       ) : traces.length === 0 ? (
         <p className="flex-1 flex items-center justify-center text-xs text-muted/50">No runs recorded yet</p>
       ) : (
-        <div className="flex-1 overflow-y-auto space-y-1">
-          {traces.map((t) => (
-            <Link
-              key={t.trace_id}
-              href={`/traces?trace=${t.trace_id}`}
-              className="flex items-center gap-3 rounded-lg border border-transparent px-2 py-1.5 hover:border-accent/50 hover:bg-accent/20"
-            >
-              <span className={cn('size-1.5 shrink-0 rounded-full', t.error_count > 0 || t.status === 'error' ? 'bg-destructive' : t.status === 'running' ? 'bg-warning animate-pulse' : 'bg-positive')} />
-              <span className="flex-1 min-w-0 truncate text-xs text-primary">{fmtRunName(t.name, t.agent_id, t.team_id)}</span>
-              <span className={cn('shrink-0 text-xs', traceStatusColor(t.status))}>{t.duration || '—'}</span>
-              <span className="shrink-0 text-xs text-muted/50">{t.start_time ? dayjs(t.start_time).fromNow() : ''}</span>
-            </Link>
-          ))}
+        <div className="flex-1 overflow-y-auto space-y-0.5">
+          {traces.map((t) => {
+            const { label, type, ticket } = resolveRun(t)
+            const { icon: TypeIcon, color: typeColor, bg: typeBg } = TYPE_CONFIG[type]
+            const cfg = statusCfg(t.status, t.error_count)
+            return (
+              <Link
+                key={t.trace_id}
+                href={`/traces?trace=${t.trace_id}`}
+                className="group flex items-center gap-2 rounded-lg border border-transparent px-2 py-2 hover:border-accent/50 hover:bg-accent/20 transition-colors"
+              >
+                {/* Type icon */}
+                <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-md', typeBg)}>
+                  <TypeIcon className={cn('size-3', typeColor)} />
+                </span>
+
+                {/* Name + ticket */}
+                <span className="flex-1 min-w-0">
+                  <span className="block truncate text-xs font-medium text-primary">{label}</span>
+                  {ticket && (
+                    <span className="text-[10px] text-muted/60 font-mono">{ticket}</span>
+                  )}
+                </span>
+
+                {/* Status pill */}
+                <span className={cn('flex w-16 shrink-0 items-center justify-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                  cfg.text,
+                  t.status === 'success' || t.status === 'ok' ? 'bg-positive/10' :
+                  t.error_count > 0 || t.status === 'error' || t.status === 'failed' ? 'bg-destructive/10' :
+                  t.status === 'running' ? 'bg-warning/10' : 'bg-muted/10'
+                )}>
+                  <span className={cn('size-1.5 rounded-full shrink-0', cfg.dot)} />
+                  {cfg.label}
+                </span>
+
+                {/* Error count badge */}
+                {t.error_count > 0 && (
+                  <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+                    <AlertTriangle className="size-2.5" />{t.error_count}
+                  </span>
+                )}
+
+                {/* Duration */}
+                <span className="w-12 shrink-0 text-right text-xs text-muted/60 tabular-nums">
+                  {fmtDuration(t.duration)}
+                </span>
+
+                {/* Age */}
+                <span className="w-14 shrink-0 text-right text-xs text-muted/40">
+                  {t.start_time ? dayjs(t.start_time).fromNow(true) : ''}
+                </span>
+              </Link>
+            )
+          })}
         </div>
       )}
     </div>

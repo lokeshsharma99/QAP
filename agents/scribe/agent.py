@@ -12,6 +12,7 @@ from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 
+from agents.architect.tools import create_jira_issue, add_jira_comment
 from agents.scribe.instructions import INSTRUCTIONS
 from app.atlassian_mcp import get_atlassian_mcp_for_scribe
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
@@ -53,6 +54,8 @@ scribe = Agent(
         CodingTools(requires_confirmation_tools=["run_shell"]),
         FileTools(),
         KnowledgeTools(knowledge=qap_learnings_kb),
+        create_jira_issue,
+        add_jira_comment,
         *_atlassian_tools,
     ],
     # Instructions
