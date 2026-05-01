@@ -610,7 +610,7 @@
         <div class="nav-dot" style="background:var(--teal)"></div> Discovery
       </div>
       <div class="nav-item" onclick="show('workflows', this)">
-        <div class="nav-dot" style="background:var(--warning)"></div> All 10 Workflows
+        <div class="nav-dot" style="background:var(--warning)"></div> All 12 Workflows
       </div>
 
       <div class="nav-section">Data</div>
@@ -619,6 +619,14 @@
       </div>
       <div class="nav-item" onclick="show('knowledge', this)">
         <div class="nav-dot" style="background:var(--purple)"></div> Knowledge Bases
+      </div>
+
+      <div class="nav-section">Control Plane</div>
+      <div class="nav-item" onclick="show('ui-pages', this)">
+        <div class="nav-dot" style="background:var(--brand)"></div> Pages & Features
+      </div>
+      <div class="nav-item" onclick="show('concierge', this)">
+        <div class="nav-dot" style="background:var(--positive)"></div> Concierge Agent
       </div>
 
       <div class="nav-section">Phases</div>
@@ -653,7 +661,7 @@
           <div class="stat-label">Coordinating Teams</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" style="color:var(--positive)">10</div>
+          <div class="stat-num" style="color:var(--positive)">12</div>
           <div class="stat-label">Workflows</div>
         </div>
         <div class="stat-item">
@@ -703,10 +711,10 @@
 
       <h3>🏗️ Directory Structure</h3>
       <pre><span class="hl-cmt">quality-autopilot/</span>
-├── <span class="hl-class">agents/</span>        <span class="hl-cmt"># 13 autonomous agents (one directory each)</span>
-├── <span class="hl-class">teams/</span>         <span class="hl-cmt"># 5 coordinating squads</span>
-├── <span class="hl-class">workflows/</span>     <span class="hl-cmt"># 7 multi-step pipelines</span>
-├── <span class="hl-class">contracts/</span>     <span class="hl-cmt"># 10 Pydantic hand-off models</span>
+├── <span class="hl-class">agents/</span>        <span class="hl-cmt"># 15 autonomous agents (one directory each)</span>
+├── <span class="hl-class">teams/</span>         <span class="hl-cmt"># 6 coordinating squads</span>
+├── <span class="hl-class">workflows/</span>     <span class="hl-cmt"># 12 multi-step pipelines</span>
+├── <span class="hl-class">contracts/</span>     <span class="hl-cmt"># 12 Pydantic hand-off models</span>
 ├── <span class="hl-class">db/</span>            <span class="hl-cmt"># PostgreSQL + PgVector helpers</span>
 ├── <span class="hl-class">automation/</span>    <span class="hl-cmt"># BDD+POM test framework (TypeScript)</span>
 ├── <span class="hl-class">app/</span>           <span class="hl-cmt"># AgentOS FastAPI entry point</span>
@@ -803,10 +811,19 @@
     <div id="section-agents" class="section">
       <div class="page-header">
         <h2>All 15 Agents</h2>
+        <p style="margin-top:6px;color:var(--positive)">✨ New: Concierge agent added — routes users to the right agent, team, or workflow on first visit.</p>
         <p>Each agent lives in its own directory with <code style="font-family:var(--mono)">agent.py · instructions.py · __init__.py · __main__.py</code></p>
       </div>
 
       <div class="grid-4">
+
+        <div class="agent-card" style="border-color:var(--positive)">
+          <div class="agent-icon">🎯</div>
+          <div class="agent-name">Concierge</div>
+          <div class="agent-skill">routing</div>
+          <div class="agent-desc">The entry-point agent. Loads on first visit with welcome message and suggestion pills. Routes users to the correct agent, team, or workflow based on their request.</div>
+          <div class="agent-output">→ <span>Routed Session</span></div>
+        </div>
 
         <div class="agent-card">
           <div class="agent-icon">🏛️</div>
@@ -1744,6 +1761,192 @@
 
 <span class="hl-cmt"># Register in app/main.py</span>
 <span class="hl-fn">agent_os</span> = <span class="hl-class">AgentOS</span>(<span class="hl-key">workflows</span>=[..., <span class="hl-fn">my_workflow</span>], ...)</pre>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- CONTROL PLANE PAGES                                                 -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-ui-pages" class="section">
+      <div class="page-header">
+        <h2>Control Plane — Pages &amp; Features</h2>
+        <p>Every page at <strong>http://localhost:3000</strong> — what it shows and when to use it.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <tr><th>Page</th><th>Route</th><th>What it shows</th><th>When to use</th></tr>
+          <tr>
+            <td><strong>Chat</strong></td>
+            <td class="mono">/chat</td>
+            <td>Streaming conversation with any agent, team, or workflow. Renders markdown, Mermaid diagrams, code blocks. Mode pill switches between Agent / Team / Workflow.</td>
+            <td>Every day — your primary interface</td>
+          </tr>
+          <tr>
+            <td><strong>Registry</strong></td>
+            <td class="mono">/registry</td>
+            <td>Live list of all registered agents (with model + tools), teams (with members), and workflows. Tabbed by type + unified search bar + summary count pills.</td>
+            <td>Check what's deployed; verify new agent registration</td>
+          </tr>
+          <tr>
+            <td><strong>Sessions</strong></td>
+            <td class="mono">/sessions</td>
+            <td>All past chat sessions with agent name, timestamp, last message preview. Click to resume any session.</td>
+            <td>Resume a multi-turn workflow or review a past analysis</td>
+          </tr>
+          <tr>
+            <td><strong>Memory</strong></td>
+            <td class="mono">/memory</td>
+            <td>All agent memories. Search, delete individual memories. "Optimize" button triggers memory consolidation. User stats show memory count per agent.</td>
+            <td>Audit what agents have learned; clean stale memories before a new project</td>
+          </tr>
+          <tr>
+            <td><strong>Knowledge</strong></td>
+            <td class="mono">/knowledge</td>
+            <td>Documents indexed in PgVector knowledge bases (Automation KB, Site Manifesto KB, RCA KB). Browse, search, and delete entries.</td>
+            <td>Verify KB is populated after Librarian / Discovery runs</td>
+          </tr>
+          <tr>
+            <td><strong>Traces</strong></td>
+            <td class="mono">/traces</td>
+            <td>Full execution trace for every agent run — tool calls, reasoning steps, tool outputs, token counts. DSL search (e.g. <code style="font-family:var(--mono)">agent:engineer status:error</code>). Step-level drill-down.</td>
+            <td>Debug why an agent made a wrong decision; audit tool call sequence</td>
+          </tr>
+          <tr>
+            <td><strong>Approvals</strong></td>
+            <td class="mono">/approvals</td>
+            <td>Human-in-the-Loop queue. All artifacts where Judge confidence &lt; 90%. Shows the artifact, Judge reasoning, and approve/reject buttons.</td>
+            <td>Review and unblock the pipeline when Judge flags low-confidence output</td>
+          </tr>
+          <tr>
+            <td><strong>Healing</strong></td>
+            <td class="mono">/healing</td>
+            <td>RCA reports from Detective. Healing patch diffs from Medic. Shows classification, confidence, file path, old vs new locator in unified diff format.</td>
+            <td>Review auto-healed locator changes before they merge</td>
+          </tr>
+          <tr>
+            <td><strong>Metrics</strong></td>
+            <td class="mono">/metrics</td>
+            <td>Token usage donut chart (Input / Output / Cache / Reasoning breakdown), response time trends, agent call counts. Month-by-month filter pills + 1M/3M/6M range slider.</td>
+            <td>Track cost and latency; identify expensive agents</td>
+          </tr>
+          <tr>
+            <td><strong>Workflows</strong></td>
+            <td class="mono">/workflows</td>
+            <td>All workflow runs with step-level status (pending / running / done / failed). Click a run to see which step the pipeline is currently on.</td>
+            <td>Monitor a long-running spec-to-code or triage-heal pipeline</td>
+          </tr>
+          <tr>
+            <td><strong>Dashboard</strong></td>
+            <td class="mono">/dashboard</td>
+            <td>Live regression pass/fail metrics — total tests, pass rate, flakiness score, MTTR trend chart.</td>
+            <td>Daily standup view; demonstrate regression health to stakeholders</td>
+          </tr>
+          <tr>
+            <td><strong>Evals</strong></td>
+            <td class="mono">/evals</td>
+            <td>Run accuracy, reliability, and agent-as-judge evaluations. Shows eval history, scores, and model comparison.</td>
+            <td>Before releasing a new agent version; Phase gate checks</td>
+          </tr>
+          <tr>
+            <td><strong>Scheduler</strong></td>
+            <td class="mono">/scheduler</td>
+            <td>Create and manage recurring agent runs / cron workflows (e.g. nightly regression, weekly Site Manifesto refresh).</td>
+            <td>Set up automated regression maintenance cadence</td>
+          </tr>
+          <tr>
+            <td><strong>Culture</strong></td>
+            <td class="mono">/culture</td>
+            <td>Agent culture settings — tone, collaboration style, learning preferences shared across the fleet.</td>
+            <td>Tune how agents communicate with each other</td>
+          </tr>
+          <tr>
+            <td><strong>Guide</strong></td>
+            <td class="mono">/guide</td>
+            <td>This document — full architecture reference rendered from <code style="font-family:var(--mono)">public/system-guide.html</code>.</td>
+            <td>On-boarding new team members; architecture review</td>
+          </tr>
+          <tr>
+            <td><strong>Settings</strong></td>
+            <td class="mono">/settings</td>
+            <td>API endpoint URL, auth token, theme (dark/light). Model provider switcher (Kilo AI / GitHub Copilot / NVIDIA NIM / OpenRouter).</td>
+            <td>Switch model provider; configure auth for staging vs prod</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <div class="callout-icon">💡</div>
+        <div><strong>First visit:</strong> The Concierge agent loads automatically in <code style="font-family:var(--mono)">/chat</code> with a welcome message and 4 suggestion pills. On subsequent visits the last active session is restored. Clear <code style="font-family:var(--mono)">localStorage.qap_visited</code> to reset.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- CONCIERGE AGENT                                                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-concierge" class="section">
+      <div class="page-header">
+        <h2>The Concierge Agent</h2>
+        <p>The entry-point agent — routes users to the right part of the fleet on first visit and whenever they're unsure where to start.</p>
+      </div>
+
+      <div class="callout" style="border-color:var(--positive);background:rgba(34,197,94,0.06)">
+        <div class="callout-icon">✨</div>
+        <div><strong>Show &amp; Tell:</strong> On a brand new machine, open <code style="font-family:var(--mono)">http://localhost:3000/chat</code> for the first time. The Concierge loads automatically — no manual agent selection needed. Four suggestion pills appear immediately so users can start without knowing the agent names.</div>
+      </div>
+
+      <h3>🎯 What Concierge Does</h3>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(34,197,94,0.15)">🧭</div>
+            <div>
+              <div class="card-title">Intelligent Routing</div>
+              <div class="card-subtitle">Understands intent → directs to agent/team/workflow</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p><strong>"Generate test cases from a Jira ticket"</strong> → routes to Strategy Squad (Architect + Scribe)</p>
+            <p><strong>"Fix a failing test in CI"</strong> → routes to Operations Squad (Detective + Medic) or Triage-Heal workflow</p>
+            <p><strong>"Onboard a new app to automation"</strong> → routes to Discovery Onboard workflow</p>
+            <p><strong>"Analyse a CI pipeline failure"</strong> → routes to Pipeline Analyst or Diagnostics Squad</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(255,64,23,0.15)">💬</div>
+            <div>
+              <div class="card-title">Suggestion Pills</div>
+              <div class="card-subtitle">agents/concierge/instructions.py</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p>Four default pills shown on empty state:</p>
+            <ul style="margin:8px 0 0 16px;color:var(--muted)">
+              <li>Generate test cases from a Jira ticket</li>
+              <li>Fix a failing test in CI</li>
+              <li>Onboard a new app to automation</li>
+              <li>Analyse a CI pipeline failure</li>
+            </ul>
+            <p style="margin-top:8px">Defined in <code style="font-family:var(--mono)">ChatPage.tsx → AGENT_PROMPTS.concierge</code></p>
+          </div>
+        </div>
+      </div>
+
+      <h3>⚙️ First-Visit Logic</h3>
+      <pre><span class="hl-cmt">// control-plane/src/components/chat/ChatPage.tsx</span>
+<span class="hl-key">useEffect</span>(() => {
+  <span class="hl-key">if</span> (agentId || teamId || workflowId || sessionId) <span class="hl-key">return</span>  <span class="hl-cmt">// active session — skip</span>
+  <span class="hl-key">const</span> visited = localStorage.getItem(<span class="hl-str">'qap_visited'</span>)
+  <span class="hl-key">if</span> (visited) <span class="hl-key">return</span>                              <span class="hl-cmt">// returning user — skip</span>
+  localStorage.setItem(<span class="hl-str">'qap_visited'</span>, <span class="hl-str">'1'</span>)
+  setMode(<span class="hl-str">'agent'</span>)
+  setAgentId(<span class="hl-str">'concierge'</span>)                          <span class="hl-cmt">// auto-select Concierge</span>
+}, [])</pre>
+
+      <div class="callout warning">
+        <div class="callout-icon">⚠️</div>
+        <div>To test the first-visit experience again: open DevTools → Application → Local Storage → delete <code style="font-family:var(--mono)">qap_visited</code>. Or use an incognito window.</div>
+      </div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
