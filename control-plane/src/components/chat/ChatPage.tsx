@@ -27,7 +27,7 @@ import {
   Bot, Cpu, Database, Hash, Clock, CheckCircle, XCircle, Zap, GitBranch, Activity,
   Users, Settings, BookOpen, MemoryStick, Layers, MessageSquare, MessagesSquare,
   Play, CornerDownRight, ArrowUp, Paperclip, X as XIcon, FileText, Image as ImageIcon,
-  Hammer, ChevronRight, Copy, Check, Square, Search
+  Hammer, ChevronRight, Copy, Check, Square, Search, Settings2
 } from 'lucide-react'
 
 import { getAgentDetailAPI, getTeamDetailAPI, getWorkflowDetailAPI } from '@/api/os'
@@ -2035,6 +2035,9 @@ const DEFAULT_PROMPTS: Record<string, string[]> = {
 export default function ChatPage() {
   const [inputMessage, setInputMessage] = useState('')
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
+  const [runInBackground, setRunInBackground] = useState(false)
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false)
+  const settingsMenuRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showActivity, setShowActivity] = useState(false)
@@ -2086,6 +2089,17 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
+  // Close settings popover when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
+        setSettingsMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
   // Auto-resize textarea as content grows
   useEffect(() => {
     const el = textareaRef.current
@@ -2126,7 +2140,13 @@ export default function ChatPage() {
       // Send images as form data; requires a VLM-capable model on the backend
       const fd = new FormData()
       fd.append('message', fullMsg)
+      if (runInBackground) fd.append('run_in_background', 'true')
       imageFiles.forEach((f) => fd.append('files', f))
+      await handleStreamResponse(fd)
+    } else if (runInBackground) {
+      const fd = new FormData()
+      fd.append('message', fullMsg)
+      fd.append('run_in_background', 'true')
       await handleStreamResponse(fd)
     } else {
       await handleStreamResponse(fullMsg)
@@ -2356,7 +2376,7 @@ export default function ChatPage() {
 
             {/* Bottom toolbar */}
             <div className="flex w-full items-center justify-between gap-2 px-1 pb-1">
-              {/* Left: attach */}
+              {/* Left: attach + run settings */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -2367,6 +2387,53 @@ export default function ChatPage() {
                 >
                   <Paperclip className="size-4" />
                 </button>
+
+                {/* Run settings popover */}
+                <div ref={settingsMenuRef} className="relative">
+                  <button
+                    type="button"
+                    title="Run settings"
+                    onClick={() => setSettingsMenuOpen(v => !v)}
+                    className={cn(
+                      "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-accent/70 bg-transparent text-primary shadow-sm transition-colors hover:bg-primary/5",
+                      runInBackground && "border-primary/60 text-primary"
+                    )}
+                  >
+                    <Settings2 className="size-4" />
+                  </button>
+
+                  {settingsMenuOpen && (
+                    <div
+                      className="absolute bottom-full left-0 z-50 mb-2 w-64 rounded-md border border-accent bg-background p-2 shadow-xl"
+                      onMouseLeave={() => setSettingsMenuOpen(false)}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <p className="text-[0.75rem] font-medium leading-[1.1rem] tracking-tight">Run in background</p>
+                          <p className="text-[0.7rem] leading-[1.1rem] text-muted">Survives disconnects. Pick up right where you left off.</p>
+                        </div>
+                        {/* toggle switch */}
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={runInBackground}
+                          onClick={() => setRunInBackground(v => !v)}
+                          className={cn(
+                            "inline-flex h-5 w-[30px] shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors focus-visible:outline-none",
+                            runInBackground ? "bg-primary" : "bg-muted/50"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "pointer-events-none block size-[13px] rounded-full bg-background shadow-lg ring-0 transition-transform",
+                              runInBackground ? "translate-x-[13px]" : "translate-x-0"
+                            )}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Right: stop / send */}
