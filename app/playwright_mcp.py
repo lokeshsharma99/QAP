@@ -160,10 +160,18 @@ def _get_playwright_mcp_singleton() -> list:
 # Per-agent tool subsets
 # ---------------------------------------------------------------------------
 
-# Discovery: full access — needs to navigate, click, type, and take snapshots
-# to build the complete Site Manifesto from the live AUT.
-# (None = no filtering, all 23 browser tools available)
-_DISCOVERY_PLAYWRIGHT_TOOLS: list[str] | None = None
+# Discovery: focused subset — covers the full crawl workflow without bloating
+# the tool schema sent on every LLM call. 23 tools → 7 tools cuts ~16 tool
+# definitions from every request, preventing context overflow on kilo-auto/free.
+_DISCOVERY_PLAYWRIGHT_TOOLS: list[str] = [
+    "browser_navigate",        # go to a URL / follow links
+    "browser_navigate_back",   # return to previous page
+    "browser_snapshot",        # capture accessibility tree (main crawl output)
+    "browser_click",           # click links, buttons, nav items
+    "browser_fill_form",       # fill login/form fields
+    "browser_wait_for",        # wait for page elements / text to appear
+    "browser_take_screenshot", # visual capture for manifesto evidence
+]
 
 # Medic: read-only verification — after applying a locator patch, the Medic
 # navigates to the page and takes a snapshot to confirm the element resolves.
@@ -186,11 +194,22 @@ def get_playwright_mcp_for_discovery() -> list:
     """
     Playwright MCP tools for the Discovery agent.
 
-    Discovery uses these to crawl the AUT in a real browser, capture
-    accessibility snapshots of each page/component, and build the Site Manifesto.
-    Full read-write access: navigate, click, snapshot, screenshot, type, fill.
+    Focused subset (7 tools) to stay within kilo-auto/free context limits.
+    Full 23-tool list caused 'Provider returned error' after ~23 tool calls.
     """
-    return _get_playwright_mcp_singleton()
+    mcp_url = os.getenv("PLAYWRIGHT_MCP_URL", "").rstrip("/")
+    if not mcp_url or not _playwright_mcp_reachable(mcp_url):
+        _log.info("Playwright MCP unavailable — Discovery will use HTTP-only crawl.")
+        return []
+    from agno.tools.mcp.params import StreamableHTTPClientParams
+    return [
+        MCPTools(
+            server_params=StreamableHTTPClientParams(url=f"{mcp_url}/mcp"),
+            transport="streamable-http",
+            tool_name_prefix="pw_",
+            include_tools=_DISCOVERY_PLAYWRIGHT_TOOLS,
+        )
+    ]
 
 
 def get_playwright_mcp_for_medic() -> list:
