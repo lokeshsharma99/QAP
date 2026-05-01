@@ -10,7 +10,7 @@ from agno.agent import Agent
 from agno.compression.manager import CompressionManager
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig, UserProfileConfig
 from agno.memory import MemoryManager
-from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from app.guardrails import prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.user_control_flow import UserControlFlowTools
@@ -123,8 +123,9 @@ architect = Agent(
     # Instructions
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
+    # Note: pii_detection_guardrail excluded — architect processes Jira ticket content,
+    # PR descriptions, and linked requirements that legitimately contain email/phone patterns.
     pre_hooks=[
-        pii_detection_guardrail,
         prompt_injection_guardrail,
     ],
     # Feature-specific

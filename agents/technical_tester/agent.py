@@ -10,7 +10,7 @@ Primary Skill: test_generation
 import logging
 from pathlib import Path
 
-from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from app.guardrails import prompt_injection_guardrail
 from agno.compression.manager import CompressionManager
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
@@ -94,8 +94,9 @@ technical_tester = SemanticaAgent(
     instructions=INSTRUCTIONS,
 
     # Guardrails (pre-hooks for input validation)
+    # Note: pii_detection_guardrail excluded — generates Playwright tests with synthetic
+    # test data (fake emails, phones, names) as part of its core function.
     pre_hooks=[
-        pii_detection_guardrail,
         prompt_injection_guardrail,
     ],
 

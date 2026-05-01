@@ -11,7 +11,7 @@ import logging
 
 from agno.approval import approval
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
-from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from app.guardrails import prompt_injection_guardrail
 from agno.tools.reasoning import ReasoningTools
 
 from agents.base.semantica_agent import SemanticaAgent
@@ -99,8 +99,9 @@ ci_log_analyzer = SemanticaAgent(
     instructions=INSTRUCTIONS,
 
     # Guardrails (pre-hooks for input validation)
+    # Note: pii_detection_guardrail excluded — CI logs contain test user emails,
+    # build URLs, and trace data that legitimately match PII patterns.
     pre_hooks=[
-        pii_detection_guardrail,
         prompt_injection_guardrail,
     ],
 

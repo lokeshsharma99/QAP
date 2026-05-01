@@ -10,7 +10,7 @@ from pathlib import Path
 
 from agno.agent import Agent
 from agno.compression.manager import CompressionManager
-from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from app.guardrails import prompt_injection_guardrail
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.user_feedback import UserFeedbackTools
@@ -88,8 +88,9 @@ curator = Agent(
     tools=tools,
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
+    # Note: pii_detection_guardrail excluded — curator processes code files and
+    # knowledge base entries that contain test email/phone constants.
     pre_hooks=[
-        pii_detection_guardrail,
         prompt_injection_guardrail,
     ],
     # Session state — tracks curation context across multi-turn conversations

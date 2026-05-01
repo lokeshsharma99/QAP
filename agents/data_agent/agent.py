@@ -7,7 +7,7 @@ Role: Provision test users, seed data, produce RunContext for test scenarios.
 """
 
 from agno.agent import Agent
-from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from app.guardrails import prompt_injection_guardrail
 from agno.compression.manager import CompressionManager
 from agno.tools.coding import CodingTools
 from agno.tools.knowledge import KnowledgeTools
@@ -49,8 +49,9 @@ data_agent = Agent(
     # Instructions
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
+    # Note: pii_detection_guardrail excluded — data_agent's core job is generating
+    # synthetic PII (fake emails, phones, usernames). The guardrail would block every run.
     pre_hooks=[
-        pii_detection_guardrail,
         prompt_injection_guardrail,
     ],
     # Feature-specific

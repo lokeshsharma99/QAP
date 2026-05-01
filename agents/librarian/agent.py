@@ -9,7 +9,7 @@ Role: Index Page Objects and Step Definitions into PgVector KB.
 from agno.agent import Agent
 from agno.compression.manager import CompressionManager
 from agno.learn import EntityMemoryConfig, LearningMachine, LearningMode
-from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from app.guardrails import prompt_injection_guardrail
 from agno.tools.coding import CodingTools
 from agno.tools.knowledge import KnowledgeTools
 
@@ -77,8 +77,9 @@ librarian = Agent(
     # Instructions
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
+    # Note: pii_detection_guardrail excluded — indexes code files containing
+    # test email/phone constants (e.g. TEST_EMAIL = 'user@example.com').
     pre_hooks=[
-        pii_detection_guardrail,
         prompt_injection_guardrail,
     ],
     # Feature-specific
