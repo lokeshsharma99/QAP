@@ -7,6 +7,7 @@ Role: Launch browser, authenticate with AUT, explore pages, generate Site Manife
 """
 
 from agno.agent import Agent
+from agno.learn import EntityMemoryConfig, LearningMachine, LearningMode
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 
@@ -81,6 +82,12 @@ discovery = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
+    # EntityMemoryConfig(ALWAYS): auto-extracts AUT entities (pages, components, URL patterns,
+    # selectors) from every crawl conversation and stores them as structured facts shared across
+    # users/sessions. Highest-value config for Discovery — the whole job is entity extraction.
+    learning=LearningMachine(
+        entity_memory=EntityMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
     enable_session_summaries=False,  # Disabled — model returns empty JSON; crawl state tracked via session_state
     tool_call_limit=100,

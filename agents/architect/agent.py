@@ -7,7 +7,7 @@ Role: Parse requirements, query KB for impact, produce RequirementContext (Execu
 """
 
 from agno.agent import Agent
-from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig, UserProfileConfig
 from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
@@ -140,6 +140,10 @@ architect = Agent(
     # UserMemoryConfig(ALWAYS): learns per-user preferences silently — e.g. which
     # Jira projects they work in, preferred AC granularity, component ownership.
     learning=LearningMachine(
+        # UserProfileConfig(ALWAYS): captures structured profile fields (name, team, project,
+        # preferred Jira board) from first interaction — Architect greets repeat users by name
+        # and pre-fills project context without re-asking.
+        user_profile=UserProfileConfig(mode=LearningMode.ALWAYS),
         session_context=SessionContextConfig(enable_planning=True),
         user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
     ),

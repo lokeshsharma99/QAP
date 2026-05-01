@@ -7,6 +7,7 @@ Role: Index Page Objects and Step Definitions into PgVector KB.
 """
 
 from agno.agent import Agent
+from agno.learn import EntityMemoryConfig, LearningMachine, LearningMode
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.coding import CodingTools
 from agno.tools.knowledge import KnowledgeTools
@@ -89,6 +90,13 @@ librarian = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
+    # EntityMemoryConfig(ALWAYS): auto-extracts codebase entities (file paths, class names,
+    # locator patterns, step definition signatures) during indexing and stores them as structured
+    # facts in the shared entity store — allowing other agents (Engineer, Detective) to query
+    # what Page Objects exist without a full KB search.
+    learning=LearningMachine(
+        entity_memory=EntityMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
     tool_call_limit=50,
     # Culture

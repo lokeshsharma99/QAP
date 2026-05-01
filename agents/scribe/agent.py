@@ -7,7 +7,7 @@ Role: Author BDD Gherkin specs from RequirementContext.
 """
 
 from agno.agent import Agent
-from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig, UserProfileConfig
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
@@ -81,6 +81,10 @@ scribe = Agent(
     # UserMemoryConfig(ALWAYS): learns Gherkin style preferences per user — e.g.
     # "prefers Given/When/Then without And" or "always tag with @smoke".
     learning=LearningMachine(
+        # UserProfileConfig(ALWAYS): captures structured profile fields (name, team, BA vs SDET
+        # role, preferred Gherkin style) — Scribe auto-applies style preferences and skips
+        # onboarding questions for returning users.
+        user_profile=UserProfileConfig(mode=LearningMode.ALWAYS),
         session_context=SessionContextConfig(),
         user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
     ),

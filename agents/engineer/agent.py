@@ -7,7 +7,7 @@ Role: Author modular Playwright POMs and Step Definitions (Look-Before-You-Leap)
 """
 
 from agno.agent import Agent
-from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
+from agno.learn import EntityMemoryConfig, LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.coding import CodingTools
@@ -110,6 +110,10 @@ engineer = Agent(
     learning=LearningMachine(
         session_context=SessionContextConfig(enable_planning=True),
         user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+        # EntityMemoryConfig(ALWAYS): Engineer extracts AUT entities on every PR build —
+        # selector patterns, component class names, page URLs. Cross-session entity store
+        # means a new session "knows" all previously written POMs without a KB search.
+        entity_memory=EntityMemoryConfig(mode=LearningMode.ALWAYS),
     ),
     update_memory_on_run=True,
     search_past_sessions=True,
