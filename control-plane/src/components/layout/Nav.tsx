@@ -57,7 +57,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ]
 
-const NavItem = ({
+const SideNavItem = ({
   href,
   icon: NavIcon,
   label,
@@ -119,7 +119,7 @@ const NavSectionGroup = ({
       <>
         <div className="mx-1 my-1.5 border-t border-accent/50" />
         {section.links.map((link) => (
-          <NavItem
+          <SideNavItem
             key={link.href}
             href={link.href}
             icon={link.icon}
@@ -155,7 +155,7 @@ const NavSectionGroup = ({
             className="overflow-hidden"
           >
             {section.links.map((link) => (
-              <NavItem
+              <SideNavItem
                 key={link.href}
                 href={link.href}
                 icon={link.icon}
