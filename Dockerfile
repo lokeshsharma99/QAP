@@ -105,6 +105,16 @@ COPY . .
 RUN chmod 755 /app
 
 # ---------------------------------------------------------------------------
+# Agno framework patches
+# ---------------------------------------------------------------------------
+# Patch get_team_member_interactions_str to guard against None run_response.
+# This can happen when a member agent's run is blocked by a guardrail (e.g.
+# PII detection), the stream ends without yielding a RunOutput, and None is
+# stored as the interaction's run_response. The next delegation then crashes
+# at interaction["run_response"].to_dict(). See: agno/utils/team.py
+RUN python3 /app/scripts/patch_agno_team_utils.py
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 RUN chmod +x /app/scripts/entrypoint.sh

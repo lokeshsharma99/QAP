@@ -9,7 +9,7 @@ Role: Author BDD Gherkin specs from RequirementContext.
 from agno.agent import Agent
 from agno.compression.manager import CompressionManager
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig, UserProfileConfig
-from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from app.guardrails import prompt_injection_guardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
@@ -63,8 +63,11 @@ scribe = Agent(
     # Instructions
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
+    # Note: pii_detection_guardrail is intentionally excluded — Scribe is a team member
+    # that receives team-internal content (Gherkin specs, ticket descriptions, test data)
+    # which legitimately contains PII-like patterns (email formats in examples, etc.).
+    # Prompt injection protection is kept to prevent relay attacks.
     pre_hooks=[
-        pii_detection_guardrail,
         prompt_injection_guardrail,
     ],
     # Feature-specific
