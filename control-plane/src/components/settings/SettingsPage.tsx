@@ -854,6 +854,282 @@ const CollapsibleSection = ({
 }
 
 // ---------------------------------------------------------------------------
+// ProfileSection
+// ---------------------------------------------------------------------------
+
+const ProfileSection = ({ endpointUrl, authToken }: { endpointUrl: string; authToken: string }) => {
+  const [profile, setProfile] = useState({ name: '', username: '', email: '' })
+  const [saving, setSaving] = useState(false)
+
+  const hdrs = useCallback(
+    (): Record<string, string> => (authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    [authToken]
+  )
+
+  useEffect(() => {
+    fetch(`${endpointUrl}/profile`, { headers: hdrs() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setProfile({ name: d.name ?? '', username: d.username ?? '', email: d.email ?? '' })
+      })
+      .catch(() => {})
+  }, [endpointUrl, hdrs])
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`${endpointUrl}/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...hdrs() },
+        body: JSON.stringify(profile),
+      })
+      if (res.ok) toast.success('Profile updated')
+      else toast.error('Failed to update profile')
+    } catch { toast.error('Backend unreachable') }
+    setSaving(false)
+  }
+
+  const fields: Array<{ key: keyof typeof profile; label: string; placeholder: string }> = [
+    { key: 'name',     label: 'NAME',      placeholder: 'Your full name' },
+    { key: 'username', label: 'USER NAME', placeholder: 'username or email' },
+    { key: 'email',    label: 'EMAIL',     placeholder: 'you@example.com' },
+  ]
+
+  return (
+    <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <User className="size-4 text-brand" />
+        <h2 className="text-sm font-semibold text-primary">Profile</h2>
+      </div>
+      <div className="space-y-3">
+        {fields.map(({ key, label, placeholder }) => (
+          <div key={key} className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">{label}</label>
+            <input
+              value={profile[key]}
+              onChange={(e) => setProfile((p) => ({ ...p, [key]: e.target.value }))}
+              placeholder={placeholder}
+              className="rounded-xl border border-primary/15 bg-accent px-3 py-2.5 text-sm text-primary outline-none placeholder:text-muted/40 focus:border-primary/40"
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end pt-1">
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primaryAccent hover:opacity-90 disabled:opacity-50"
+        >
+          {saving ? <RefreshCw className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+          Save Profile
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// OrganizationSection
+// ---------------------------------------------------------------------------
+
+interface OrgData {
+  id: string
+  name: string
+  owner_id: string
+  members: Array<{ email: string; role: string }>
+  plan: string
+}
+
+const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; authToken: string }) => {
+  const [org, setOrg] = useState<OrgData | null>(null)
+  const [orgName, setOrgName] = useState('')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [inviting, setInviting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const hdrs = useCallback(
+    (json = false): Record<string, string> => ({
+      ...(json ? { 'Content-Type': 'application/json' } : {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    }),
+    [authToken]
+  )
+
+  const fetchOrg = useCallback(async () => {
+    const res = await fetch(`${endpointUrl}/organization`, { headers: hdrs() }).catch(() => null)
+    if (res?.ok) {
+      const d: OrgData = await res.json()
+      setOrg(d)
+      setOrgName(d.name)
+    }
+  }, [endpointUrl, hdrs])
+
+  useEffect(() => { fetchOrg() }, [fetchOrg])
+
+  const saveName = async () => {
+    setSaving(true)
+    const res = await fetch(`${endpointUrl}/organization`, {
+      method: 'PUT', headers: hdrs(true), body: JSON.stringify({ name: orgName }),
+    }).catch(() => null)
+    if (res?.ok) { setOrg(await res.json()); toast.success('Organization updated') }
+    else toast.error('Failed to update organization')
+    setSaving(false)
+  }
+
+  const invite = async () => {
+    if (!inviteEmail.trim()) return
+    setInviting(true)
+    const res = await fetch(`${endpointUrl}/organization/members`, {
+      method: 'POST', headers: hdrs(true), body: JSON.stringify({ email: inviteEmail.trim(), role: 'member' }),
+    }).catch(() => null)
+    if (res?.ok) { setOrg(await res.json()); setInviteEmail(''); toast.success(`${inviteEmail} invited`) }
+    else if (res?.status === 409) toast.error('Member already in organization')
+    else toast.error('Failed to invite member')
+    setInviting(false)
+  }
+
+  const removeMember = async (email: string) => {
+    const res = await fetch(`${endpointUrl}/organization/members/${encodeURIComponent(email)}`, {
+      method: 'DELETE', headers: hdrs(),
+    }).catch(() => null)
+    if (res?.ok) { setOrg(await res.json()); toast.success(`${email} removed`) }
+    else toast.error('Failed to remove member')
+  }
+
+  const deleteOrg = async () => {
+    setDeleting(true)
+    const res = await fetch(`${endpointUrl}/organization`, { method: 'DELETE', headers: hdrs() }).catch(() => null)
+    if (res?.ok) { setOrg(null); setConfirmDelete(false); toast.success('Organization deleted') }
+    else toast.error('Failed to delete organization')
+    setDeleting(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Name */}
+      <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <Building2 className="size-4 text-brand" />
+          <h2 className="text-sm font-semibold text-primary">Organization</h2>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">NAME</label>
+          <input
+            value={orgName}
+            onChange={(e) => setOrgName(e.target.value)}
+            placeholder="Organization name"
+            className="rounded-xl border border-primary/15 bg-accent px-3 py-2.5 text-sm text-primary outline-none placeholder:text-muted/40 focus:border-primary/40"
+          />
+        </div>
+        <div className="flex justify-end">
+          <button onClick={saveName} disabled={saving}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primaryAccent hover:opacity-90 disabled:opacity-50">
+            {saving ? <RefreshCw className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+            Save
+          </button>
+        </div>
+      </div>
+
+      {/* Invite members */}
+      <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 space-y-3">
+        <h3 className="text-xs font-semibold text-primary">Invite new organization members</h3>
+        <div className="flex gap-2">
+          <input
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && invite()}
+            placeholder="colleague@company.com"
+            className="flex-1 rounded-xl border border-primary/15 bg-accent px-3 py-2 text-xs text-primary outline-none placeholder:text-muted/40 focus:border-primary/40"
+          />
+          <button onClick={invite} disabled={inviting || !inviteEmail.trim()}
+            className="rounded-lg bg-brand px-4 py-2 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50">
+            {inviting ? <RefreshCw className="size-3.5 animate-spin" /> : 'Invite'}
+          </button>
+        </div>
+        {/* Multi-tenancy / PRO callout */}
+        <div className="rounded-xl border border-brand/20 bg-brand/5 p-3">
+          <div className="flex items-start gap-2">
+            <span className="shrink-0 rounded-full bg-brand/20 px-1.5 py-0.5 text-[9px] font-bold text-brand">PRO</span>
+            <div>
+              <p className="text-[10px] font-semibold text-primary mb-1.5">
+                Upgrade to unlock multi-user access, role management, and a shared live AgentOS
+              </p>
+              <ul className="space-y-1 text-[10px] text-muted/70">
+                {['1 live AgentOS connection', 'Role & permission control', '3 Free member invites', 'Shared AgentOS access'].map((b) => (
+                  <li key={b} className="flex items-center gap-1.5">
+                    <CheckCircle2 className="size-3 shrink-0 text-positive" />
+                    <span>{b}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Members list */}
+      <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 space-y-3">
+        <h3 className="text-xs font-semibold text-primary">
+          Members <span className="ml-1 text-muted/50">({org?.members?.length ?? 0})</span>
+        </h3>
+        <div className="space-y-2">
+          {(org?.members ?? []).map((m) => (
+            <div key={m.email} className="flex items-center gap-3 rounded-xl border border-primary/10 px-3 py-2.5">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand/15 text-xs font-bold text-brand uppercase">
+                {m.email[0]}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs text-primary">{m.email}</p>
+              </div>
+              <span className={cn(
+                'text-[10px] font-medium',
+                m.role === 'owner' ? 'text-brand' : 'text-muted/60'
+              )}>{m.role}</span>
+              {m.role !== 'owner' && (
+                <button
+                  onClick={() => removeMember(m.email)}
+                  className="text-muted/40 hover:text-destructive transition-colors"
+                  title={`Remove ${m.email}`}
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Danger zone */}
+      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 space-y-3">
+        <h3 className="text-xs font-semibold text-destructive">Danger zone</h3>
+        <p className="text-[10px] text-muted/70">Permanently delete this organization and all its resources</p>
+        {!confirmDelete ? (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="rounded-lg border border-destructive/40 px-4 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            Delete Organization
+          </button>
+        ) : (
+          <div className="flex items-center gap-3">
+            <p className="text-xs font-medium text-destructive">This cannot be undone.</p>
+            <button onClick={deleteOrg} disabled={deleting}
+              className="rounded-lg bg-destructive px-4 py-2 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50">
+              {deleting ? 'Deleting…' : 'Confirm Delete'}
+            </button>
+            <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted hover:text-primary">
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main SettingsPage
 // ---------------------------------------------------------------------------
 
