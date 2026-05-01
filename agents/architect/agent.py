@@ -104,10 +104,12 @@ architect = Agent(
     # ReasoningTools: core reasoning for requirement analysis (provides think/analyze).
     # KnowledgeTools(site_manifesto_kb): query live UI map to identify affected pages.
     # automation_kb searched natively via search_knowledge=True (qap_learnings is primary KB).
+    # enable_think+analyze on site_manifesto_kb: Architect must reason which AUT pages are
+    # affected by the requirement, search, then analyze whether found pages are truly in scope.
     tools=[
         ReasoningTools(add_instructions=True),
         UserControlFlowTools(),
-        KnowledgeTools(knowledge=site_manifesto_kb),
+        KnowledgeTools(knowledge=site_manifesto_kb, enable_think=True, enable_search=True, enable_analyze=True),
         fetch_jira_ticket,
         fetch_linked_issues,
         add_jira_comment,

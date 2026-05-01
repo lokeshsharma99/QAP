@@ -75,11 +75,13 @@ medic = Agent(
     # KnowledgeTools(site_manifesto_kb): find the new correct locator from live AUT map.
     # KnowledgeTools(qap_learnings_kb) dropped — redundant with native search_knowledge=True.
     # KnowledgeTools(automation_kb) dropped — Medic reads POM files via FileTools directly.
+    # enable_think+analyze on both: Medic must reason about what the RCA says, search for the
+    # current correct locator in the manifesto, then analyze validity before any file edit.
     tools=[
         CodingTools(requires_confirmation_tools=["run_shell"]),
         FileTools(),
-        KnowledgeTools(knowledge=rca_kb),
-        KnowledgeTools(knowledge=site_manifesto_kb),
+        KnowledgeTools(knowledge=rca_kb, enable_think=True, enable_search=True, enable_analyze=True),
+        KnowledgeTools(knowledge=site_manifesto_kb, enable_think=True, enable_search=True, enable_analyze=True),
         *_playwright_tools,
         *_decision_tools,
         MedicToolkit(),

@@ -10,9 +10,13 @@ Does NOT perform any technical work — it is the front-door reception agent.
 from agno.agent import Agent
 from agno.learn import LearningMachine, LearningMode, UserMemoryConfig, UserProfileConfig
 from agno.tools.reasoning import ReasoningTools
+from agno.tools.workflow import WorkflowTools
 
 from agents.concierge.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from workflows.discovery_onboard import discovery_onboard
+from workflows.spec_to_code import spec_to_code
+from workflows.triage_heal import triage_heal
 
 # ---------------------------------------------------------------------------
 # Create Agent
@@ -26,7 +30,16 @@ concierge = Agent(
     # Data
     db=agent_db,
     # Capabilities
-    tools=[ReasoningTools(add_instructions=True)],
+    # ReasoningTools: think through user intent before routing or triggering a workflow.
+    # WorkflowTools: allow Concierge to TRIGGER (not just describe) the 3 core pipelines
+    # directly from chat. enable_think+analyze so it reasons about whether the workflow
+    # is the right fit before running it. Pairs with the "Run in background" UI toggle.
+    tools=[
+        ReasoningTools(add_instructions=True),
+        WorkflowTools(workflow=spec_to_code, enable_think=True, enable_analyze=True),
+        WorkflowTools(workflow=triage_heal, enable_think=True, enable_analyze=True),
+        WorkflowTools(workflow=discovery_onboard, enable_think=True, enable_analyze=True),
+    ],
     # Instructions
     instructions=INSTRUCTIONS,
     # Learning

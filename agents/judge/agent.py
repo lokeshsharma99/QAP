@@ -79,10 +79,12 @@ judge = Agent(
     # ReasoningTools: adversarial reasoning (provides think/analyze once).
     # KnowledgeTools(rca_kb): check past healing/failure history when reviewing patches.
     # KnowledgeTools(qap_learnings_kb) dropped — redundant with native search_knowledge=True.
+    # enable_think+analyze on rca_kb: Judge must formulate a targeted precedent query,
+    # then analyze whether the current artifact matches or violates historical patterns.
     tools=[
         ReasoningTools(add_instructions=True),
         UserFeedbackTools(),
-        KnowledgeTools(knowledge=rca_kb),
+        KnowledgeTools(knowledge=rca_kb, enable_think=True, enable_search=True, enable_analyze=True),
         *_decision_tools,
         JudgeToolkit(),
     ],

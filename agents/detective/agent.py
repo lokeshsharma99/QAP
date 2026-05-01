@@ -90,9 +90,11 @@ detective = Agent(
     # KnowledgeTools(rca_kb): find past failure classifications — the secondary KB.
     # qap_learnings searched natively (primary KB). automation_kb and site_manifesto
     # dropped — Detective classifies from traces, not from reading code/UI maps.
+    # enable_think+analyze on rca_kb: Detective must reason about what failure pattern to search
+    # for, then analyze whether past RCAs match the current symptoms before classifying.
     tools=[
         ReasoningTools(add_instructions=True),
-        KnowledgeTools(knowledge=rca_kb),
+        KnowledgeTools(knowledge=rca_kb, enable_think=True, enable_search=True, enable_analyze=True),
         *_decision_tools,
         *_github_tools,
         parse_trace_zip,

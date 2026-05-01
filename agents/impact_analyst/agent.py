@@ -65,10 +65,12 @@ impact_analyst = Agent(
     # KnowledgeTools(automation_kb): find existing test coverage — core skill.
     # KnowledgeTools(site_manifesto_kb): verify locator currency per changed component.
     # GitHub / Atlassian / ADO MCP: fetch PR diffs, Jira ACs, ADO work items.
+    # enable_think+analyze on both: Impact Analyst must reason about blast radius,
+    # formulate coverage queries, then analyze whether found tests actually cover the change.
     tools=[
         ReasoningTools(add_instructions=True),
-        KnowledgeTools(knowledge=automation_kb),
-        KnowledgeTools(knowledge=site_manifesto_kb),
+        KnowledgeTools(knowledge=automation_kb, enable_think=True, enable_search=True, enable_analyze=True),
+        KnowledgeTools(knowledge=site_manifesto_kb, enable_think=True, enable_search=True, enable_analyze=True),
         *_github_tools,
         *_atlassian_tools,
         *_ado_tools,

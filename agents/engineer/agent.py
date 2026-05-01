@@ -73,11 +73,13 @@ engineer = Agent(
     # KnowledgeTools(site_manifesto_kb): Look-Before-You-Leap — verify locators before writing.
     # KnowledgeTools(qap_learnings_kb): read coding patterns and conventions.
     # KnowledgeTools(automation_knowledge) dropped — redundant with native search_knowledge=True.
+    # enable_think+analyze on both: Engineer must reason about which component to search for,
+    # then analyze whether the found locator/pattern is valid before writing any code.
     tools=[
         CodingTools(requires_confirmation_tools=["run_shell"]),
         FileTools(),
-        KnowledgeTools(knowledge=site_manifesto_kb),
-        KnowledgeTools(knowledge=qap_learnings_kb),
+        KnowledgeTools(knowledge=site_manifesto_kb, enable_think=True, enable_search=True, enable_analyze=True),
+        KnowledgeTools(knowledge=qap_learnings_kb, enable_think=True, enable_search=True, enable_analyze=True),
         *_github_tools,
         write_pom,
         write_step_def,
