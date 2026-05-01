@@ -7,6 +7,7 @@ Role: Author modular Playwright POMs and Step Definitions (Look-Before-You-Leap)
 """
 
 from agno.agent import Agent
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.coding import CodingTools
@@ -101,9 +102,16 @@ engineer = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
+    # SessionContextConfig(planning): tracks PR build steps (Manifesto→KB→MCP verify→write→run→PR)
+    # across turns. Engineer is the most step-oriented agent — planning mode lets it mark
+    # each step done/in-progress so a resumed session continues from the right point.
+    # UserMemoryConfig(ALWAYS): silently captures per-user coding conventions — e.g.
+    # "this user prefers aria-label over data-testid" — without cluttering responses.
+    learning=LearningMachine(
+        session_context=SessionContextConfig(enable_planning=True),
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
-    enable_session_summaries=True,
-    add_session_summary_to_context=True,
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,

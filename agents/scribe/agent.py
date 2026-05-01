@@ -7,6 +7,7 @@ Role: Author BDD Gherkin specs from RequirementContext.
 """
 
 from agno.agent import Agent
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
@@ -75,9 +76,15 @@ scribe = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
+    # SessionContextConfig: tracks feature file being written across turns — Scribe
+    # often needs multiple turns to refine Gherkin (BA review → revise → finalise).
+    # UserMemoryConfig(ALWAYS): learns Gherkin style preferences per user — e.g.
+    # "prefers Given/When/Then without And" or "always tag with @smoke".
+    learning=LearningMachine(
+        session_context=SessionContextConfig(),
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
-    enable_session_summaries=True,
-    add_session_summary_to_context=True,
     tool_call_limit=50,
     # Culture
     culture_manager=culture_manager,

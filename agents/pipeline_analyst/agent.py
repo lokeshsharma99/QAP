@@ -11,6 +11,7 @@ Role: Analyse GitHub Actions pipeline execution logs for failed test runs.
 
 from agno.agent import Agent
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.scheduler import SchedulerTools
@@ -90,8 +91,15 @@ pipeline_analyst = Agent(
         parse_junit_xml,
         parse_allure_results,
     ],
-    learning=True,
-    add_learnings_to_context=True,
+    # Learning
+    # UserMemoryConfig(ALWAYS): captures per-user patterns — e.g. "this user's pipelines
+    # fail on node 3 due to flaky data setup" — improves first-guess classification.
+    # SessionContextConfig(planning): tracks the 2-phase RCA (gather → classify) across
+    # turns so long log-analysis sessions survive context reloads.
+    learning=LearningMachine(
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+        session_context=SessionContextConfig(enable_planning=True),
+    ),
     # Instructions
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
@@ -111,8 +119,6 @@ pipeline_analyst = Agent(
     add_session_state_to_context=True,
     # Memory — learns failure patterns across sessions
     update_memory_on_run=True,
-    enable_session_summaries=True,
-    add_session_summary_to_context=True,
     search_past_sessions=True,
     num_past_sessions_to_search=5,
     compress_tool_results=True,

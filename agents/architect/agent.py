@@ -7,6 +7,7 @@ Role: Parse requirements, query KB for impact, produce RequirementContext (Execu
 """
 
 from agno.agent import Agent
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
@@ -133,9 +134,16 @@ architect = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
+    # SessionContextConfig(planning): Architect creates an execution plan per ticket.
+    # Planning mode tracks each step (read Jira → query KB → draft RequirementContext →
+    # Judge gate) so multi-turn ticket analysis sessions resume at the right step.
+    # UserMemoryConfig(ALWAYS): learns per-user preferences silently — e.g. which
+    # Jira projects they work in, preferred AC granularity, component ownership.
+    learning=LearningMachine(
+        session_context=SessionContextConfig(enable_planning=True),
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
-    enable_session_summaries=True,
-    add_session_summary_to_context=True,
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,

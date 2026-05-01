@@ -7,6 +7,7 @@ Role: Patch only the specific locator line in the Page Object.
 """
 
 from agno.agent import Agent
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
@@ -100,9 +101,16 @@ medic = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
+    # SessionContextConfig(planning): Medic has 3 explicit steps — identify stale locator,
+    # verify new locator in SiteManifesto, create surgical PR. Planning mode marks each
+    # step done so partial heals can be resumed without re-running the full analysis.
+    # UserMemoryConfig(ALWAYS): learns per-user preferences silently (e.g. PR branch
+    # naming conventions, review requirements).
+    learning=LearningMachine(
+        session_context=SessionContextConfig(enable_planning=True),
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
-    enable_session_summaries=True,
-    add_session_summary_to_context=True,
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,

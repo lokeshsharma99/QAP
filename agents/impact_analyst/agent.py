@@ -15,6 +15,7 @@ from agents.impact_analyst.instructions import INSTRUCTIONS
 from app.ado_mcp import get_ado_mcp_for_impact_analyst
 from app.atlassian_mcp import get_atlassian_mcp_for_impact_analyst
 from app.github_mcp import get_github_mcp_for_impact_analyst
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from app.settings import MODEL, FOLLOWUP_MODEL, agent_db
 from db import get_automation_kb, get_culture_manager, get_qap_learnings_kb, get_site_manifesto_kb
@@ -72,8 +73,15 @@ impact_analyst = Agent(
         *_atlassian_tools,
         *_ado_tools,
     ],
-    learning=True,
-    add_learnings_to_context=True,
+    # Learning
+    # UserMemoryConfig(ALWAYS): silently captures analyst preferences per user — e.g.
+    # preferred risk thresholds, which teams own which areas of the codebase.
+    # SessionContextConfig: tracks current PR/Issue being analysed so multi-turn
+    # conversations resume without re-stating context.
+    learning=LearningMachine(
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+        session_context=SessionContextConfig(),
+    ),
     # Instructions
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
