@@ -7,6 +7,7 @@ Role: Author modular Playwright POMs and Step Definitions (Look-Before-You-Leap)
 """
 
 from agno.agent import Agent
+from agno.compression.manager import CompressionManager
 from agno.learn import EntityMemoryConfig, LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
@@ -121,6 +122,10 @@ engineer = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,
+    # Context compression — CodingTools + FileTools + KnowledgeTools produce verbose
+    # results (file contents, lint output, KB docs). Compress after 4 000 tokens to
+    # prevent context overflow on kilo-auto/free during multi-step PR builds.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,
@@ -129,7 +134,8 @@ engineer = Agent(
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=3,               # reduced from 5: each run is tool-call-heavy
+    max_tool_calls_from_history=3,    # keep only last 3 tool results per history run
     # Output
     markdown=True,
     followups=True,

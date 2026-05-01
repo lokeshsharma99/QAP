@@ -7,11 +7,12 @@ Role: Launch browser, authenticate with AUT, explore pages, generate Site Manife
 """
 
 from agno.agent import Agent
+from agno.compression.manager import CompressionManager
 from agno.learn import EntityMemoryConfig, LearningMachine, LearningMode
+from agno.run import RunContext
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
-from agno.tools.knowledge import KnowledgeTools
 
-from agents.discovery.instructions import INSTRUCTIONS
+from agents.discovery.instructions import INSTRUCTIONS, INSTRUCTIONS_HTTP_ONLY
 from agents.discovery.tools import DiscoveryHTTPToolkit, DiscoveryToolkit
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_culture_manager
@@ -37,6 +38,28 @@ qap_learnings_kb = get_qap_learnings_kb()
 culture_manager = get_culture_manager()
 
 # ---------------------------------------------------------------------------
+# Context Compression
+# ---------------------------------------------------------------------------
+# Compress accumulated tool results when context exceeds 4 000 tokens.
+# Older tool call results (HTML snapshots, DOM trees, Playwright outputs) are
+# individually summarised by the lighter FOLLOWUP_MODEL, preserving key facts
+# (URLs, locators, component names) while stripping verbose boilerplate.
+# This mirrors the pattern used in detective/agent.py and ci_log_analyzer/agent.py.
+_compression_manager = CompressionManager(
+    model=FOLLOWUP_MODEL,       # lightweight model for compression summaries
+    compress_token_limit=4000,  # trigger when accumulated tool results hit ~4 k tokens
+)
+
+# ---------------------------------------------------------------------------
+# Dynamic Instructions
+# ---------------------------------------------------------------------------
+# Generate the system prompt at run-time so token count adapts to tool availability:
+#   - Playwright MCP running → full dual-strategy instructions
+#   - Playwright MCP absent  → HTTP-only instructions (saves ~700 tokens/call)
+def _build_instructions(run_context: RunContext) -> str:
+    return INSTRUCTIONS if _playwright_tools else INSTRUCTIONS_HTTP_ONLY
+
+# ---------------------------------------------------------------------------
 # Create Agent
 # ---------------------------------------------------------------------------
 discovery = Agent(
@@ -59,19 +82,27 @@ discovery = Agent(
     #      Live browser rendering — captures the real Accessibility Tree for SPAs.
     #      Use AFTER HTTP crawl to capture what JS actually renders.
     #   3. DiscoveryToolkit (save_learning): always registered for KB persistence.
+    # NOTE: KnowledgeTools removed — search_knowledge=True already registers
+    # search_knowledge_base natively, avoiding a duplicate tool definition.
     tools=[
-        KnowledgeTools(knowledge=qap_learnings_kb),
         DiscoveryHTTPToolkit(),
         *_playwright_tools,
         DiscoveryToolkit(),
     ],
-    # Instructions
-    instructions=INSTRUCTIONS,
+    # Instructions — dynamic function: full dual-strategy when Playwright is
+    # available, HTTP-only (~700 tokens smaller) when it isn't.
+    # Avoids sending unused Playwright tool descriptions on every LLM call.
+    instructions=_build_instructions,
     # Guardrails (pre-hooks for input validation)
     pre_hooks=[
         pii_detection_guardrail,
         prompt_injection_guardrail,
     ],
+    # Context compression — summarise tool results when accumulated context hits
+    # ~4 000 tokens (same strategy as detective/agent.py and ci_log_analyzer/agent.py).
+    # Playwright snapshots and HTML DOM dumps are highly verbose; compression keeps
+    # the LLM context lean across 20+ tool calls without losing key facts.
+    compression_manager=_compression_manager,
     # Feature-specific
     session_state={
         "crawled_pages": [],
@@ -95,11 +126,14 @@ discovery = Agent(
     culture_manager=culture_manager,
     add_culture_to_context=True,
     enable_agentic_culture=True,
-    # Context
+    # Context — reduced history depth to limit token accumulation from prior runs.
+    # Each Discovery run can include 20+ tool calls; loading 5 runs = ~100 tool call
+    # results flooding the context. max_tool_calls_from_history caps this per run.
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=2,               # reduced from 5: each run is very tool-call-heavy
+    max_tool_calls_from_history=3,    # keep only last 3 tool call results per history run
     # Output
     markdown=True,
     followups=True,

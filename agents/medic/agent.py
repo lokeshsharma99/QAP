@@ -7,6 +7,7 @@ Role: Patch only the specific locator line in the Page Object.
 """
 
 from agno.agent import Agent
+from agno.compression.manager import CompressionManager
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.coding import CodingTools
@@ -116,6 +117,10 @@ medic = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,
+    # Context compression — Medic reads POM files via FileTools + does live Playwright
+    # verification (verbose snapshots). Compress after 4 000 tokens to prevent context
+    # overflow on kilo-auto/free during a multi-step heal-and-verify cycle.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,
@@ -124,7 +129,8 @@ medic = Agent(
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=3,               # reduced from 5: each run is tool-call-heavy
+    max_tool_calls_from_history=3,    # keep only last 3 tool results per history run
     # Output
     markdown=True,
     followups=True,
