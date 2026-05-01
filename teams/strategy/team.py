@@ -8,10 +8,11 @@ Mode: coordinate
 
 from agno.team import Team
 from agno.team.mode import TeamMode
+from agno.compression.manager import CompressionManager
 
 from agents.architect import architect
 from agents.scribe import scribe
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from teams.strategy.instructions import LEADER_INSTRUCTIONS
 
 # ---------------------------------------------------------------------------
@@ -35,11 +36,16 @@ strategy_team = Team(
     show_members_responses=True,
     # Memory
     update_memory_on_run=True,
-    # Context
+    # Context compression — Architect fetches Jira/GitHub/ADO ticket bodies + KB docs;
+    # Scribe generates full .feature file content. All captured in shared team history.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    # Context — session_context planning on members tracks per-ticket steps. 3 history
+    # runs gives the team coordinator cross-ticket step-reuse awareness.
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=3,               # reduced from 5: ticket bodies + .feature content verbose
+    max_tool_calls_from_history=3,    # cap member tool results in team history
     # Output
     markdown=True,
     followups=True,

@@ -12,10 +12,11 @@ Together they produce a unified, two-layer root cause analysis for any CI failur
 
 from agno.team import Team
 from agno.team.mode import TeamMode
+from agno.compression.manager import CompressionManager
 
 from agents.detective import detective
 from agents.pipeline_analyst import pipeline_analyst
-from app.settings import MODEL, agent_db
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from teams.diagnostics.instructions import LEADER_INSTRUCTIONS
 
 # ---------------------------------------------------------------------------
@@ -39,11 +40,18 @@ diagnostics_team = Team(
     show_members_responses=True,
     # Memory
     update_memory_on_run=True,
-    # Context
+    # Context compression — trace ZIP parse results (Detective) and CI log bodies
+    # (Pipeline Analyst) are the most verbose outputs in the system. With
+    # share_member_interactions=True, 5 prior runs = potentially hundreds of KB of
+    # tool call results in context. Compress and reduce depth aggressively.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    # Context — each failure triage is independent. 2 history runs provides enough
+    # coordinator context while members' own session_context tracks per-failure state.
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=2,               # reduced from 5: trace+log results are huge
+    max_tool_calls_from_history=3,    # cap member tool results in team history
     # Output
     markdown=True,
     followups=True,
