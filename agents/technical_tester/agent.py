@@ -11,6 +11,7 @@ import logging
 from pathlib import Path
 
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from agno.compression.manager import CompressionManager
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
 
@@ -106,11 +107,16 @@ technical_tester = SemanticaAgent(
     culture_manager=culture_manager,
     add_culture_to_context=True,
     enable_agentic_culture=True,
+    # Context compression — run_tests / run_generator produce very verbose output
+    # (test results, generated TypeScript code). Compress after 4 000 tokens.
+    # Each technical test session is self-contained; 3 history runs is sufficient.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=3,               # reduced from 5: test-run output accumulates quickly
+    max_tool_calls_from_history=3,    # keep only last 3 tool results per history run
 
     # Output
     markdown=True,

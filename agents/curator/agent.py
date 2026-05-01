@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 
 from agno.agent import Agent
+from agno.compression.manager import CompressionManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
@@ -109,11 +110,15 @@ curator = Agent(
     culture_manager=culture_manager,
     add_culture_to_context=True,
     enable_agentic_culture=True,
+    # Context compression — FileTools reads and maintenance report generation can be
+    # verbose. Compress after 4 000 tokens as a safety net.
+    # History kept at 5 — deletion decisions are high-stakes and need full audit trail.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=5,    # preserved: deletion decisions require full history for safety
     # Output
     markdown=True,
     followups=True,

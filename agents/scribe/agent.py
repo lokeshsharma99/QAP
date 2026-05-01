@@ -7,6 +7,7 @@ Role: Author BDD Gherkin specs from RequirementContext.
 """
 
 from agno.agent import Agent
+from agno.compression.manager import CompressionManager
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig, UserProfileConfig
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from agno.tools.coding import CodingTools
@@ -90,6 +91,11 @@ scribe = Agent(
     ),
     update_memory_on_run=True,
     tool_call_limit=50,
+    # Context compression — Atlassian/Jira MCP results and existing .feature file
+    # contents can be verbose. Compress after 4 000 tokens.
+    # History kept at 4 (not 3) — Scribe needs recent spec context to avoid
+    # duplicating Gherkin steps across features.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,
@@ -98,7 +104,7 @@ scribe = Agent(
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=4,    # reduced from 5; 4 preserves step-reuse context without overflow
     # Output
     markdown=True,
     followups=True,

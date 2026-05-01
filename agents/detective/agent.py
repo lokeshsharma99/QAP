@@ -142,7 +142,8 @@ detective = Agent(
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=5,    # preserved: pattern recognition across past failures is critical
+    max_tool_calls_from_history=3,    # trace parse results are huge; cap at 3 per run
     # Output
     markdown=True,
     followups=True,

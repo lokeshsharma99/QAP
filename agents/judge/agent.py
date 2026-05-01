@@ -7,6 +7,7 @@ Role: Run DoD checklist, auto-approve at >= 90% confidence.
 """
 
 from agno.agent import Agent
+from agno.compression.manager import CompressionManager
 from agno.learn import LearningMachine, LearningMode, DecisionLogConfig, UserMemoryConfig
 from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
@@ -116,6 +117,10 @@ judge = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=5,
     tool_call_limit=30,
+    # Context compression — KnowledgeTools(rca_kb) + JudgeToolkit can return verbose
+    # RCA histories and artifact bodies. Compress after 4 000 tokens as a safety net.
+    # History depth kept at 5 — Judge needs full past verdicts for consistency.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,
@@ -124,7 +129,7 @@ judge = Agent(
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=5,    # preserved: Judge needs full verdict history for consistency
     # Output
     markdown=True,
     followups=True,

@@ -7,6 +7,7 @@ Role: Parse requirements, query KB for impact, produce RequirementContext (Execu
 """
 
 from agno.agent import Agent
+from agno.compression.manager import CompressionManager
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig, UserProfileConfig
 from agno.memory import MemoryManager
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
@@ -153,15 +154,21 @@ architect = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     tool_call_limit=50,
+    # Context compression — Jira ticket bodies, GitHub PR diffs, ADO work items, and
+    # KB doc results can be very verbose. Compress after 4 000 tokens to keep context
+    # lean across multi-ticket analysis sessions.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,
     enable_agentic_culture=True,
-    # Context
+    # Context — session_context planning tracks each analysis step across turns, so
+    # num_history_runs can be reduced without losing continuity.
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=3,               # reduced from 5: MCP results per run are very verbose
+    max_tool_calls_from_history=3,    # keep only last 3 tool results per history run
     # Output
     markdown=True,
     followups=True,

@@ -8,6 +8,7 @@ Role: Provision test users, seed data, produce RunContext for test scenarios.
 
 from agno.agent import Agent
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from agno.compression.manager import CompressionManager
 from agno.tools.coding import CodingTools
 from agno.tools.knowledge import KnowledgeTools
 
@@ -64,6 +65,10 @@ data_agent = Agent(
     # Memory
     update_memory_on_run=True,
     tool_call_limit=30,
+    # Context compression — CodingTools can return verbose execution output; KB docs
+    # can be long. Compress after 4 000 tokens as a safety net.
+    # History kept at 5 — test data correctness requires full prior scenario context.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,
@@ -72,7 +77,7 @@ data_agent = Agent(
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=5,    # preserved: data correctness depends on full prior scenario context
     # Output
     markdown=True,
     followups=True,

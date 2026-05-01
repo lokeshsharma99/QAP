@@ -7,6 +7,7 @@ Primary Skill: healing_validation
 """
 
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
+from agno.compression.manager import CompressionManager
 from agno.tools.reasoning import ReasoningTools
 
 from agents.base.semantica_agent import SemanticaAgent
@@ -62,11 +63,14 @@ healing_judge = SemanticaAgent(
     culture_manager=culture_manager,
     add_culture_to_context=True,
     enable_agentic_culture=True,
+    # Context compression — healing patch diffs and verification logs can be verbose.
+    # Compress as safety net while preserving full history for accurate surgical review.
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,
     read_chat_history=True,
-    num_history_runs=5,
+    num_history_runs=5,    # preserved: Healing Judge needs patch history for consistency
 
     # Output
     markdown=True,
