@@ -36,9 +36,11 @@ concierge = Agent(
     # is the right fit before running it. Pairs with the "Run in background" UI toggle.
     tools=[
         ReasoningTools(add_instructions=True),
-        WorkflowTools(workflow=spec_to_code, enable_think=True, enable_analyze=True),
-        WorkflowTools(workflow=triage_heal, enable_think=True, enable_analyze=True),
-        WorkflowTools(workflow=discovery_onboard, enable_think=True, enable_analyze=True),
+        # enable_think/enable_analyze disabled — ReasoningTools already handles thinking.
+        # Keeping them off cuts tool count from 10+ to 4, staying within free-tier limits.
+        WorkflowTools(workflow=spec_to_code),
+        WorkflowTools(workflow=triage_heal),
+        WorkflowTools(workflow=discovery_onboard),
     ],
     # Instructions
     instructions=INSTRUCTIONS,

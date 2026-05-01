@@ -18,6 +18,9 @@ from pydantic import BaseModel
 from app.tenancy import get_user_id
 from db.url import db_url
 
+# psycopg.connect() needs a plain postgresql:// URL, not the SQLAlchemy postgresql+psycopg:// variant
+_psycopg_url = db_url.replace("postgresql+psycopg://", "postgresql://", 1)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -30,7 +33,7 @@ def _ensure_table() -> None:
     """Create agno_user_profiles table if it doesn't exist."""
     try:
         import psycopg
-        with psycopg.connect(db_url) as conn:
+        with psycopg.connect(_psycopg_url) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS agno_user_profiles (
@@ -49,7 +52,7 @@ def _ensure_table() -> None:
 def _get_profile_db(user_id: str) -> dict | None:
     try:
         import psycopg
-        with psycopg.connect(db_url) as conn:
+        with psycopg.connect(_psycopg_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT user_id, name, username, email FROM agno_user_profiles WHERE user_id = %s",
@@ -66,7 +69,7 @@ def _get_profile_db(user_id: str) -> dict | None:
 def _upsert_profile_db(user_id: str, name: str, username: str, email: str) -> bool:
     try:
         import psycopg
-        with psycopg.connect(db_url) as conn:
+        with psycopg.connect(_psycopg_url) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO agno_user_profiles (user_id, name, username, email, updated_at)

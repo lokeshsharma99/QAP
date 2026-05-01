@@ -30,6 +30,9 @@ from pydantic import BaseModel
 from app.tenancy import get_org_id, get_user_id
 from db.url import db_url
 
+# psycopg.connect() needs a plain postgresql:// URL, not the SQLAlchemy postgresql+psycopg:// variant
+_psycopg_url = db_url.replace("postgresql+psycopg://", "postgresql://", 1)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/organization", tags=["organization"])
@@ -42,7 +45,7 @@ def _ensure_table() -> None:
     """Create agno_organizations table if it doesn't exist."""
     try:
         import psycopg
-        with psycopg.connect(db_url) as conn:
+        with psycopg.connect(_psycopg_url) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS agno_organizations (
@@ -63,7 +66,7 @@ def _ensure_table() -> None:
 def _get_org_db(org_id: str) -> dict | None:
     try:
         import psycopg
-        with psycopg.connect(db_url) as conn:
+        with psycopg.connect(_psycopg_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT id, name, owner_id, members, plan, kb_namespace FROM agno_organizations WHERE id = %s",
@@ -82,7 +85,7 @@ def _get_org_db(org_id: str) -> dict | None:
 def _upsert_org_db(org: dict) -> bool:
     try:
         import psycopg
-        with psycopg.connect(db_url) as conn:
+        with psycopg.connect(_psycopg_url) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
                     INSERT INTO agno_organizations (id, name, owner_id, members, plan, kb_namespace, updated_at)
@@ -106,7 +109,7 @@ def _upsert_org_db(org: dict) -> bool:
 def _delete_org_db(org_id: str) -> bool:
     try:
         import psycopg
-        with psycopg.connect(db_url) as conn:
+        with psycopg.connect(_psycopg_url) as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM agno_organizations WHERE id = %s", (org_id,))
             conn.commit()
