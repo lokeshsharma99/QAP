@@ -75,45 +75,60 @@ const buildSeries = (entries: MetricEntry[], getValue: (e: MetricEntry) => numbe
 const CHART_COLORS = ['#3B82F6', '#22C55E', '#F59E0B', '#EC4899', '#8B5CF6', '#06B6D4', '#10B981', '#FF4017']
 
 // ---------------------------------------------------------------------------
-// Sparkline — area line chart (pure SVG)
+// Sparkline — area line chart with x-axis day labels + y-axis value labels
 // ---------------------------------------------------------------------------
-const Sparkline = ({ data, color, id }: { data: number[]; color: string; id: string }) => {
+const Sparkline = ({ data, color, id, format }: { data: number[]; color: string; id: string; format: (n: number) => string }) => {
   const hasData = data.some((v) => v > 0)
-  const W = 200; const H = 52; const PADY = 6
+  const Y_LABEL_W = 34   // left margin reserved for y-axis labels
+  const W = 200; const H = 56; const PADY = 8
+  const totalW = W + Y_LABEL_W
   const gradId = `spark-${id}`
 
   if (!hasData) return (
     <div className="flex flex-col items-center justify-center gap-1.5 py-3">
       <div className="h-8 w-full rounded" style={{
-        background: 'repeating-linear-gradient(90deg,rgba(255,255,255,0.03) 0,rgba(255,255,255,0.03) 1px,transparent 1px,transparent 14px)',
+        background: 'repeating-linear-gradient(90deg,rgba(255,255,255,0.04) 0,rgba(255,255,255,0.04) 1px,transparent 1px,transparent 14px)',
         backgroundColor: 'rgba(255,255,255,0.02)',
       }} />
-      <p className="text-center text-xs uppercase tracking-widest text-muted/40">No data yet</p>
+      <p className="text-center text-[10px] uppercase tracking-widest text-muted/40">No data yet</p>
     </div>
   )
 
   const max = Math.max(...data, 1); const n = data.length
-  const pts = data.map((v, i) => ({ x: (i / (n - 1)) * W, y: H - PADY - (v / max) * (H - PADY * 2) }))
+  // 4 y-axis ticks: 0, 33%, 66%, 100% of max
+  const yTicks = [0, 0.33, 0.66, 1].map((f) => ({ value: f * max, y: H - PADY - f * (H - PADY * 2) }))
+
+  const toX = (i: number) => Y_LABEL_W + (i / (n - 1)) * W
+  const toY = (v: number) => H - PADY - (v / max) * (H - PADY * 2)
+
+  const pts = data.map((v, i) => ({ x: toX(i), y: toY(v) }))
   const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-  const areaPath = `${linePath} L${W},${H} L0,${H} Z`
+  const areaPath = `${linePath} L${toX(n - 1)},${H} L${toX(0)},${H} Z`
 
   return (
-    <svg viewBox={`0 0 ${W} ${H + 16}`} className="w-full" style={{ height: '72px' }} aria-hidden>
+    <svg viewBox={`0 0 ${totalW} ${H + 16}`} className="w-full" style={{ height: '84px' }} aria-hidden>
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
           <stop offset="100%" stopColor={color} stopOpacity="0.02" />
         </linearGradient>
       </defs>
-      {[0.33, 0.66].map((f) => {
-        const y = (H - PADY) * (1 - f) + PADY
-        return <line key={f} x1="0" y1={y.toFixed(1)} x2={W} y2={y.toFixed(1)} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-      })}
+      {/* horizontal grid lines + y-axis labels */}
+      {yTicks.map(({ value, y }, i) => (
+        <g key={i}>
+          <line x1={Y_LABEL_W} y1={y.toFixed(1)} x2={totalW} y2={y.toFixed(1)}
+            stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+          <text x={(Y_LABEL_W - 3).toFixed(1)} y={(y + 3).toFixed(1)}
+            textAnchor="end" fontSize="8" fill="#52525B">{format(value)}</text>
+        </g>
+      ))}
+      {/* area fill + line */}
       <path d={areaPath} fill={`url(#${gradId})`} />
       <path d={linePath} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* x-axis day labels */}
       {[1, 8, 15, 22, 29].map((day) => {
-        const x = ((day - 1) / (n - 1)) * W
-        return <text key={day} x={x.toFixed(1)} y={(H + 13).toFixed(1)} textAnchor="middle" fontSize="9" fill="#52525B">{day}</text>
+        const x = toX(day - 1)
+        return <text key={day} x={x.toFixed(1)} y={(H + 13).toFixed(1)} textAnchor="middle" fontSize="8" fill="#52525B">{day}</text>
       })}
     </svg>
   )
@@ -215,44 +230,23 @@ const CARDS = [
 ] as const
 
 // ---------------------------------------------------------------------------
-// ChartToggle — switch between sparkline (area) and bar chart
+// MetricCard
 // ---------------------------------------------------------------------------
-type ChartMode = 'line' | 'bar'
-
 const MetricCard = ({ card, entries }: { card: typeof CARDS[number]; entries: MetricEntry[] }) => {
-  const [mode, setMode] = useState<ChartMode>('bar')
-  const latest  = entries.length > 0 ? entries[entries.length - 1] : null
-  const current = latest ? card.getValue(latest) : 0
   const total30 = entries.reduce((s, e) => s + card.getValue(e), 0)
   const series  = buildSeries(entries, card.getValue)
 
   return (
     <div className="rounded-xl border border-accent bg-primaryAccent overflow-hidden">
-      <div className="px-4 pt-4 pb-1 flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">{card.label}</p>
-          <p className="mt-0.5 text-2xl font-semibold text-primary">{card.format(total30)}</p>
-          <p className="text-xs text-muted/50 mt-0.5">latest: {card.format(current)}</p>
-        </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <div className="size-2 rounded-full" style={{ backgroundColor: card.color }} />
-          <div className="flex gap-0.5 rounded border border-accent overflow-hidden">
-            <button
-              onClick={() => setMode('bar')}
-              className={cn('px-1.5 py-0.5 text-[9px] uppercase tracking-wide transition-colors', mode === 'bar' ? 'bg-accent text-primary' : 'text-muted/50 hover:text-muted')}
-            >Bar</button>
-            <button
-              onClick={() => setMode('line')}
-              className={cn('px-1.5 py-0.5 text-[9px] uppercase tracking-wide transition-colors', mode === 'line' ? 'bg-accent text-primary' : 'text-muted/50 hover:text-muted')}
-            >Line</button>
-          </div>
-        </div>
+      <div className="px-4 pt-3 pb-0 flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">{card.label}</p>
+        <div className="size-1.5 rounded-full" style={{ backgroundColor: card.color }} />
       </div>
-      <div className="px-3 pb-3 pt-1">
-        {mode === 'bar'
-          ? <BarChart data={series} color={card.color} id={card.key} />
-          : <Sparkline data={series} color={card.color} id={card.key} />
-        }
+      <div className="px-4 pb-1">
+        <p className="text-2xl font-semibold text-primary">{card.format(total30)}</p>
+      </div>
+      <div className="px-2 pb-2">
+        <Sparkline data={series} color={card.color} id={card.key} format={card.format} />
       </div>
     </div>
   )
