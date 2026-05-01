@@ -226,7 +226,6 @@ const CARDS = [
   { key: 'team_sessions',     label: 'Team Sessions',     color: '#EC4899', getValue: (e: MetricEntry) => e.team_sessions_count,           format: formatNum },
   { key: 'workflow_runs',     label: 'Workflow Runs',     color: '#06B6D4', getValue: (e: MetricEntry) => e.workflow_runs_count,            format: formatNum },
   { key: 'workflow_sessions', label: 'Workflow Sessions', color: '#10B981', getValue: (e: MetricEntry) => e.workflow_sessions_count,        format: formatNum },
-  { key: 'model_calls',       label: 'Model Calls',       color: '#FF4017', getValue: (e: MetricEntry) => e.model_metrics.reduce((s, m) => s + m.count, 0), format: formatNum },
 ] as const
 
 // ---------------------------------------------------------------------------
