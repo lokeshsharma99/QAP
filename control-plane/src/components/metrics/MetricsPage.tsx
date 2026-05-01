@@ -616,32 +616,6 @@ export default function MetricsPage() {
           </div>
         </div>
 
-        {/* Month-by-month filter pills */}
-        {(() => {
-          const pastMonths = Array.from({ length: 13 }, (_, i) => {
-            const d = dayjs().subtract(12 - i, 'month')
-            return { key: d.format('YYYY-MM'), label: d.format('MMM YY') }
-          })
-          return (
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-              {pastMonths.map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => goToMonth(key)}
-                  className={cn(
-                    'shrink-0 rounded-full border px-3 py-1 text-xs transition-colors',
-                    selectedMonth === key
-                      ? 'border-brand/60 bg-brand/10 text-brand font-medium'
-                      : 'border-accent bg-primaryAccent text-muted/70 hover:text-primary hover:border-accent'
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )
-        })()}
-
         {/* Error banner */}
         {error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive">{error}</div>
