@@ -21,7 +21,6 @@ from app.ado_mcp import get_ado_mcp_for_pipeline_analyst
 from app.atlassian_mcp import get_atlassian_mcp_for_pipeline_analyst
 from app.github_mcp import get_github_mcp_for_pipeline_analyst
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
-from contracts.pipeline_rca_report import PipelineRCAReport
 from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -128,7 +127,6 @@ pipeline_analyst = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
-    response_model=PipelineRCAReport,
     markdown=True,
     followups=True,
     followup_model=FOLLOWUP_MODEL,

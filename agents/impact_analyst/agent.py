@@ -17,7 +17,6 @@ from app.atlassian_mcp import get_atlassian_mcp_for_impact_analyst
 from app.github_mcp import get_github_mcp_for_impact_analyst
 from app.guardrails import pii_detection_guardrail, prompt_injection_guardrail
 from app.settings import MODEL, FOLLOWUP_MODEL, agent_db
-from contracts.impact_report import ImpactReport
 from db import get_automation_kb, get_culture_manager, get_qap_learnings_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
@@ -107,7 +106,6 @@ impact_analyst = Agent(
     read_chat_history=True,
     num_history_runs=5,
     # Output
-    response_model=ImpactReport,
     markdown=True,
     followups=True,
     followup_model=FOLLOWUP_MODEL,
