@@ -33,6 +33,8 @@ from app.endpoints.model import router as model_router
 from app.endpoints.eval_runs import router as eval_runs_router
 from app.endpoints.mcp_status import router as mcp_status_router
 from app.endpoints.optimize_memories import router as optimize_memories_router
+from app.endpoints.organization import router as organization_router
+from app.endpoints.profile import router as profile_router
 from app.endpoints.settings import router as settings_router
 from app.registry import registry
 from app.settings import RUNTIME_ENV, agent_db
@@ -200,6 +202,8 @@ app.include_router(model_router)
 app.include_router(mcp_status_router)
 app.include_router(agent_config_router)
 app.include_router(culture_router)
+app.include_router(profile_router)
+app.include_router(organization_router)
 
 if __name__ == "__main__":
     agent_os.serve(

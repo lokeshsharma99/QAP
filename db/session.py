@@ -93,6 +93,49 @@ def get_qap_learnings_kb() -> Knowledge:
     return _qap_learnings_kb
 
 
+# ---------------------------------------------------------------------------
+# Multi-Tenancy Helpers
+# ---------------------------------------------------------------------------
+
+def kb_table_for_org(base_table: str, org_id: str) -> str:
+    """Return a per-tenant vector table name.
+
+    Examples::
+
+        kb_table_for_org("qap_learnings", "default")   → "qap_learnings"
+        kb_table_for_org("qap_learnings", "defra-qa")  → "qap_learnings_defra_qa"
+        kb_table_for_org("site_manifesto_vectors", "acme corp") → "site_manifesto_vectors_acme_corp"
+
+    Each org gets isolated PgVector tables in the same database — no extra
+    DB provisioning needed.  The default org uses the base (shared) tables.
+    """
+    if org_id in ("", "default"):
+        return base_table
+    safe = "".join(
+        c if (c.isalnum() or c == "_") else "_"
+        for c in org_id.lower().replace("-", "_").replace(" ", "_").replace(".", "_")
+    )
+    return f"{base_table}_{safe}"
+
+
+def get_tenant_kb(base_table: str, name: str, org_id: str) -> Knowledge:
+    """Create a per-tenant Knowledge instance namespaced by org_id.
+
+    Usage in an endpoint or agent that has access to the request's JWT::
+
+        from app.tenancy import get_org_id
+        from db.session import get_tenant_kb
+
+        org_id = get_org_id(authorization)
+        kb = get_tenant_kb("qap_learnings", "QAP Shared Learnings", org_id)
+
+    The default org (no JWT / dev mode) uses the same shared tables as
+    the singleton KBs returned by get_qap_learnings_kb() etc.
+    """
+    table = kb_table_for_org(base_table, org_id)
+    return create_knowledge(name, table)
+
+
 def get_site_manifesto_kb() -> Knowledge:
     """Site Manifesto KB — Discovery writes, Engineer/Architect/Medic read.
 

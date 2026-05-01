@@ -108,4 +108,15 @@ export const APIRoutes = {
   // ── Traces (extended) ────────────────────────────────────────────────────
   TraceFilterSchema: (base: string) => `${base}/traces/filter-schema`,
   SearchTracesDSL:   (base: string) => `${base}/traces/search`,
+
+  // ── Profile ───────────────────────────────────────────────────────────────
+  GetProfile:      (base: string) => `${base}/profile`,
+  UpdateProfile:   (base: string) => `${base}/profile`,
+
+  // ── Organization ──────────────────────────────────────────────────────────
+  GetOrganization:    (base: string) => `${base}/organization`,
+  UpdateOrganization: (base: string) => `${base}/organization`,
+  InviteMember:       (base: string) => `${base}/organization/members`,
+  RemoveMember:       (base: string, email: string) => `${base}/organization/members/${encodeURIComponent(email)}`,
+  DeleteOrganization: (base: string) => `${base}/organization`,
 }

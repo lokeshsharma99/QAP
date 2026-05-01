@@ -11,7 +11,8 @@ import useChatActions from '@/hooks/useChatActions'
 import {
   Server, KeyRound, Bot, Database, Globe, Wrench,
   ShieldCheck, RefreshCw, Save, Eye, EyeOff, CheckCircle2,
-  AlertCircle, CircleDot, Cpu, Zap, Users, GitBranch, WifiOff, Wifi, ChevronDown
+  AlertCircle, CircleDot, Cpu, Zap, Users, GitBranch, WifiOff, Wifi, ChevronDown,
+  User, Building2, Trash2,
 } from 'lucide-react'
 import AgentConfigPanel from '@/components/chat/AgentConfigPanel'
 
@@ -47,6 +48,18 @@ type NavTab = {
 }
 
 const NAV_TABS: NavTab[] = [
+  {
+    id: 'profile',
+    label: 'Profile',
+    icon: User,
+    sections: [],
+  },
+  {
+    id: 'organization',
+    label: 'Organization',
+    icon: Building2,
+    sections: [],
+  },
   {
     id: 'connection',
     label: 'Connection',
@@ -1114,6 +1127,16 @@ export default function SettingsPage() {
                   authToken={values['_authToken'] ?? authToken}
                 />
               </>
+            ) : activeTab === 'profile' ? (
+              <ProfileSection
+                endpointUrl={constructEndpointUrl(values['_endpoint'] ?? selectedEndpoint)}
+                authToken={values['_authToken'] ?? authToken}
+              />
+            ) : activeTab === 'organization' ? (
+              <OrganizationSection
+                endpointUrl={constructEndpointUrl(values['_endpoint'] ?? selectedEndpoint)}
+                authToken={values['_authToken'] ?? authToken}
+              />
             ) : activeTab === 'infrastructure' ? (
               <>
                 {activeNavTab.sections.filter((s) => ['aut', 'database'].includes(s.id)).map((section) => (
@@ -1150,8 +1173,8 @@ export default function SettingsPage() {
               ))
             )}
 
-            {/* Save button at bottom of content — hidden on Agents tab (panel has its own) */}
-            {activeTab !== 'agents' && (
+            {/* Save button at bottom of content — hidden on Agents/Profile/Organization tabs (they have their own) */}
+            {activeTab !== 'agents' && activeTab !== 'profile' && activeTab !== 'organization' && (
               <div className="flex justify-end pb-4">
                 <Button
                   onClick={handleSave}
