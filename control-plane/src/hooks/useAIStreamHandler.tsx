@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { flushSync } from 'react-dom'
 import { APIRoutes } from '@/api/routes'
 
@@ -28,6 +28,7 @@ const useAIChatStreamHandler = () => {
   const clearChatEvents = useStore((state) => state.clearChatEvents)
   const setActiveRunId = useStore((state) => state.setActiveRunId)
   const { streamResponse } = useAIResponseStream()
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const updateMessagesWithErrorState = useCallback(() => {
     setMessages((prevMessages) => {
@@ -97,6 +98,8 @@ const useAIChatStreamHandler = () => {
       setIsStreaming(true)
       clearChatEvents()
       addChatEvent({ type: 'run_start', label: 'Run started', ts: Date.now() })
+      const controller = new AbortController()
+      abortControllerRef.current = controller
 
       const formData = input instanceof FormData ? input : new FormData()
       if (typeof input === 'string') {
@@ -183,8 +186,7 @@ const useAIChatStreamHandler = () => {
         }
 
         await streamResponse({
-          apiUrl: RunUrl,
-          headers,
+          apiUrl: RunUrl,          signal: controller.signal,          headers,
           requestBody: formData,
           onChunk: (chunk: RunResponse) => {
             if (
@@ -560,6 +562,12 @@ const useAIChatStreamHandler = () => {
   )
 
   const cancelRun = useCallback(async () => {
+    // 1. Abort the SSE fetch immediately — flips button state right away
+    abortControllerRef.current?.abort()
+    setIsStreaming(false)
+    setActiveRunId(null)
+
+    // 2. Best-effort cancel on the backend
     const runId = useStore.getState().activeRunId
     if (!runId) return
     const endpointUrl = constructEndpointUrl(selectedEndpoint)
@@ -576,8 +584,8 @@ const useAIChatStreamHandler = () => {
     if (!cancelUrl) return
     try {
       await fetch(cancelUrl, { method: 'POST', headers })
-    } catch { /* ignore — stream onError will fire */ }
-  }, [selectedEndpoint, authToken, mode, agentId, teamId, workflowId])
+    } catch { /* ignore */ }
+  }, [selectedEndpoint, authToken, mode, agentId, teamId, workflowId, setIsStreaming, setActiveRunId])
 
   return { handleStreamResponse, cancelRun }
 }

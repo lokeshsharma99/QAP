@@ -6,7 +6,7 @@ import { APIRoutes } from '@/api/routes'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { BarChart2, RefreshCw, Activity } from 'lucide-react'
+import { BarChart2, RefreshCw, Activity, ChevronLeft, ChevronRight } from 'lucide-react'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -488,6 +488,10 @@ export default function MetricsPage() {
   const [selectedMonths, setSelectedMonths] = useState(1)
   const [selectedMonth, setSelectedMonth]   = useState<string | null>(null)
 
+  // Month nav pill state: tracks the currently-displayed month (YYYY-MM)
+  const [navMonth, setNavMonth] = useState<string>(() => dayjs().format('YYYY-MM'))
+  const currentCalMonth = dayjs().format('YYYY-MM')
+
   const defaultEnd   = dayjs().format('YYYY-MM-DD')
   const defaultStart = dayjs().subtract(1, 'month').format('YYYY-MM-DD')
   const [startDate, setStartDate] = useState(defaultStart)
@@ -512,6 +516,21 @@ export default function MetricsPage() {
     } finally { setLoading(false) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEndpoint, authToken, startDate, endDate])
+
+  /** Navigate to a specific month (YYYY-MM) and update the date range. */
+  const goToMonth = useCallback((month: string) => {
+    const start = dayjs(month).startOf('month').format('YYYY-MM-DD')
+    const end   = dayjs(month).endOf('month').isBefore(dayjs())
+      ? dayjs(month).endOf('month').format('YYYY-MM-DD')
+      : dayjs().format('YYYY-MM-DD')
+    setNavMonth(month)
+    setSelectedMonth(month)
+    setSelectedMonths(0)
+    setStartDate(start)
+    setEndDate(end)
+    fetchMetrics(start, end)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchMetrics])
 
   const recalculate = useCallback(async () => {
     if (!selectedEndpoint) return
@@ -561,6 +580,7 @@ export default function MetricsPage() {
                     const start = dayjs().subtract(m, 'month').format('YYYY-MM-DD')
                     setSelectedMonths(m)
                     setSelectedMonth(null)
+                    setNavMonth(dayjs().format('YYYY-MM'))
                     setStartDate(start)
                     setEndDate(end)
                   }}
@@ -570,6 +590,29 @@ export default function MetricsPage() {
                 </button>
               ))}
             </div>
+
+            {/* Month prev / next navigator — exact pattern from spec */}
+            <div className="flex h-9 items-center gap-x-2 rounded-md border border-border px-3 py-2 text-xs shadow-sm bg-primaryAccent">
+              <button
+                aria-label="Select previous month"
+                onClick={() => goToMonth(dayjs(navMonth).subtract(1, 'month').format('YYYY-MM'))}
+                className="flex items-center text-muted hover:text-primary transition-colors disabled:opacity-30"
+              >
+                <ChevronLeft className="size-3.5" />
+              </button>
+              <p className="font-mono w-16 select-none text-center uppercase text-primary">
+                {dayjs(navMonth).format('MMM YYYY')}
+              </p>
+              <button
+                aria-label="Select next month"
+                disabled={navMonth >= currentCalMonth}
+                onClick={() => goToMonth(dayjs(navMonth).add(1, 'month').format('YYYY-MM'))}
+                className="flex items-center text-muted hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
+
             <Button size="sm" variant="outline" onClick={() => fetchMetrics()} disabled={loading || refreshing} className="gap-1.5">
               <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />Reload
             </Button>
@@ -590,17 +633,7 @@ export default function MetricsPage() {
               {pastMonths.map(({ key, label }) => (
                 <button
                   key={key}
-                  onClick={() => {
-                    const start = dayjs(key).startOf('month').format('YYYY-MM-DD')
-                    const end   = dayjs(key).endOf('month').isBefore(dayjs())
-                      ? dayjs(key).endOf('month').format('YYYY-MM-DD')
-                      : dayjs().format('YYYY-MM-DD')
-                    setSelectedMonth(key)
-                    setSelectedMonths(0)
-                    setStartDate(start)
-                    setEndDate(end)
-                    fetchMetrics(start, end)
-                  }}
+                  onClick={() => goToMonth(key)}
                   className={cn(
                     'shrink-0 rounded-full border px-3 py-1 text-xs transition-colors',
                     selectedMonth === key

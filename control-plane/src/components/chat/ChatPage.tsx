@@ -2375,7 +2375,7 @@ export default function ChatPage() {
             </div>
 
             {/* Bottom toolbar */}
-            <div className="flex w-full items-center justify-between gap-2 px-1 pb-1">
+            <div className="flex w-full items-center justify-between gap-2 px-1 pb-1 mt-1">
               {/* Left: attach + run settings */}
               <div className="flex items-center gap-2">
                 <button

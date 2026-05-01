@@ -13,7 +13,10 @@ to resolve the tenant namespace.
 
 import base64
 import json
+from os import getenv
 from typing import Optional
+
+from fastapi import Header, HTTPException
 
 
 def _decode_jwt_payload(token: str) -> dict:
@@ -79,3 +82,40 @@ def get_rbac_scopes(authorization: Optional[str]) -> set[str]:
     if isinstance(raw, list):
         return set(raw)
     return set(raw.split()) if raw else set()
+
+
+# ---------------------------------------------------------------------------
+# Production auth dependency
+# ---------------------------------------------------------------------------
+
+RUNTIME_ENV = getenv("RUNTIME_ENV", "dev")
+
+
+def require_auth(authorization: Optional[str] = Header(default=None)) -> str:
+    """FastAPI dependency that enforces JWT presence in production.
+
+    - dev  mode: no-op — returns 'anonymous' when no token is provided.
+    - prd  mode: returns 401 if Authorization header is missing or malformed.
+
+    Usage::
+
+        @router.get("/protected")
+        async def protected(user_id: str = Depends(require_auth)):
+            ...
+    """
+    if RUNTIME_ENV == "prd":
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Missing Authorization header")
+        token = authorization.removeprefix("Bearer ").strip()
+        if not token or len(token.split(".")) != 3:
+            raise HTTPException(status_code=401, detail="Invalid or malformed JWT")
+        claims = _decode_jwt_payload(token)
+        if not claims:
+            raise HTTPException(status_code=401, detail="Could not parse JWT claims")
+        user_id = claims.get("sub", claims.get("user_id", claims.get("email", "")))
+        if not user_id:
+            raise HTTPException(status_code=401, detail="JWT missing subject (sub) claim")
+        return user_id
+    # dev mode — permissive
+    return get_user_id(authorization)
+

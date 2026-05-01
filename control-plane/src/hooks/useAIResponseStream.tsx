@@ -135,17 +135,19 @@ export default function useAIResponseStream() {
       apiUrl: string
       headers?: Record<string, string>
       requestBody: FormData | Record<string, unknown>
+      signal?: AbortSignal
       onChunk: (chunk: RunResponseContent) => void
       onError: (error: Error) => void
       onComplete: () => void
     }): Promise<void> => {
-      const { apiUrl, headers = {}, requestBody, onChunk, onError, onComplete } = options
+      const { apiUrl, headers = {}, requestBody, signal, onChunk, onError, onComplete } = options
 
       let buffer = ''
 
       try {
         const response = await fetch(apiUrl, {
           method: 'POST',
+          signal,
           headers: {
             // Only set Content-Type for non-FormData requests
             ...(!(requestBody instanceof FormData) && {
@@ -182,6 +184,8 @@ export default function useAIResponseStream() {
           buffer = parseBuffer(buffer, onChunk)
         }
       } catch (error) {
+        // Ignore deliberate aborts — the caller handles UI cleanup
+        if (error instanceof Error && error.name === 'AbortError') return
         if (typeof error === 'object' && error !== null && 'detail' in error) {
           onError(new Error(String((error as { detail: unknown }).detail)))
         } else {

@@ -1048,25 +1048,6 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
             {inviting ? <RefreshCw className="size-3.5 animate-spin" /> : 'Invite'}
           </button>
         </div>
-        {/* Multi-tenancy / PRO callout */}
-        <div className="rounded-xl border border-brand/20 bg-brand/5 p-3">
-          <div className="flex items-start gap-2">
-            <span className="shrink-0 rounded-full bg-brand/20 px-1.5 py-0.5 text-[9px] font-bold text-brand">PRO</span>
-            <div>
-              <p className="text-[10px] font-semibold text-primary mb-1.5">
-                Upgrade to unlock multi-user access, role management, and a shared live AgentOS
-              </p>
-              <ul className="space-y-1 text-[10px] text-muted/70">
-                {['1 live AgentOS connection', 'Role & permission control', '3 Free member invites', 'Shared AgentOS access'].map((b) => (
-                  <li key={b} className="flex items-center gap-1.5">
-                    <CheckCircle2 className="size-3 shrink-0 text-positive" />
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Members list */}
