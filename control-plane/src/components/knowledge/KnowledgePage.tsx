@@ -432,10 +432,18 @@ export default function KnowledgePage() {
   const handleDelete = async (docId: string) => {
     if (!selectedEndpoint) return
     try {
-      await fetch(APIRoutes.KnowledgeContentById(selectedEndpoint, docId), {
+      // Pass the current KB identifier so the API targets the correct knowledge base.
+      // Without this param the backend cannot locate the document and silently no-ops.
+      const kbParams = selectedKb ? kbParam(selectedKb) : {}
+      const res = await fetch(APIRoutes.KnowledgeContentById(selectedEndpoint, docId, kbParams), {
         method: 'DELETE',
         headers: authHeaders
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast.error(`Delete failed: ${err?.detail ?? res.statusText}`)
+        return
+      }
       setDocs((prev) => prev.filter((d) => d.id !== docId))
       toast.success('Document deleted')
     } catch { toast.error('Delete failed') }

@@ -44,7 +44,11 @@ export const APIRoutes = {
   KnowledgeConfig:      (base: string) => `${base}/knowledge/config`,
   KnowledgeContent:     (base: string) => `${base}/knowledge/content`,
   KnowledgeSearch:      (base: string) => `${base}/knowledge/search`,
-  KnowledgeContentById: (base: string, id: string) => `${base}/knowledge/content/${id}`,
+  KnowledgeContentById: (base: string, id: string, params?: Record<string, string>) => {
+    const url = new URL(`${base}/knowledge/content/${id}`)
+    if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
+    return url.toString()
+  },
   KnowledgeSources:     (base: string, kid: string) => `${base}/knowledge/${kid}/sources`,
   KnowledgeSourceFiles: (base: string, kid: string, sid: string) => `${base}/knowledge/${kid}/sources/${sid}/files`,
   RemoteContent:        (base: string) => `${base}/knowledge/remote-content`,
