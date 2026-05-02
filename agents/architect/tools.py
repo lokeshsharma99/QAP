@@ -175,11 +175,30 @@ def add_jira_comment(ticket_id: str, comment: str, requirement_context_id: str =
             comment += f"\n\nRequirementContext Link: {requirement_context_id}"
 
         # Make API request
+        # Jira Cloud REST API v3 requires body in Atlassian Document Format (ADF).
+        # Plain strings return HTTP 400. Convert each paragraph (blank-line separated)
+        # into an ADF paragraph node so markdown tables and bullet lists are preserved
+        # as readable text in the Jira comment.
+        paragraphs = []
+        for para in comment.split("\n\n"):
+            stripped = para.strip()
+            if stripped:
+                paragraphs.append({
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": stripped}]
+                })
+
+        adf_body = {
+            "version": 1,
+            "type": "doc",
+            "content": paragraphs or [{"type": "paragraph", "content": [{"type": "text", "text": comment}]}]
+        }
+
         response = requests.post(
             api_url,
             auth=HTTPBasicAuth(jira_username, jira_api_token),
             headers={"Accept": "application/json", "Content-Type": "application/json"},
-            json={"body": comment},
+            json={"body": adf_body},
             timeout=10,
         )
 
