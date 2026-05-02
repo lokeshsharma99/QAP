@@ -132,6 +132,45 @@ def _patched_get_followups_response_format(model):
 _agno_resp._get_followups_response_format = _patched_get_followups_response_format
 
 # ---------------------------------------------------------------------------
+# Alternative / fast models
+# Set MODEL_PROVIDER env var to switch all agents without editing agent files.
+#
+#   MODEL_PROVIDER=kilo        → kilo-auto/free (default, free tier via NVIDIA NIM)
+#   MODEL_PROVIDER=kilo_paid   → kilo-auto/balanced (faster, requires KILO_API_KEY)
+#   MODEL_PROVIDER=gemini      → google/gemini-2.5-flash (fastest, requires GOOGLE_API_KEY)
+#   MODEL_PROVIDER=gpt4o_mini  → openai/gpt-4o-mini (fast + cheap, requires OPENAI_API_KEY)
+#   MODEL_PROVIDER=haiku        → anthropic/claude-3.5-haiku (fast, requires ANTHROPIC_API_KEY)
+#
+# Benchmarks observed in this deployment (avg TTFT on ~19k token contexts):
+#   kilo-auto/free     → avg 23s TTFT, 10-61 t/s, spikes to 94s (shared NVIDIA NIM queue)
+#   kilo-auto/balanced → ~3-8s TTFT (estimated, same infra, priority queue)
+#   gemini-2.5-flash   → ~1-3s TTFT, 200-500 t/s, excellent tool calling
+#   gpt-4o-mini        → ~0.5-2s TTFT, 200+ t/s
+# ---------------------------------------------------------------------------
+_MODEL_PROVIDER = getenv("MODEL_PROVIDER", "kilo").lower()
+
+_GOOGLE_KEY = getenv("GOOGLE_API_KEY", "")
+_OPENAI_KEY = getenv("OPENAI_API_KEY", "")
+_ANTHROPIC_KEY = getenv("ANTHROPIC_API_KEY", "")
+
+if _MODEL_PROVIDER == "gemini" and _GOOGLE_KEY:
+    from agno.models.google import Gemini
+    MODEL = Gemini(id="gemini-2.5-flash-preview-04-17", api_key=_GOOGLE_KEY)
+    FOLLOWUP_MODEL = Gemini(id="gemini-2.5-flash-preview-04-17", api_key=_GOOGLE_KEY, max_tokens=2048)
+elif _MODEL_PROVIDER == "gpt4o_mini" and _OPENAI_KEY:
+    from agno.models.openai import OpenAIChat
+    MODEL = OpenAIChat(id="gpt-4o-mini", api_key=_OPENAI_KEY)
+    FOLLOWUP_MODEL = OpenAIChat(id="gpt-4o-mini", api_key=_OPENAI_KEY, max_tokens=2048)
+elif _MODEL_PROVIDER == "haiku" and _ANTHROPIC_KEY:
+    from agno.models.anthropic import Claude
+    MODEL = Claude(id="claude-3-5-haiku-20241022", api_key=_ANTHROPIC_KEY)
+    FOLLOWUP_MODEL = Claude(id="claude-3-5-haiku-20241022", api_key=_ANTHROPIC_KEY, max_tokens=2048)
+elif _MODEL_PROVIDER in ("kilo_paid", "kilo") and _KILO_KEY != "anonymous":
+    # Already set above as kilo-auto/balanced — no change needed
+    pass
+# else: fall through — MODEL already set to kilo-auto/free above
+
+# ---------------------------------------------------------------------------
 # Additional LLM provider credentials (used by /model/switch endpoint)
 # ---------------------------------------------------------------------------
 GITHUB_COPILOT_BASE_URL = getenv("GITHUB_COPILOT_BASE_URL", "http://127.0.0.1:3030/v1")
