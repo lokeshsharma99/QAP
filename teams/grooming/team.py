@@ -21,7 +21,7 @@ from teams.grooming.instructions import INSTRUCTIONS
 # ---------------------------------------------------------------------------
 grooming_team = Team(
     # Identity
-    id="grooming_team",
+    id="grooming",
     name="User Story Grooming Squad",
     mode=TeamMode.coordinate,
 
