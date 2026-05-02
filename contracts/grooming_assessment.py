@@ -2,9 +2,10 @@
 Grooming Assessment Contract
 =============================
 
-Pydantic models for the 3 Amigos Grooming Assessment.
-The GroomingAssessment represents the collaborative review of a user story
-from BA (Business Analyst), SDET (Test Engineer), and Dev (Developer) perspectives.
+Pydantic models for the INVEST User Story Scoring Assessment.
+The GroomingAssessment scores a user story against 10 GDS-aligned criteria,
+provides RAG status per criterion, rewrites the story to score 10/10, and
+posts the assessment as a Jira comment for BA review.
 """
 
 from enum import Enum
@@ -12,78 +13,62 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
-class AssessmentLevel(str, Enum):
-    """Assessment level for testability, feasibility, complexity."""
-
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
+class RAGStatus(str, Enum):
+    """RAG status for each INVEST criterion."""
+    RED    = "red"    # Not met
+    AMBER  = "amber"  # Partially met
+    GREEN  = "green"  # Fully met
 
 
 class Recommendation(str, Enum):
     """Overall recommendation for the user story."""
-
-    APPROVE = "approve"
-    REFINE = "refine"
-    REJECT = "reject"
-
-
-class BAAssessment(BaseModel):
-    """Business Analyst assessment (Architect perspective)."""
-
-    testability: AssessmentLevel = Field(
-        description="How testable are the requirements (High/Medium/Low)"
-    )
-    completeness: bool = Field(description="Whether requirements are complete and clear")
-    notes: str = Field(default="", description="Additional notes from BA perspective")
+    APPROVE = "approve"   # Score ≥ 80/100 — ready for sprint
+    REFINE  = "refine"    # Score 50–79 — BA should update story
+    REJECT  = "reject"    # Score < 50 — story needs significant rework
 
 
-class SDETAssessment(BaseModel):
-    """SDET assessment (Judge perspective)."""
-
-    automation_feasibility: AssessmentLevel = Field(
-        description="How feasible is automation (High/Medium/Low)"
-    )
-    edge_cases: list[str] = Field(
-        default_factory=list,
-        description="List of identified edge cases"
-    )
-    risk_assessment: AssessmentLevel = Field(
-        description="Risk level for automation (Low/Medium/High)"
-    )
-    notes: str = Field(default="", description="Additional notes from SDET perspective")
-
-
-class DevAssessment(BaseModel):
-    """Developer assessment (Engineer perspective)."""
-
-    implementation_complexity: AssessmentLevel = Field(
-        description="Complexity of implementation (Low/Medium/High)"
-    )
-    dependencies: list[str] = Field(
-        default_factory=list,
-        description="List of dependencies or prerequisites"
-    )
-    notes: str = Field(default="", description="Additional notes from Dev perspective")
+class CriterionScore(BaseModel):
+    """Score and RAG status for a single INVEST criterion."""
+    criterion: str = Field(description="Criterion name (e.g. 'Independent')")
+    score: int = Field(ge=1, le=10, description="Score 1-10")
+    rag: RAGStatus = Field(description="Red/Amber/Green status")
+    finding: str = Field(description="What was found — specific issue or confirmation")
+    recommendation: str = Field(description="Specific improvement recommendation")
 
 
 class GroomingAssessment(BaseModel):
-    """Collaborative 3 Amigos assessment of a user story.
+    """INVEST scoring assessment of a user story.
 
-    Produced by the Grooming Team after analyzing from BA, SDET, and Dev perspectives.
-    Used to provide feedback on user story quality before automation.
+    Produced by the Grooming Workflow after analysing the story against 10 criteria.
+    The enhanced story and full scorecard are posted as a Jira comment for BA review.
     """
 
-    ticket_id: str = Field(description="Jira ticket ID (e.g., QA-123)")
-    requirement_context_id: str = Field(description="Link to RequirementContext")
-    ba_assessment: BAAssessment = Field(description="BA (Architect) assessment")
-    sdet_assessment: SDETAssessment = Field(description="SDET (Judge) assessment")
-    dev_assessment: DevAssessment = Field(description="Dev (Engineer) assessment")
+    ticket_id: str = Field(description="Jira ticket ID (e.g., GDS-5)")
+    original_story: str = Field(description="Original user story text as-is from the ticket")
+
+    # 10-criterion scorecard (INVEST + GDS extensions)
+    criteria_scores: list[CriterionScore] = Field(
+        description="Score and RAG status for each of the 10 criteria",
+        min_length=10,
+        max_length=10,
+    )
+    initial_total: int = Field(description="Sum of initial scores (10–100)")
+
+    # Enhanced story
+    enhanced_story: str = Field(
+        description="Rewritten user story incorporating all recommendations — targets 10/10 per criterion"
+    )
+    enhanced_criteria_scores: list[CriterionScore] = Field(
+        description="Re-evaluated scores for the enhanced story",
+        min_length=10,
+        max_length=10,
+    )
+    final_total: int = Field(description="Sum of final scores after enhancement (10–100)")
+
     overall_recommendation: Recommendation = Field(
-        description="Combined recommendation (Approve/Refine/Reject)"
+        description="Approve (≥80) / Refine (50–79) / Reject (<50) based on initial_total"
+    )
+    summary: str = Field(
+        description="2–3 sentence executive summary of key gaps and what the BA should address"
     )
     timestamp: str = Field(description="ISO 8601 timestamp of the assessment")
-    assessors: list[str] = Field(
-        default_factory=list,
-        description="List of agent IDs who participated (e.g., ['architect', 'judge', 'engineer'])"
-    )
