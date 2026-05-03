@@ -18,7 +18,7 @@ import { toast } from 'sonner'
 // Monaco editor — lazy-loaded to avoid SSR issues
 const MonacoEditor = dynamic(
   () => import('@monaco-editor/react').then(m => m.default),
-  { ssr: false, loading: () => <div className="flex items-center justify-center h-64 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin mr-2" />Loading editor…</div> }
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-64 text-sm text-muted"><Loader2 className="size-4 animate-spin mr-2" />Loading editor…</div> }
 )
 
 // ---------------------------------------------------------------------------
@@ -101,10 +101,10 @@ const StatusBadge = ({ status }: { status: AutomationHealth['status'] | ReportSu
   const map: Record<string, { label: string; cls: string; icon: React.ElementType }> = {
     healthy:  { label: 'Healthy',  cls: 'bg-positive/10 text-positive',     icon: CheckCircle },
     degraded: { label: 'Degraded', cls: 'bg-warning/10 text-warning',       icon: AlertTriangle },
-    no_tests: { label: 'No Tests', cls: 'bg-muted/30 text-muted-foreground', icon: FlaskConical },
+    no_tests: { label: 'No Tests', cls: 'bg-muted/30 text-muted', icon: FlaskConical },
     PASS:     { label: 'PASS',     cls: 'bg-positive/10 text-positive',     icon: CheckCircle },
     FAIL:     { label: 'FAIL',     cls: 'bg-destructive/10 text-destructive', icon: XCircle },
-    NO_RUNS:  { label: 'No Runs',  cls: 'bg-muted/30 text-muted-foreground', icon: Activity },
+    NO_RUNS:  { label: 'No Runs',  cls: 'bg-muted/30 text-muted', icon: Activity },
     ERROR:    { label: 'Error',    cls: 'bg-destructive/10 text-destructive', icon: AlertTriangle },
   }
   const cfg = map[status] ?? map['ERROR']
@@ -120,13 +120,13 @@ const StatusBadge = ({ status }: { status: AutomationHealth['status'] | ReportSu
 const StatCard = ({ icon: Icon, label, value, sub, cls }: {
   icon: React.ElementType; label: string; value: string | number; sub?: string; cls?: string
 }) => (
-  <div className={cn('rounded-lg border bg-card p-4', cls)}>
-    <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+  <div className={cn('rounded-xl border border-accent bg-primaryAccent p-4', cls)}>
+    <div className="flex items-center gap-2 text-muted text-xs mb-1">
       <Icon className="size-3.5" />
       {label}
     </div>
-    <div className="text-2xl font-semibold text-foreground">{value}</div>
-    {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
+    <div className="text-2xl font-semibold text-primary">{value}</div>
+    {sub && <div className="text-xs text-muted mt-0.5">{sub}</div>}
   </div>
 )
 
@@ -135,13 +135,13 @@ const CollapsibleSection = ({ title, count, children }: {
 }) => {
   const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-lg border bg-card">
+    <div className="rounded-xl border border-accent bg-primaryAccent">
       <button
         onClick={() => setOpen(o => !o)}
         className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-accent/30 transition-colors"
       >
-        <span>{title} <span className="text-muted-foreground font-normal">({count})</span></span>
-        {open ? <ChevronDown className="size-4 text-muted-foreground" /> : <ChevronRight className="size-4 text-muted-foreground" />}
+        <span>{title} <span className="text-muted font-normal">({count})</span></span>
+        {open ? <ChevronDown className="size-4 text-muted" /> : <ChevronRight className="size-4 text-muted" />}
       </button>
       {open && <div className="border-t px-4 pb-4 pt-3">{children}</div>}
     </div>
@@ -372,11 +372,11 @@ export default function AutomationHealthPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-            <Terminal className="size-5 text-primary" />
+          <h1 className="text-xl font-semibold text-primary flex items-center gap-2">
+            <Terminal className="size-5 text-brand" />
             Automation Health
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted mt-0.5">
             Inspect the test framework, view results, and trigger runs
           </p>
         </div>
@@ -421,7 +421,7 @@ export default function AutomationHealthPage() {
               'flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
               activeTab === t.id
                 ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
+                : 'border-transparent text-muted hover:text-primary',
             )}
           >
             <t.icon className="size-3.5" />
@@ -437,14 +437,14 @@ export default function AutomationHealthPage() {
           <CollapsibleSection title="Feature Files" count={health.features.length}>
             <div className="space-y-2">
               {health.features.length === 0 && (
-                <p className="text-sm text-muted-foreground">No .feature files found in automation/features/</p>
+                <p className="text-sm text-muted">No .feature files found in automation/features/</p>
               )}
               {health.features.map(f => (
                 <div key={f.path} className="flex items-start justify-between text-sm py-1.5 border-b last:border-0">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground">{f.name}</span>
-                      <span className="text-muted-foreground text-xs">{f.path}</span>
+                      <span className="font-medium text-primary">{f.name}</span>
+                      <span className="text-muted text-xs">{f.path}</span>
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {f.tags.map(tag => (
@@ -453,7 +453,7 @@ export default function AutomationHealthPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-4">
-                    <span className="text-muted-foreground text-xs">{f.scenario_count} scenario{f.scenario_count !== 1 ? 's' : ''}</span>
+                    <span className="text-muted text-xs">{f.scenario_count} scenario{f.scenario_count !== 1 ? 's' : ''}</span>
                     <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={() => openFile(f.path)}>
                       <Eye className="size-3" /> View
                     </Button>
@@ -467,13 +467,13 @@ export default function AutomationHealthPage() {
           <CollapsibleSection title="Step Definitions" count={health.step_definitions.length}>
             <div className="space-y-1">
               {health.step_definitions.length === 0 && (
-                <p className="text-sm text-muted-foreground">No step definition files found.</p>
+                <p className="text-sm text-muted">No step definition files found.</p>
               )}
               {health.step_definitions.map(s => (
                 <div key={s.path} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-                  <span className="text-foreground font-mono text-xs">{s.path}</span>
+                  <span className="text-primary font-mono text-xs">{s.path}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-xs">{s.step_count} bindings</span>
+                    <span className="text-muted text-xs">{s.step_count} bindings</span>
                     <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={() => openFile(s.path)}>
                       <Eye className="size-3" /> View
                     </Button>
@@ -487,7 +487,7 @@ export default function AutomationHealthPage() {
           <CollapsibleSection title="Page Objects" count={health.page_objects.length}>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {health.page_objects.length === 0 && (
-                <p className="text-sm text-muted-foreground col-span-3">No Page Object files found.</p>
+                <p className="text-sm text-muted col-span-3">No Page Object files found.</p>
               )}
               {health.page_objects.map(p => (
                 <button
@@ -495,11 +495,11 @@ export default function AutomationHealthPage() {
                   onClick={() => openFile(p.path)}
                   className="rounded border bg-muted/30 px-3 py-2 text-xs text-left hover:bg-accent/40 transition-colors group"
                 >
-                  <div className="font-medium text-foreground flex items-center justify-between">
+                  <div className="font-medium text-primary flex items-center justify-between">
                     {p.name}
-                    <Eye className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Eye className="size-3 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <div className="text-muted-foreground truncate">{p.path}</div>
+                  <div className="text-muted truncate">{p.path}</div>
                 </button>
               ))}
             </div>
@@ -522,12 +522,12 @@ export default function AutomationHealthPage() {
               {editsPanelOpen && (
                 <div className="border-t px-4 pb-4 pt-3 space-y-3">
                   {pendingEdits.map(edit => (
-                    <div key={edit.id} className="rounded border bg-card p-3 space-y-2">
+                    <div key={edit.id} className="rounded-xl border border-accent bg-primaryAccent p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs text-foreground">{edit.path}</span>
-                        <span className="text-[10px] text-muted-foreground">{new Date(edit.created_at).toLocaleString()}</span>
+                        <span className="font-mono text-xs text-primary">{edit.path}</span>
+                        <span className="text-[10px] text-muted">{new Date(edit.created_at).toLocaleString()}</span>
                       </div>
-                      {edit.comment && <p className="text-xs text-muted-foreground italic">"{edit.comment}"</p>}
+                      {edit.comment && <p className="text-xs text-muted italic">"{edit.comment}"</p>}
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="gap-1 text-xs text-positive border-positive/30 hover:bg-positive/10"
                           onClick={() => resolveEdit(edit.id, 'approve')}>
@@ -551,26 +551,26 @@ export default function AutomationHealthPage() {
       {activeTab === 'results' && (
         <div className="space-y-4">
           {!report ? (
-            <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground text-sm">
+            <div className="rounded-xl border border-accent bg-primaryAccent p-8 text-center text-muted text-sm">
               No test report found. Trigger a run from the <strong>Run Tests</strong> tab.
             </div>
           ) : (
             <>
               {/* Summary row */}
-              <div className="flex items-center gap-4 rounded-lg border bg-card px-4 py-3">
+              <div className="flex items-center gap-4 rounded-xl border border-accent bg-primaryAccent px-4 py-3">
                 <StatusBadge status={report.status} />
                 <div className="flex gap-6 text-sm">
                   <span className="text-positive"><strong>{report.passed}</strong> passed</span>
                   <span className="text-destructive"><strong>{report.failed}</strong> failed</span>
-                  <span className="text-muted-foreground"><strong>{report.pending}</strong> pending</span>
-                  <span className="text-muted-foreground"><strong>{report.total}</strong> total</span>
+                  <span className="text-muted"><strong>{report.pending}</strong> pending</span>
+                  <span className="text-muted"><strong>{report.total}</strong> total</span>
                 </div>
               </div>
 
               {/* Failures */}
               {report.failures.length > 0 && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  <h3 className="text-sm font-medium text-primary flex items-center gap-1.5">
                     <Bug className="size-4 text-destructive" />
                     Failures
                   </h3>
@@ -581,12 +581,12 @@ export default function AutomationHealthPage() {
                         className="w-full flex items-start justify-between px-4 py-3 text-sm text-left"
                       >
                         <div>
-                          <div className="font-medium text-foreground">{f.scenario}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">{f.feature}</div>
+                          <div className="font-medium text-primary">{f.scenario}</div>
+                          <div className="text-xs text-muted mt-0.5">{f.feature}</div>
                         </div>
                         {expandedFailure === i
-                          ? <ChevronDown className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-                          : <ChevronRight className="size-4 text-muted-foreground shrink-0 mt-0.5" />}
+                          ? <ChevronDown className="size-4 text-muted shrink-0 mt-0.5" />
+                          : <ChevronRight className="size-4 text-muted shrink-0 mt-0.5" />}
                       </button>
                       {expandedFailure === i && f.error && (
                         <div className="border-t px-4 pb-3 pt-2">
@@ -615,16 +615,16 @@ export default function AutomationHealthPage() {
       {activeTab === 'traces' && (
         <div className="space-y-2">
           {traces.length === 0 ? (
-            <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground text-sm">
+            <div className="rounded-xl border border-accent bg-primaryAccent p-8 text-center text-muted text-sm">
               No trace ZIPs found in <code>automation/test-results/</code>.
               Traces are written automatically when a test fails (on first retry).
             </div>
           ) : (
             traces.map(t => (
-              <div key={t.name} className="rounded-lg border bg-card px-4 py-3 flex items-center justify-between">
+              <div key={t.name} className="rounded-xl border border-accent bg-primaryAccent px-4 py-3 flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-medium text-foreground font-mono">{t.name}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
+                  <div className="text-sm font-medium text-primary font-mono">{t.name}</div>
+                  <div className="text-xs text-muted mt-0.5">
                     {t.size_kb} KB · {new Date(t.modified).toLocaleString()}
                   </div>
                 </div>
@@ -646,21 +646,21 @@ export default function AutomationHealthPage() {
       {/* ── Tab: Run Tests ── */}
       {activeTab === 'run' && (
         <div className="space-y-4">
-          <div className="rounded-lg border bg-card p-4 space-y-4 max-w-lg">
-            <h3 className="text-sm font-medium text-foreground">Run Configuration</h3>
+          <div className="rounded-xl border border-accent bg-primaryAccent p-4 space-y-4 max-w-lg">
+            <h3 className="text-sm font-medium text-primary">Run Configuration</h3>
 
             {/* Tags filter */}
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Tag Filter (optional)</label>
+              <label className="text-xs text-muted">Tag Filter (optional)</label>
               <input
                 type="text"
                 value={runTags}
                 onChange={e => setRunTags(e.target.value)}
                 placeholder="@smoke or @AC-001 or @regression"
                 disabled={running}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                className="w-full rounded-xl border border-accent bg-background px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:border-primary/40 focus:ring-0 disabled:opacity-50"
               />
-              <p className="text-[11px] text-muted-foreground">Leave empty to run the full regression suite.</p>
+              <p className="text-[11px] text-muted">Leave empty to run the full regression suite.</p>
             </div>
 
             {/* Docker toggle */}
@@ -673,9 +673,9 @@ export default function AutomationHealthPage() {
                 disabled={running}
                 className="rounded border-input"
               />
-              <label htmlFor="use-docker" className="text-sm text-foreground">
+              <label htmlFor="use-docker" className="text-sm text-primary">
                 Run in <code>qap-playwright</code> container
-                <span className="text-muted-foreground ml-1 text-xs">(requires <code>--profile runner</code>)</span>
+                <span className="text-muted ml-1 text-xs">(requires <code>--profile runner</code>)</span>
               </label>
             </div>
 
@@ -742,11 +742,11 @@ export default function AutomationHealthPage() {
               </div>
               {runResult.failures.length > 0 && (
                 <>
-                  <div className="text-xs font-medium text-foreground">Failed scenarios:</div>
+                  <div className="text-xs font-medium text-primary">Failed scenarios:</div>
                   {runResult.failures.map((f, i) => (
                     <div key={i} className="text-xs bg-destructive/10 rounded px-3 py-2">
                       <div className="font-medium">{f.scenario}</div>
-                      {f.error && <div className="text-muted-foreground mt-1 truncate">{f.error.slice(0, 150)}</div>}
+                      {f.error && <div className="text-muted mt-1 truncate">{f.error.slice(0, 150)}</div>}
                     </div>
                   ))}
                   <Button
@@ -780,14 +780,14 @@ export default function AutomationHealthPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="w-full max-w-5xl rounded-xl border bg-card shadow-2xl overflow-hidden flex flex-col"
+              className="w-full max-w-5xl rounded-xl border border-accent bg-primaryAccent shadow-2xl overflow-hidden flex flex-col"
               style={{ maxHeight: '90vh' }}
             >
               {/* Modal header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
+              <div className="flex items-center justify-between px-4 py-3 border-b bg-accent/30">
                 <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="size-4 text-primary shrink-0" />
-                  <span className="font-mono text-sm text-foreground truncate">{fileViewer.path}</span>
+                  <FileText className="size-4 text-brand shrink-0" />
+                  <span className="font-mono text-sm text-primary truncate">{fileViewer.path}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {!fileViewer.editMode ? (
@@ -809,7 +809,7 @@ export default function AutomationHealthPage() {
                   )}
                   <button onClick={() => setFileViewer(null)}
                     className="rounded p-1 hover:bg-accent transition-colors">
-                    <X className="size-4 text-muted-foreground" />
+                    <X className="size-4 text-muted" />
                   </button>
                 </div>
               </div>
@@ -824,7 +824,7 @@ export default function AutomationHealthPage() {
                     value={editComment}
                     onChange={e => setEditComment(e.target.value)}
                     placeholder="Optional comment…"
-                    className="ml-auto rounded border bg-background px-2 py-0.5 text-xs w-48 focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="ml-auto rounded border bg-background px-2 py-0.5 text-xs w-48 focus:outline-none focus:border-primary/40 focus:ring-0"
                   />
                 </div>
               )}
@@ -832,7 +832,7 @@ export default function AutomationHealthPage() {
               {/* Monaco Editor */}
               <div className="flex-1 overflow-hidden" style={{ minHeight: '400px' }}>
                 {fileViewer.loading ? (
-                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                  <div className="flex items-center justify-center h-full text-sm text-muted">
                     <Loader2 className="size-5 animate-spin mr-2" /> Loading file…
                   </div>
                 ) : (
