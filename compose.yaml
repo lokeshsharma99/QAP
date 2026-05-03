@@ -29,6 +29,8 @@ services:
     volumes:
       # Hot-reload: mount source code
       - .:/app
+      # Named volume preserves image-installed node_modules (bind mount would shadow them)
+      - automation_node_modules:/app/automation/node_modules
       # Generated code volume
       - generated_code:/app/generated
       # Docker socket — required for `docker mcp gateway run` (Docker MCP Gateway)
@@ -369,6 +371,7 @@ networks:
 volumes:
   pgdata:
   generated_code:
+  automation_node_modules:  # preserves npm packages installed in qap-api image at build time
   playwright-mcp-browsers:  # caches chrome-for-testing download across container restarts
   sonarqube_data:
   sonarqube_logs:

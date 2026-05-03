@@ -280,7 +280,7 @@ def trigger_run(body: RunRequest, background_tasks: BackgroundTasks):
                 " --format @cucumber/html-formatter:reports/cucumber-report.html"
                 " --format json:reports/cucumber-report.json"
             )
-        cmd = ["docker", "exec", "qap-playwright", "sh", "-c", inner_cmd]
+        cmd = ["docker", "exec", "playwright-mcp", "sh", "-c", inner_cmd]
     else:
         if body.tags:
             cmd = [
@@ -407,7 +407,7 @@ def _build_run_cmd(tags: str, use_docker: bool) -> list[str]:
                 " --format @cucumber/html-formatter:reports/cucumber-report.html"
                 " --format json:reports/cucumber-report.json"
             )
-        return ["docker", "exec", "qap-playwright", "sh", "-c", inner]
+        return ["docker", "exec", "playwright-mcp", "sh", "-c", inner]
     if tags:
         return [
             "npx", "cucumber-js",
