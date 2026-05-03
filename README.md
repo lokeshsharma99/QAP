@@ -23,6 +23,7 @@ Quality Autopilot treats AI as a Senior SDET that reasons through requirements, 
 11. [Automation Framework](#11-automation-framework)
 12. [Gated Roadmap](#12-gated-roadmap)
 13. [Tech Stack](#13-tech-stack)
+14. [User Onboarding & Auth](#14-user-onboarding--auth)
 
 ---
 
@@ -342,6 +343,126 @@ npx cucumber-js features/GDS-5-contact-details-form.feature  # single feature
 
 ---
 
+## 14. User Onboarding & Auth
+
+Quality Autopilot uses an **invite-only auth system**. Anonymous access is blocked by middleware. All users must be either the first admin (registered via `/register`) or explicitly invited.
+
+### Default Super-Admin Account
+
+After `docker compose up -d`, seed the default admin:
+
+```bash
+# Run inside the container
+docker compose exec qap-api python scripts/seed_superuser.py
+```
+
+| Field | Value |
+|-------|-------|
+| **URL** | http://localhost:3000/sign-in |
+| **Email** | `admin@qap.local` |
+| **Password** | `Admin@QAP123!` |
+| **Role** | `admin` |
+| **Org** | Quality Autopilot |
+
+> ⚠️ **Change the default password immediately in any non-local environment.**
+> Use `POST /auth/change-password` or the Settings page in the UI.
+
+To override credentials at seed time:
+```bash
+QAP_ADMIN_EMAIL=you@company.com QAP_ADMIN_PASS=MyStr0ngPass! \
+  docker compose exec qap-api python scripts/seed_superuser.py
+```
+
+---
+
+### User Roles & Permissions
+
+| Permission | `member` | `admin` |
+|------------|----------|---------|
+| Chat with agents / use the UI | ✅ | ✅ |
+| View own profile | ✅ | ✅ |
+| Change own password | ✅ | ✅ |
+| Invite new members | ❌ | ✅ |
+| List / deactivate users | ❌ | ✅ |
+| Promote / demote roles | ❌ | ✅ |
+| Trigger automation sync | ❌ | ✅ |
+| Manage knowledge base | ❌ | ✅ |
+
+`owner` is a superset of `admin` — set only at org registration. Owners can also delete the org and transfer ownership.
+
+---
+
+### Auth Flow
+
+```
+1. Admin seeds or registers →  POST /auth/register  →  session_token
+2. Admin invites member     →  POST /auth/invite     →  invite_token + accept_url
+3. Member accepts invite    →  GET  /accept-invite?token=<t>  →  form
+                               POST /auth/accept-invite       →  session_token
+4. Sign in                  →  POST /auth/login       →  session_token
+5. All API calls            →  Authorization: Bearer <session_token>
+```
+
+---
+
+### Password Reset Flow
+
+```
+User clicks "Forgot password?" on /sign-in
+  → POST /auth/forgot-password { email }
+  ← 200 always (prevents email enumeration)
+  ← reset_url in response body when SMTP is not set (dev mode)
+  ← Real email sent when SMTP_HOST + SMTP_USER are configured
+
+User clicks link → /reset-password?token=<t>
+  → POST /auth/reset-password { token, new_password }
+  ← All sessions invalidated (forces re-login everywhere)
+  ← Token is single-use, 2-hour TTL
+```
+
+**Does it really send emails?**
+
+| SMTP configured? | Invite email | Reset email | How to get the link |
+|-----------------|-------------|-------------|---------------------|
+| **No** (default / dev) | ❌ Not sent | ❌ Not sent | `accept_url` / `reset_url` in API response body |
+| **Yes** (Gmail/SendGrid/etc.) | ✅ Sent | ✅ Sent | Delivered to inbox |
+
+To configure email, set these in `.env` (see full options in `example.env`):
+```bash
+# Gmail example (requires an App Password, not your regular password)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=you@gmail.com
+SMTP_PASS=your-16-char-app-password
+FROM_EMAIL=you@gmail.com
+APP_BASE_URL=http://localhost:3000
+```
+
+Verify your SMTP config after setting it:
+```bash
+# Returns {"smtp_configured": true, "sent": true} if working
+curl -X POST http://localhost:8000/auth/test-email \
+  -H "Authorization: Bearer <your_session_token>"
+```
+
+Without SMTP, get the invite/reset link from the API response directly:
+```bash
+# Invite — accept_url is in the response even without SMTP
+curl -X POST http://localhost:8000/auth/invite \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "newuser@example.com"}'
+# → {"invite_token": "...", "accept_url": "http://localhost:3000/accept-invite?token=..."}
+
+# Password reset — reset_url is in the response when SMTP is not set
+curl -X POST http://localhost:8000/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com"}'
+# → {"ok": true, "reset_url": "http://localhost:3000/reset-password?token=..."}
+```
+
+---
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -351,5 +472,7 @@ npx cucumber-js features/GDS-5-contact-details-form.feature  # single feature
 | Discovery agent can't browse | Run `docker compose --profile mcp up -d` to start `playwright-mcp` |
 | GitHub MCP tools missing | Set `GITHUB_TOKEN` in `.env` and restart `docker compose up -d` |
 | `/approvals` queue not draining | A Judge confidence < 0.90 item needs human approval in the UI |
+| `POST /auth/forgot-password` no email | SMTP not configured — check `reset_url` in response; see section 14 |
+| Sign-in redirects to itself | Session expired — seed admin again or accept a new invite |
 
 See `example.env` for the full environment variable reference.
