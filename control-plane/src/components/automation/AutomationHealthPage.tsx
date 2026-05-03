@@ -830,14 +830,14 @@ export default function AutomationHealthPage() {
               )}
 
               {/* Monaco Editor */}
-              <div className="flex-1 overflow-hidden" style={{ minHeight: '400px' }}>
+              <div className="flex-1 overflow-hidden" style={{ height: '60vh', minHeight: '400px' }}>
                 {fileViewer.loading ? (
                   <div className="flex items-center justify-center h-full text-sm text-muted">
                     <Loader2 className="size-5 animate-spin mr-2" /> Loading file…
                   </div>
                 ) : (
                   <MonacoEditor
-                    height="100%"
+                    height="60vh"
                     language={
                       fileViewer.path.endsWith('.feature') ? 'gherkin' :
                       fileViewer.path.endsWith('.ts') ? 'typescript' :

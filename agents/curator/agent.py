@@ -10,6 +10,7 @@ from pathlib import Path
 
 from agno.agent import Agent
 from agno.compression.manager import CompressionManager
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig, UserProfileConfig
 from app.guardrails import prompt_injection_guardrail
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
@@ -104,7 +105,19 @@ curator = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
+    # UserProfileConfig(ALWAYS): Curator greets repeat users by name and remembers
+    # their preferred deletion thresholds and maintenance cadence without re-asking.
+    # UserMemoryConfig(ALWAYS): silently captures obsolescence patterns per project
+    # (e.g. "this team rarely uses @regression tags") for smarter future curation.
+    # SessionContextConfig(planning): multi-step deletion approval flows resume cleanly.
+    learning=LearningMachine(
+        user_profile=UserProfileConfig(mode=LearningMode.ALWAYS),
+        session_context=SessionContextConfig(enable_planning=True),
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
+    search_past_sessions=True,
+    num_past_sessions_to_search=3,
     enable_session_summaries=True,
     add_session_summary_to_context=True,
     # Culture

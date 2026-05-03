@@ -7,8 +7,9 @@ Role: Provision test users, seed data, produce RunContext for test scenarios.
 """
 
 from agno.agent import Agent
-from app.guardrails import prompt_injection_guardrail
 from agno.compression.manager import CompressionManager
+from agno.learn import LearningMachine, LearningMode, UserMemoryConfig, UserProfileConfig
+from app.guardrails import prompt_injection_guardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
@@ -78,7 +79,17 @@ data_agent = Agent(
     enable_agentic_state=True,
     add_session_state_to_context=True,
     # Memory
+    # UserProfileConfig(ALWAYS): remembers which AUT and test projects the user works on,
+    # so Data Agent pre-fills domain context (base URL, roles) without re-asking.
+    # UserMemoryConfig(ALWAYS): learns per-project data patterns silently — e.g.
+    # "this app expects unique emails per scenario" or "admin role needs extra seed steps".
+    learning=LearningMachine(
+        user_profile=UserProfileConfig(mode=LearningMode.ALWAYS),
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
+    search_past_sessions=True,
+    num_past_sessions_to_search=3,
     tool_call_limit=30,
     # Context compression — CodingTools can return verbose execution output; KB docs
     # can be long. Compress after 4 000 tokens as a safety net.
