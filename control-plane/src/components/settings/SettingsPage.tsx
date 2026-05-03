@@ -12,7 +12,7 @@ import {
   Server, KeyRound, Bot, Database, Globe, Wrench,
   ShieldCheck, RefreshCw, Save, Eye, EyeOff, CheckCircle2,
   AlertCircle, CircleDot, Cpu, Zap, Users, GitBranch, WifiOff, Wifi, ChevronDown,
-  User, Building2, Trash2,
+  User, Building2, Trash2, Copy,
 } from 'lucide-react'
 import AgentConfigPanel from '@/components/chat/AgentConfigPanel'
 
@@ -858,8 +858,11 @@ const CollapsibleSection = ({
 // ---------------------------------------------------------------------------
 
 const ProfileSection = ({ endpointUrl, authToken }: { endpointUrl: string; authToken: string }) => {
-  const [profile, setProfile] = useState({ name: '', username: '', email: '' })
+  const [profile, setProfile] = useState({ name: '', username: '', email: '', role: '' })
   const [saving, setSaving] = useState(false)
+  const [pwSection, setPwSection] = useState(false)
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' })
+  const [savingPw, setSavingPw] = useState(false)
 
   const hdrs = useCallback(
     (): Record<string, string> => (authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -870,7 +873,7 @@ const ProfileSection = ({ endpointUrl, authToken }: { endpointUrl: string; authT
     fetch(`${endpointUrl}/profile`, { headers: hdrs() })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (d) setProfile({ name: d.name ?? '', username: d.username ?? '', email: d.email ?? '' })
+        if (d) setProfile({ name: d.name ?? '', username: d.username ?? '', email: d.email ?? '', role: d.role ?? 'member' })
       })
       .catch(() => {})
   }, [endpointUrl, hdrs])
@@ -889,6 +892,23 @@ const ProfileSection = ({ endpointUrl, authToken }: { endpointUrl: string; authT
     setSaving(false)
   }
 
+  const changePassword = async () => {
+    if (!pw.next || pw.next !== pw.confirm) { toast.error('New passwords do not match'); return }
+    setSavingPw(true)
+    try {
+      const res = await fetch(`${endpointUrl}/profile/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...hdrs() },
+        body: JSON.stringify({ current_password: pw.current, new_password: pw.next }),
+      })
+      if (res.ok) { toast.success('Password updated'); setPw({ current: '', next: '', confirm: '' }); setPwSection(false) }
+      else { const d = await res.json().catch(() => ({})); toast.error((d as { detail?: string }).detail ?? 'Failed to change password') }
+    } catch { toast.error('Backend unreachable') }
+    setSavingPw(false)
+  }
+
+  const initials = (profile.name || profile.email || '?').slice(0, 2).toUpperCase()
+
   const fields: Array<{ key: keyof typeof profile; label: string; placeholder: string }> = [
     { key: 'name',     label: 'NAME',      placeholder: 'Your full name' },
     { key: 'username', label: 'USER NAME', placeholder: 'username or email' },
@@ -896,33 +916,95 @@ const ProfileSection = ({ endpointUrl, authToken }: { endpointUrl: string; authT
   ]
 
   return (
-    <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 space-y-4">
-      <div className="flex items-center gap-2">
-        <User className="size-4 text-brand" />
-        <h2 className="text-sm font-semibold text-primary">Profile</h2>
-      </div>
-      <div className="space-y-3">
-        {fields.map(({ key, label, placeholder }) => (
-          <div key={key} className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">{label}</label>
-            <input
-              value={profile[key]}
-              onChange={(e) => setProfile((p) => ({ ...p, [key]: e.target.value }))}
-              placeholder={placeholder}
-              className="rounded-xl border border-primary/15 bg-accent px-3 py-2.5 text-sm text-primary outline-none placeholder:text-muted/40 focus:border-primary/40"
-            />
+    <div className="space-y-4">
+      {/* Avatar + info + fields */}
+      <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <User className="size-4 text-brand" />
+          <h2 className="text-sm font-semibold text-primary">Profile</h2>
+        </div>
+        {/* Avatar + role display */}
+        <div className="flex items-center gap-4">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-brand/15 text-xl font-bold text-brand uppercase">
+            {initials}
           </div>
-        ))}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-primary truncate">{profile.name || profile.email || 'Your profile'}</p>
+            <p className="text-xs text-muted mt-0.5">{profile.email}</p>
+            {profile.role && (
+              <span className={cn(
+                'mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium capitalize',
+                profile.role === 'admin' || profile.role === 'owner'
+                  ? 'bg-brand/15 text-brand'
+                  : 'bg-muted/20 text-muted'
+              )}>
+                {profile.role}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="space-y-3">
+          {fields.map(({ key, label, placeholder }) => (
+            <div key={key} className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">{label}</label>
+              <input
+                value={profile[key]}
+                onChange={(e) => setProfile((p) => ({ ...p, [key]: e.target.value }))}
+                placeholder={placeholder}
+                className="rounded-xl border border-primary/15 bg-accent px-3 py-2.5 text-sm text-primary outline-none placeholder:text-muted/40 focus:border-primary/40"
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-end pt-1">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primaryAccent hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? <RefreshCw className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+            Save Profile
+          </button>
+        </div>
       </div>
-      <div className="flex justify-end pt-1">
+
+      {/* Change password */}
+      <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 space-y-3">
         <button
-          onClick={save}
-          disabled={saving}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primaryAccent hover:opacity-90 disabled:opacity-50"
+          onClick={() => setPwSection(o => !o)}
+          className="flex w-full items-center justify-between text-xs font-semibold text-primary"
         >
-          {saving ? <RefreshCw className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-          Save Profile
+          <span className="flex items-center gap-2"><ShieldCheck className="size-4 text-brand" />Change Password</span>
+          <ChevronDown className={cn('size-3.5 text-muted transition-transform', pwSection && 'rotate-180')} />
         </button>
+        {pwSection && (
+          <div className="space-y-3 pt-1">
+            {(['current', 'next', 'confirm'] as const).map((k) => (
+              <div key={k} className="flex flex-col gap-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">
+                  {k === 'current' ? 'CURRENT PASSWORD' : k === 'next' ? 'NEW PASSWORD' : 'CONFIRM NEW PASSWORD'}
+                </label>
+                <input
+                  type="password"
+                  value={pw[k]}
+                  onChange={(e) => setPw((p) => ({ ...p, [k]: e.target.value }))}
+                  placeholder="••••••••"
+                  className="rounded-xl border border-primary/15 bg-accent px-3 py-2.5 text-sm text-primary outline-none placeholder:text-muted/40 focus:border-primary/40"
+                />
+              </div>
+            ))}
+            <div className="flex justify-end">
+              <button
+                onClick={changePassword}
+                disabled={savingPw}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primaryAccent hover:opacity-90 disabled:opacity-50"
+              >
+                {savingPw ? <RefreshCw className="size-3.5 animate-spin" /> : <ShieldCheck className="size-3.5" />}
+                Update Password
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -938,12 +1020,23 @@ interface OrgData {
   owner_id: string
   members: Array<{ email: string; role: string }>
   plan: string
+  created_at?: string
+}
+
+interface PendingInvite {
+  id: string
+  email: string
+  role: string
+  created_at: string
 }
 
 const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; authToken: string }) => {
   const [org, setOrg] = useState<OrgData | null>(null)
   const [orgName, setOrgName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('member')
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([])
+  const [copiedId, setCopiedId] = useState(false)
   const [saving, setSaving] = useState(false)
   const [inviting, setInviting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -966,7 +1059,15 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
     }
   }, [endpointUrl, hdrs])
 
-  useEffect(() => { fetchOrg() }, [fetchOrg])
+  const fetchInvites = useCallback(async () => {
+    const res = await fetch(`${endpointUrl}/organization/invites`, { headers: hdrs() }).catch(() => null)
+    if (res?.ok) {
+      const data = await res.json()
+      setPendingInvites(Array.isArray(data) ? data : [])
+    }
+  }, [endpointUrl, hdrs])
+
+  useEffect(() => { fetchOrg(); fetchInvites() }, [fetchOrg, fetchInvites])
 
   const saveName = async () => {
     setSaving(true)
@@ -982,12 +1083,20 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
     if (!inviteEmail.trim()) return
     setInviting(true)
     const res = await fetch(`${endpointUrl}/organization/members`, {
-      method: 'POST', headers: hdrs(true), body: JSON.stringify({ email: inviteEmail.trim(), role: 'member' }),
+      method: 'POST', headers: hdrs(true), body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
     }).catch(() => null)
-    if (res?.ok) { setOrg(await res.json()); setInviteEmail(''); toast.success(`${inviteEmail} invited`) }
+    if (res?.ok) { setOrg(await res.json()); setInviteEmail(''); toast.success(`${inviteEmail} invited`); fetchInvites() }
     else if (res?.status === 409) toast.error('Member already in organization')
     else toast.error('Failed to invite member')
     setInviting(false)
+  }
+
+  const cancelInvite = async (id: string) => {
+    const res = await fetch(`${endpointUrl}/organization/invites/${encodeURIComponent(id)}`, {
+      method: 'DELETE', headers: hdrs(),
+    }).catch(() => null)
+    if (res?.ok) { fetchInvites(); toast.success('Invite cancelled') }
+    else toast.error('Failed to cancel invite')
   }
 
   const removeMember = async (email: string) => {
@@ -998,6 +1107,12 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
     else toast.error('Failed to remove member')
   }
 
+  const copyOrgId = async () => {
+    if (!org?.id) return
+    try { await navigator.clipboard.writeText(org.id); setCopiedId(true); setTimeout(() => setCopiedId(false), 1500) }
+    catch { toast.error('Copy failed') }
+  }
+
   const deleteOrg = async () => {
     setDeleting(true)
     const res = await fetch(`${endpointUrl}/organization`, { method: 'DELETE', headers: hdrs() }).catch(() => null)
@@ -1006,8 +1121,49 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
     setDeleting(false)
   }
 
+  const planBadgeClass = org?.plan === 'enterprise'
+    ? 'bg-brand/15 text-brand'
+    : org?.plan === 'pro'
+      ? 'bg-info/15 text-info'
+      : 'bg-muted/20 text-muted'
+
   return (
     <div className="space-y-4">
+      {/* Org metadata */}
+      {org && (
+        <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Plan</p>
+            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize', planBadgeClass)}>
+              {org.plan || 'free'}
+            </span>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Members</p>
+            <p className="text-lg font-semibold text-primary">{org.members?.length ?? 0}</p>
+          </div>
+          {org.id && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Org ID</p>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-xs text-muted truncate max-w-[140px]">{org.id}</span>
+                <button onClick={copyOrgId} className="shrink-0 rounded p-0.5 hover:bg-accent transition-colors" title="Copy ID">
+                  {copiedId
+                    ? <CheckCircle2 className="size-3.5 text-positive" />
+                    : <Copy className="size-3.5 text-muted hover:text-primary" />}
+                </button>
+              </div>
+            </div>
+          )}
+          {org.created_at && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Created</p>
+              <p className="text-xs text-muted">{new Date(org.created_at).toLocaleDateString()}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Name */}
       <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 space-y-3">
         <div className="flex items-center gap-2">
@@ -1043,11 +1199,44 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
             placeholder="colleague@company.com"
             className="flex-1 rounded-xl border border-primary/15 bg-accent px-3 py-2 text-xs text-primary outline-none placeholder:text-muted/40 focus:border-primary/40"
           />
+          <select
+            value={inviteRole}
+            onChange={(e) => setInviteRole(e.target.value)}
+            className="rounded-xl border border-primary/15 bg-accent px-3 py-2 text-xs text-primary outline-none focus:border-primary/40"
+          >
+            <option value="admin">Admin</option>
+            <option value="member">Member</option>
+            <option value="viewer">Viewer</option>
+          </select>
           <button onClick={invite} disabled={inviting || !inviteEmail.trim()}
             className="rounded-lg bg-brand px-4 py-2 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50">
             {inviting ? <RefreshCw className="size-3.5 animate-spin" /> : 'Invite'}
           </button>
         </div>
+        {/* Pending invites */}
+        {pendingInvites.length > 0 && (
+          <div className="space-y-2 pt-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60">Pending Invites</p>
+            {pendingInvites.map((inv) => (
+              <div key={inv.id} className="flex items-center gap-3 rounded-xl border border-dashed border-primary/15 px-3 py-2">
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-warning/15 text-[10px] font-bold text-warning uppercase">
+                  {inv.email[0]}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs text-primary">{inv.email}</p>
+                </div>
+                <span className="text-[10px] text-muted/60 capitalize">{inv.role}</span>
+                <button
+                  onClick={() => cancelInvite(inv.id)}
+                  className="text-muted/40 hover:text-destructive transition-colors"
+                  title="Cancel invite"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Members list */}

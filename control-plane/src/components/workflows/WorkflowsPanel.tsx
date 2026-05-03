@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useState, useEffect, useCallback } from 'react'
 import { useStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -186,7 +187,7 @@ export default function WorkflowsPanel() {
   }, [tab, selectedId, fetchRuns])
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       <div className="mx-auto max-w-4xl space-y-6">
         <div>
           <h1 className="flex items-center gap-2 text-lg font-medium text-primary">
@@ -364,7 +365,7 @@ export default function WorkflowsPanel() {
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 

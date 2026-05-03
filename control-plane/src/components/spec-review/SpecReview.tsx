@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -212,7 +213,7 @@ export default function SpecReview() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       <div className="mx-auto max-w-4xl space-y-6">
 
         {/* Header */}
@@ -271,6 +272,6 @@ export default function SpecReview() {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
