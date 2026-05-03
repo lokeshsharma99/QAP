@@ -6,9 +6,10 @@ Performs adversarial review of healing patches before application.
 Primary Skill: healing_validation
 """
 
-from app.guardrails import prompt_injection_guardrail
 from agno.compression.manager import CompressionManager
+from agno.learn import LearningMachine, LearningMode, UserMemoryConfig
 from agno.tools.reasoning import ReasoningTools
+from app.guardrails import prompt_injection_guardrail
 
 from agents.base.semantica_agent import SemanticaAgent
 from agents.healing_judge.instructions import INSTRUCTIONS
@@ -57,7 +58,15 @@ healing_judge = SemanticaAgent(
     ],
 
     # Memory
+    # UserMemoryConfig(ALWAYS): silently learns healing patterns — e.g.
+    # "this project's locators frequently drift in the checkout flow" —
+    # so the Judge calibrates confidence thresholds based on past patch history.
+    learning=LearningMachine(
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
+    search_past_sessions=True,
+    num_past_sessions_to_search=3,
     enable_session_summaries=True,
 
     # Culture

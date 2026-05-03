@@ -166,7 +166,15 @@ for _mw in app.user_middleware:
         _existing_origins = _mw.kwargs.get("allow_origins", [])
         break
 
-_all_origins = list({*_existing_origins, *_extra_origins})
+_all_origins = list({
+    *_existing_origins,
+    *_extra_origins,
+    # Always allow the default local UI origins so the browser never gets blocked
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+})
 
 # Remove old CORS middleware and add a new one with allow_origin_regex
 app.user_middleware = [m for m in app.user_middleware if m.cls != CORSMiddleware]

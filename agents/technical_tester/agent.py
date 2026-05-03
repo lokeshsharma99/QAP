@@ -10,10 +10,11 @@ Primary Skill: test_generation
 import logging
 from pathlib import Path
 
-from app.guardrails import prompt_injection_guardrail
 from agno.compression.manager import CompressionManager
+from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig, UserProfileConfig
 from agno.tools.file import FileTools
 from agno.tools.reasoning import ReasoningTools
+from app.guardrails import prompt_injection_guardrail
 
 from agents.base.semantica_agent import SemanticaAgent
 from agents.technical_tester.instructions import INSTRUCTIONS
@@ -101,7 +102,20 @@ technical_tester = SemanticaAgent(
     ],
 
     # Memory
+    # UserProfileConfig(ALWAYS): remembers the user's preferred AUT, test scope,
+    # and coverage goals so Technical Tester starts test planning immediately.
+    # UserMemoryConfig(ALWAYS): learns which page flows are fragile, which selectors
+    # succeed, and what test patterns the user tends to approve.
+    # SessionContextConfig(planning): tracks multi-step test generation plans so
+    # planner → generator → healer sessions resume at the correct step.
+    learning=LearningMachine(
+        user_profile=UserProfileConfig(mode=LearningMode.ALWAYS),
+        session_context=SessionContextConfig(enable_planning=True),
+        user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
+    ),
     update_memory_on_run=True,
+    search_past_sessions=True,
+    num_past_sessions_to_search=3,
     enable_session_summaries=True,
 
     # Culture
