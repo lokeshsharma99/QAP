@@ -123,6 +123,14 @@ export const APIRoutes = {
   AutomationRun:     (base: string) => `${base}/automation/run`,
   AutomationTraces:  (base: string) => `${base}/automation/traces`,
 
+  // ── RTM ──────────────────────────────────────────────────────────────────
+  RTM:               (base: string, ticket?: string, tag?: string) =>
+    `${base}/rtm${ticket ? `?ticket=${encodeURIComponent(ticket)}` : tag ? `?tag=${encodeURIComponent(tag)}` : ''}`,
+  RTMSearch:         (base: string, q: string, limit?: number) =>
+    `${base}/rtm/search?q=${encodeURIComponent(q)}${limit ? `&limit=${limit}` : ''}`,
+  RTMByTicket:       (base: string, key: string) => `${base}/rtm/ticket/${encodeURIComponent(key)}`,
+  RTMExplain:        (base: string) => `${base}/rtm/explain`,
+
   // ── Organization ──────────────────────────────────────────────────────────
   GetOrganization:    (base: string) => `${base}/organization`,
   UpdateOrganization: (base: string) => `${base}/organization`,

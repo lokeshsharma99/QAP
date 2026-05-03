@@ -29,6 +29,7 @@ from agents.scribe import scribe
 from agents.technical_tester import technical_tester
 from app.endpoints.agent_config import router as agent_config_router
 from app.endpoints.automation_health import router as automation_health_router
+from app.endpoints.rtm import router as rtm_router
 from app.endpoints.culture import router as culture_router
 from app.endpoints.model import router as model_router
 from app.endpoints.eval_runs import router as eval_runs_router
@@ -203,6 +204,7 @@ app.include_router(model_router)
 app.include_router(mcp_status_router)
 app.include_router(agent_config_router)
 app.include_router(automation_health_router)
+app.include_router(rtm_router)
 app.include_router(culture_router)
 app.include_router(profile_router)
 app.include_router(organization_router)

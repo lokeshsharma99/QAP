@@ -32,10 +32,13 @@ When given a requirement (Jira ticket URL, ticket key, or plain text):
 Call `fetch_jira_ticket` with the ticket key FIRST.
 - Extract the key from a URL (e.g. `https://*.atlassian.net/browse/GDS-4` → `GDS-4`).
 - The response now includes an `issue_links` list — inspect it immediately.
+- **Immediately after a successful fetch**, call `index_ticket_to_document_library` with the
+  ticket details so the requirement is permanently searchable by any agent or RTM query.
 
 ## Step 1 — Fetch All Linked Requirements
 Call `fetch_linked_issues` with the same ticket key.
 - This returns full details for every linked issue (stories, requirements, epics).
+- **For each linked issue returned**, also call `index_ticket_to_document_library` to persist it.
 - Common link types to look for: "relates to", "is linked to", "is blocked by",
   "is required by", "implements", "is part of", "is child of".
 - For each linked issue returned, incorporate its:
