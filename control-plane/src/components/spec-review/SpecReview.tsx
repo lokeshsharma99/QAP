@@ -11,6 +11,7 @@ import { FileCheck, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Refresh
 import { useStore } from '@/store'
 import { getAllSessionsAPI, getSessionAPI } from '@/api/os'
 import { Sessions } from '@/types/os'
+import { ApprovalBlock } from '@/components/ui/ApprovalBlock'
 
 // ---------------------------------------------------------------------------
 // JSON extraction helpers
@@ -235,6 +236,11 @@ export default function SpecReview() {
             Refresh
           </Button>
         </div>
+
+        {/* Approval block — shows pending agent approvals (Judge gate, HITL) */}
+        <ApprovalBlock
+          label="Scribe / Strategy squad paused — approve or reject to continue the run"
+        />
 
         {/* Filter tabs */}
         <div className="flex gap-1 rounded-xl border border-accent bg-primaryAccent p-1">
