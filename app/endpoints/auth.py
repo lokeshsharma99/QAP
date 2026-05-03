@@ -795,3 +795,48 @@ def get_permissions(authorization: Optional[str] = Header(None)):
         raise HTTPException(401, "Not authenticated.")
     perms = sorted(_ROLE_PERMISSIONS.get(caller["role"], set()))
     return {"role": caller["role"], "permissions": perms}
+
+
+@router.post("/test-email", summary="Test SMTP configuration (admin only)")
+def test_email(authorization: Optional[str] = Header(None)):
+    """Send a test email to verify SMTP configuration. Admin only.
+
+    Returns:
+        {"smtp_configured": bool, "sent": bool, "to": email, "error": str|null}
+
+    If SMTP is not configured, returns smtp_configured=False and the credentials
+    that would have been used — useful for debugging.
+    """
+    raw = (authorization or "").removeprefix("Bearer ").strip()
+    caller = _require_permission(_validate_session(raw), "invite_member")
+
+    smtp_configured = bool(_SMTP_HOST and _SMTP_USER)
+    if not smtp_configured:
+        return {
+            "smtp_configured": False,
+            "sent": False,
+            "to": caller["email"],
+            "error": None,
+            "hint": (
+                "SMTP is not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env "
+                "to enable real email delivery. Without SMTP, reset/invite tokens are "
+                "returned in the API response body (dev-mode only)."
+            ),
+            "missing": [
+                v for v in ["SMTP_HOST", "SMTP_USER", "SMTP_PASS"]
+                if not os.getenv(v)
+            ],
+        }
+
+    # Send a real test email to the caller's address
+    sent = _send_reset_email(caller["email"], caller["name"], "TEST-TOKEN-DO-NOT-USE")
+    return {
+        "smtp_configured": True,
+        "sent": sent,
+        "to": caller["email"],
+        "from": _FROM_EMAIL,
+        "smtp_host": _SMTP_HOST,
+        "smtp_port": _SMTP_PORT,
+        "error": None if sent else "Send failed — check server logs for details.",
+    }
+
