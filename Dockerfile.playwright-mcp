@@ -1,0 +1,43 @@
+# ===========================================================================
+# Playwright MCP Server — Chromium-only slim build
+# ===========================================================================
+# Uses node:22-slim (Debian Bookworm) instead of mcr.microsoft.com/playwright
+# which ships ALL browsers (Chromium + Firefox + WebKit) in a 3.59 GB image.
+# This image targets Chromium only, estimating ~750 MB–1.0 GB total.
+#
+# Key optimisations vs the upstream playwright noble image:
+#   - node:22-slim base instead of Ubuntu Noble full (~200 MB saved on base)
+#   - Chromium only: no Firefox, no WebKit binaries (~1.5 GB saved)
+#   - @playwright/mcp pre-installed at build time (no npx download at startup)
+#   - Chromium browser baked in at build time (no install-browser at startup)
+# ===========================================================================
+
+FROM node:22-slim
+
+# ---------------------------------------------------------------------------
+# Pre-install @playwright/mcp globally
+# (pins the version at build time; eliminates first-run npx download latency)
+# ---------------------------------------------------------------------------
+RUN npm install -g @playwright/mcp@latest && \
+    npm cache clean --force
+
+# ---------------------------------------------------------------------------
+# Install Chromium system dependencies via Playwright's own dep installer,
+# then bake the Chromium browser binary into the image.
+#
+#   playwright install-deps chromium   — apt-get installs the right OS packages
+#                                        for the current distro (Bookworm)
+#   @playwright/mcp install-browser    — downloads the playwright-managed
+#                                        Chromium binary (same distribution that
+#                                        @playwright/mcp uses at runtime)
+# ---------------------------------------------------------------------------
+RUN npx playwright install-deps chromium && \
+    npx @playwright/mcp install-browser chromium
+
+# ---------------------------------------------------------------------------
+# Runtime
+# ---------------------------------------------------------------------------
+EXPOSE 8931
+
+CMD ["npx", "@playwright/mcp", "--port", "8931", "--host", "0.0.0.0", \
+     "--allowed-hosts", "*", "--browser", "chromium"]
