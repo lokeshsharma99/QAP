@@ -46,6 +46,16 @@ patches = [
         '            if _run_resp_aud is not None and _run_resp_aud.audio:\n'
         '                audio.extend(_run_resp_aud.audio)\n',
     ),
+    # Patch 5: guard .files access in get_team_run_context_files
+    (
+        '        for interaction in member_responses:\n'
+        '            if interaction["run_response"].files:\n'
+        '                files.extend(interaction["run_response"].files)\n',
+        '        for interaction in member_responses:\n'
+        '            _run_resp_fil = interaction.get("run_response")\n'
+        '            if _run_resp_fil is not None and _run_resp_fil.files:\n'
+        '                files.extend(_run_resp_fil.files)\n',
+    ),
 ]
 
 applied = 0
