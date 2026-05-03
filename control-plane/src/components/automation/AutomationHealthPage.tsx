@@ -340,7 +340,7 @@ export default function AutomationHealthPage() {
   if (loading) {
     return (
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="p-6 space-y-4 max-w-5xl mx-auto">
+        className="h-full overflow-y-auto p-6 space-y-4">
         <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
@@ -367,7 +367,7 @@ export default function AutomationHealthPage() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="p-6 space-y-6 max-w-5xl mx-auto"
+      className="h-full overflow-y-auto p-6 space-y-6"
     >
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
