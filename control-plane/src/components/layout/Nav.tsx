@@ -176,7 +176,7 @@ const NavSectionGroup = ({
 
 const Nav = ({ collapsed = false, pendingCounts = {} }: { collapsed?: boolean; pendingCounts?: Record<string, number> }) => {
   const pathname = usePathname()
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ Core: true })
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ Core: true, Quality: true })
 
   const toggle = (label: string) =>
     setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }))
