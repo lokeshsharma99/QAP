@@ -10,7 +10,6 @@ from agno.agent import Agent
 from agno.compression.manager import CompressionManager
 from agno.learn import EntityMemoryConfig, LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from agno.memory import MemoryManager
-from app.guardrails import prompt_injection_guardrail
 from agno.tools.coding import CodingTools
 from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
@@ -97,9 +96,6 @@ engineer = Agent(
     # Guardrails (pre-hooks for input validation)
     # Note: pii_detection_guardrail excluded — engineer receives Gherkin specs with
     # Example tables containing test emails/phones and Site Manifesto component data.
-    pre_hooks=[
-        prompt_injection_guardrail,
-    ],
     # Feature-specific
     session_state={
         "created_files": [],

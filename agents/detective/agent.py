@@ -9,7 +9,6 @@ Role: Parse Playwright traces to classify failure root cause.
 from agno.agent import Agent
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
 from agno.memory import MemoryManager
-from app.guardrails import prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
@@ -110,9 +109,6 @@ detective = Agent(
     # Guardrails (pre-hooks for input validation)
     # Note: pii_detection_guardrail excluded — Playwright trace files and CI logs
     # contain test form data (emails, phone numbers) submitted during test runs.
-    pre_hooks=[
-        prompt_injection_guardrail,
-    ],
     # Feature-specific
     session_state={
         "analyzed_failures": [],

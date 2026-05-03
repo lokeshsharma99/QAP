@@ -9,7 +9,6 @@ Primary Skill: healing_validation
 from agno.compression.manager import CompressionManager
 from agno.learn import LearningMachine, LearningMode, UserMemoryConfig
 from agno.tools.reasoning import ReasoningTools
-from app.guardrails import prompt_injection_guardrail
 
 from agents.base.semantica_agent import SemanticaAgent
 from agents.healing_judge.instructions import INSTRUCTIONS
@@ -53,9 +52,6 @@ healing_judge = SemanticaAgent(
     # Guardrails (pre-hooks for input validation)
     # Note: pii_detection_guardrail excluded — reviews healing patches containing
     # locator strings and test data patterns (e.g. email input selectors).
-    pre_hooks=[
-        prompt_injection_guardrail,
-    ],
 
     # Memory
     # UserMemoryConfig(ALWAYS): silently learns healing patterns — e.g.

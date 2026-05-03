@@ -10,7 +10,6 @@ from agno.agent import Agent
 from agno.compression.manager import CompressionManager
 from agno.learn import LearningMachine, LearningMode, DecisionLogConfig, UserMemoryConfig
 from agno.memory import MemoryManager
-from app.guardrails import prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.user_feedback import UserFeedbackTools
@@ -101,9 +100,6 @@ judge = Agent(
     # Guardrails (pre-hooks for input validation)
     # Note: pii_detection_guardrail excluded — judge reviews Gherkin specs with
     # Example tables and RunContext test data containing synthetic email/phone values.
-    pre_hooks=[
-        prompt_injection_guardrail,
-    ],
     # Feature-specific
     session_state={
         "reviewed_artifacts": [],

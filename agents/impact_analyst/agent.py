@@ -17,7 +17,6 @@ from app.ado_mcp import get_ado_mcp_for_impact_analyst
 from app.atlassian_mcp import get_atlassian_mcp_for_impact_analyst
 from app.github_mcp import get_github_mcp_for_impact_analyst
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
-from app.guardrails import prompt_injection_guardrail
 from app.settings import MODEL, FOLLOWUP_MODEL, agent_db
 from db import get_automation_kb, get_culture_manager, get_qap_learnings_kb, get_site_manifesto_kb
 
@@ -90,9 +89,6 @@ impact_analyst = Agent(
     # Guardrails (pre-hooks for input validation)
     # Note: pii_detection_guardrail excluded — PR diffs and code files contain
     # test data constants (emails, phone numbers) used in test assertions.
-    pre_hooks=[
-        prompt_injection_guardrail,
-    ],
     # Session state — tracks analysis context across multi-turn conversations
     session_state={
         "analysed_prs": [],

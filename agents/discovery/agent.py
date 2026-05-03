@@ -10,7 +10,6 @@ from agno.agent import Agent
 from agno.compression.manager import CompressionManager
 from agno.learn import EntityMemoryConfig, LearningMachine, LearningMode
 from agno.run import RunContext
-from app.guardrails import prompt_injection_guardrail
 
 from agents.discovery.instructions import INSTRUCTIONS, INSTRUCTIONS_HTTP_ONLY
 from agents.discovery.tools import Crawl4AIToolkit, DiscoveryToolkit
@@ -97,9 +96,6 @@ discovery = Agent(
     # Guardrails (pre-hooks for input validation)
     # Note: pii_detection_guardrail excluded — AUT accessibility trees contain
     # email/phone input fields and placeholder values that match PII patterns.
-    pre_hooks=[
-        prompt_injection_guardrail,
-    ],
     # Context compression — summarise tool results when accumulated context hits
     # ~4 000 tokens (same strategy as detective/agent.py and ci_log_analyzer/agent.py).
     # Playwright snapshots and HTML DOM dumps are highly verbose; compression keeps
