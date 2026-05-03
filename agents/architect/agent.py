@@ -16,7 +16,7 @@ from agno.tools.reasoning import ReasoningTools
 from agno.tools.user_control_flow import UserControlFlowTools
 
 from agents.architect.instructions import INSTRUCTIONS
-from agents.architect.tools import fetch_jira_ticket, fetch_linked_issues, add_jira_comment, create_jira_issue
+from agents.architect.tools import fetch_jira_ticket, fetch_linked_issues, add_jira_comment, create_jira_issue, index_ticket_to_document_library
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_site_manifesto_kb, get_culture_manager
 
@@ -113,6 +113,7 @@ architect = Agent(
         KnowledgeTools(knowledge=site_manifesto_kb, enable_think=True, enable_search=True, enable_analyze=True),
         fetch_jira_ticket,
         fetch_linked_issues,
+        index_ticket_to_document_library,
         add_jira_comment,
         create_jira_issue,
         *_kg_tools,

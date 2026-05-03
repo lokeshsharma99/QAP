@@ -79,6 +79,7 @@ _qap_learnings_kb: Knowledge | None = None
 _site_manifesto_kb: Knowledge | None = None
 _automation_kb: Knowledge | None = None
 _rca_kb: Knowledge | None = None
+_rtm_kb: Knowledge | None = None
 
 
 def get_qap_learnings_kb() -> Knowledge:
@@ -199,6 +200,20 @@ def get_document_library_kb() -> Knowledge:
     if _document_library_kb is None:
         _document_library_kb = create_knowledge("Document Library", "document_library_vectors")
     return _document_library_kb
+
+
+def get_rtm_kb() -> Knowledge:
+    """RTM (Requirements Traceability Matrix) KB — Scribe writes, Architect/Concierge read.
+
+    Table: rtm_vectors
+    Purpose: Persistent AC-ID → Scenario → StepDef → PageObject → AUT-element chain.
+    Every time Scribe produces a GherkinSpec its traceability map is written here so any
+    agent (or the /rtm endpoint) can query: 'which scenarios cover GDS-42-AC-001?'
+    """
+    global _rtm_kb
+    if _rtm_kb is None:
+        _rtm_kb = create_knowledge("RTM", "rtm_vectors")
+    return _rtm_kb
 
 
 # ---------------------------------------------------------------------------

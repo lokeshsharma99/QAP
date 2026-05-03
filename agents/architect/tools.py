@@ -438,3 +438,97 @@ def fetch_linked_issues(ticket_key: str) -> dict:
         "linked_issues": linked_issues,
     }
 
+
+# ---------------------------------------------------------------------------
+# Document Library KB Population
+# ---------------------------------------------------------------------------
+
+@tool(
+    name="index_ticket_to_document_library",
+    description=(
+        "Persist a Jira/ADO ticket's full content into the Document Library vector KB so every "
+        "agent can query it semantically. Call this immediately after fetch_jira_ticket succeeds."
+    ),
+)
+def index_ticket_to_document_library(
+    ticket_key: str,
+    summary: str,
+    description: str,
+    acceptance_criteria: str = "",
+    status: str = "",
+    priority: str = "",
+    issue_type: str = "",
+    ticket_url: str = "",
+    project_key: str = "",
+    labels: str = "",
+) -> str:
+    """Write a Jira/ADO ticket into the Document Library vector KB.
+
+    Stored as a plain-text document that hybrid search can retrieve::
+
+        Ticket: GDS-42
+        Summary: Personal Details Form — capture and validate user information
+        Status: In Progress
+        Priority: High
+        Type: Story
+        Project: GDS
+        Labels: gds, form, personal-details
+        URL: https://...atlassian.net/browse/GDS-42
+
+        Description:
+        ...
+
+        Acceptance Criteria:
+        ...
+
+    Args:
+        ticket_key:           Jira/ADO issue key
+        summary:              One-line title
+        description:          Full description text (plain text, not ADF)
+        acceptance_criteria:  Extracted AC text
+        status:               Current issue status
+        priority:             Issue priority
+        issue_type:           Story / Bug / Task etc.
+        ticket_url:           Direct link to the issue
+        project_key:          Jira project key
+        labels:               Comma/space-separated labels
+
+    Returns:
+        Status string confirming indexing.
+    """
+    from db.session import get_document_library_kb
+
+    doc_text = (
+        f"Ticket: {ticket_key}\n"
+        f"Summary: {summary}\n"
+        f"Status: {status}\n"
+        f"Priority: {priority}\n"
+        f"Type: {issue_type}\n"
+        f"Project: {project_key}\n"
+        f"Labels: {labels}\n"
+        f"URL: {ticket_url}\n"
+        f"\nDescription:\n{description}\n"
+        f"\nAcceptance Criteria:\n{acceptance_criteria}\n"
+    )
+
+    try:
+        doc_lib = get_document_library_kb()
+        doc_lib.load_text(
+            text=doc_text,
+            metadata={
+                "ticket_id": ticket_key,
+                "summary": summary,
+                "status": status,
+                "priority": priority,
+                "issue_type": issue_type,
+                "project_key": project_key,
+                "ticket_url": ticket_url,
+                "labels": labels,
+                "source": "jira",
+            },
+        )
+        return f"Indexed ticket {ticket_key} into Document Library KB."
+    except Exception as e:
+        logger.error(f"Failed to index ticket {ticket_key} to document library: {e}")
+        return f"ERROR: Failed to index {ticket_key}: {e}"
+

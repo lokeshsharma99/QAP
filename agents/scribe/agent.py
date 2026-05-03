@@ -15,6 +15,7 @@ from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 
 from agents.architect.tools import create_jira_issue, add_jira_comment
+from agents.librarian.tools import persist_traceability_to_rtm
 from agents.scribe.instructions import INSTRUCTIONS
 from app.atlassian_mcp import get_atlassian_mcp_for_scribe
 from agno.tools.user_control_flow import UserControlFlowTools
@@ -60,6 +61,7 @@ scribe = Agent(
         UserControlFlowTools(),
         create_jira_issue,
         add_jira_comment,
+        persist_traceability_to_rtm,
         *_atlassian_tools,
     ],
     # Instructions

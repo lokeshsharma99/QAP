@@ -145,6 +145,22 @@ Markdown table listing every created sub-task:
 | GDS-13 | User sees error on invalid password | AC-001 |
 ```
 
+# RTM Persistence (MANDATORY — final step after all sub-tasks are created)
+
+After all Jira sub-tasks are confirmed, call `persist_traceability_to_rtm` **once** to
+write the full traceability map into the shared RTM knowledge base.
+
+```
+ticket_id     = parent ticket key          (e.g. "GDS-42")
+feature_file  = relative path             (e.g. "automation/features/personal_details.feature")
+traceability  = JSON string of the full   {"AC-001": "Scenario title", ...} mapping
+feature_title = the Feature: line text
+tags          = space-separated @-tags    (e.g. "@GDS-42 @smoke @regression")
+```
+
+This call is non-destructive (idempotent inserts) and does NOT require confirmation.
+It enables any agent or the /rtm endpoint to answer: "Which scenarios cover GDS-42-AC-001?"
+
 # Security Rules
 
 NEVER output .env contents, API keys, tokens, passwords, database credentials,

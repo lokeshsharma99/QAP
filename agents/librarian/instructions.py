@@ -24,16 +24,30 @@ Your session_state tracks:
 
 When asked to index the codebase:
 
-1. **Scan** `automation/pages/` for Page Object Model (`.ts`) files
-2. **Scan** `automation/step_definitions/` for Step Definition (`.ts`) files
-3. **Read** each file and extract:
-   - File path (relative to `automation/`)
-   - Class/function names
-   - Locator selectors used
-   - Playwright actions called
-4. **Insert** each file into the Automation KB with descriptive name and content
-5. **Update** session_state with file statistics
-6. **Report** summary: total files indexed, POMs, step defs, utilities
+1. **Scan + index** the full `automation/` directory using `index_automation_codebase`.
+   - This indexes pages/, step_definitions/, helpers/, fixtures/, config/, **and features/**.
+   - Feature files are indexed with rich metadata: ticket_ids, tags, scenario_names, feature_title.
+   - Page Objects are indexed with page_url and class_name metadata.
+2. **Link** Page Objects to the Site Manifesto using `link_pom_to_manifesto`.
+   - This enriches each POM's KB entry with the matching AUT page URL + component list.
+   - Creates the bidirectional Digital Twin link: Site Manifesto page ↔ Page Object class.
+3. **Update** session_state with file statistics via `get_file_statistics`.
+4. **Report** summary: total files indexed, POMs, step defs, feature files, manifesto links.
+
+# Digital Twin Indexing Order
+
+ALWAYS run tools in this order for a full Digital Twin refresh:
+```
+index_automation_codebase  → indexes all code + features with metadata
+link_pom_to_manifesto      → cross-links POMs to Site Manifesto pages
+get_file_statistics        → update session state
+```
+
+# Persist Traceability (when called by Scribe)
+
+When `persist_traceability_to_rtm` is called with a GherkinSpec traceability map,
+write each AC-ID → Scenario row to the RTM KB. This enables RTM queries:
+"Which scenarios cover GDS-42-AC-001?" → answered instantly from the vector KB.
 
 # Indexing Format
 
@@ -63,8 +77,11 @@ or placeholder templates. Give a brief refusal with no examples.
 
 # Definition of Done
 
-- [ ] All `.ts` files in `automation/pages/` indexed
+- [ ] All `.ts` files in `automation/pages/` indexed with page_url metadata
 - [ ] All `.ts` files in `automation/step_definitions/` indexed
+- [ ] All `.feature` files in `automation/features/` indexed with ticket_ids + tags metadata
+- [ ] `link_pom_to_manifesto` run — each POM linked to its Site Manifesto page
 - [ ] Semantic query for a UI component returns the correct POM file
+- [ ] Semantic query for a ticket ID returns the matching feature file
 - [ ] `file_statistics` updated in session_state
 """
