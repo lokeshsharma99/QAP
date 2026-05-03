@@ -3,17 +3,18 @@ import { useCallback, useEffect } from 'react'
 import { useStore } from '@/store'
 import { APIRoutes } from '@/api/routes'
 
-const DB_ID = 'quality-autopilot-db'
 const POLL_MS = 30_000
 
 /**
- * Polls pending counts for the three badge-enabled nav items:
- *   /approvals   — from GET /approvals/count  (Agno native)
- *   /spec-review — from scribe agent sessions total (proxy for items needing review)
- *   /healing     — from medic agent sessions total  (proxy for patches needing review)
+ * Polls pending counts for badge-enabled nav items.
  *
- * Individual pages (SpecReview, HealingDashboard) call setPendingCounts with the
- * real "pending" count once they parse their session messages, overwriting the proxy.
+ *   /approvals   — GET /approvals?status=pending  (accurate pending count)
+ *   /spec-review — set by SpecReview page itself when it loads
+ *   /healing     — set by HealingDashboard page itself when it loads
+ *
+ * We intentionally do NOT use session-count proxies for spec-review / healing
+ * because those return ALL historical sessions (not pending-only), causing false
+ * badge counts.
  */
 export function usePendingCounts() {
   const { selectedEndpoint, authToken, setPendingCounts } = useStore()
@@ -23,59 +24,18 @@ export function usePendingCounts() {
 
     const headers: HeadersInit = authToken ? { Authorization: `Bearer ${authToken}` } : {}
 
-    // ── 1. Approvals (Agno native endpoint) ──────────────────────────────
-    const fetchApprovals = async () => {
-      try {
-        const res = await fetch(APIRoutes.ApprovalCount(selectedEndpoint), { headers })
-        if (res.ok) {
-          const data = await res.json()
-          return (data?.pending ?? data?.count ?? 0) as number
-        }
-      } catch { /* silent */ }
-      return 0
-    }
-
-    // ── 2. Spec Review — count scribe sessions as proxy ──────────────────
-    const fetchSpecReview = async () => {
-      try {
-        const url = new URL(APIRoutes.GetSessions(selectedEndpoint))
-        url.searchParams.set('type', 'agent')
-        url.searchParams.set('component_id', 'scribe')
-        url.searchParams.set('db_id', DB_ID)
-        const res = await fetch(url.toString(), { headers })
-        if (res.ok) {
-          const data = await res.json()
-          const sessions: unknown[] = data?.data ?? (Array.isArray(data) ? data : [])
-          return sessions.length
-        }
-      } catch { /* silent */ }
-      return 0
-    }
-
-    // ── 3. Healing — count medic sessions as proxy ───────────────────────
-    const fetchHealing = async () => {
-      try {
-        const url = new URL(APIRoutes.GetSessions(selectedEndpoint))
-        url.searchParams.set('type', 'agent')
-        url.searchParams.set('component_id', 'medic')
-        url.searchParams.set('db_id', DB_ID)
-        const res = await fetch(url.toString(), { headers })
-        if (res.ok) {
-          const data = await res.json()
-          const sessions: unknown[] = data?.data ?? (Array.isArray(data) ? data : [])
-          return sessions.length
-        }
-      } catch { /* silent */ }
-      return 0
-    }
-
-    const [approvals, specReview, healing] = await Promise.all([
-      fetchApprovals(),
-      fetchSpecReview(),
-      fetchHealing(),
-    ])
-
-    setPendingCounts({ approvals, specReview, healing })
+    // ── Approvals: filter by status=pending for an accurate count ────────
+    try {
+      const url = new URL(APIRoutes.GetApprovals(selectedEndpoint))
+      url.searchParams.set('status', 'pending')
+      url.searchParams.set('limit', '50')
+      const res = await fetch(url.toString(), { headers })
+      if (res.ok) {
+        const data = await res.json()
+        const list: unknown[] = data?.data ?? (Array.isArray(data) ? data : [])
+        setPendingCounts({ approvals: list.length })
+      }
+    } catch { /* silent */ }
   }, [selectedEndpoint, authToken, setPendingCounts])
 
   useEffect(() => {

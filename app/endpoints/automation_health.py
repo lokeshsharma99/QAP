@@ -292,8 +292,11 @@ def trigger_run(body: RunRequest, background_tasks: BackgroundTasks):
         else:
             cmd = ["npm", "run", "test:regression"]
 
+    # Ensure reports directory exists so Cucumber can write its output
+    _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
     try:
-        subprocess.run(
+        proc = subprocess.run(
             cmd,
             cwd=str(_AUTOMATION_DIR),
             capture_output=True,
@@ -307,7 +310,15 @@ def trigger_run(body: RunRequest, background_tasks: BackgroundTasks):
 
     result = _parse_last_report()
     if result is None:
-        raise HTTPException(status_code=500, detail="Run finished but no report was written")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Run finished but no report was written",
+                "returncode": proc.returncode,
+                "stdout": proc.stdout[-4000:] if proc.stdout else "",
+                "stderr": proc.stderr[-4000:] if proc.stderr else "",
+            },
+        )
     return result
 
 

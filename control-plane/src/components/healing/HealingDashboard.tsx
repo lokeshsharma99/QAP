@@ -143,7 +143,8 @@ const PatchCard = ({
 
 export default function HealingDashboard() {
   const searchParams = useSearchParams()
-  const agentId = searchParams.get('agent') ?? 'medic'
+  // Only allow 'medic' — ignore any other ?agent= param to prevent wrong display
+  const agentId = 'medic'
   const dbId    = searchParams.get('db_id') ?? 'quality-autopilot-db'
 
   const { selectedEndpoint, authToken, setPendingCounts } = useStore()
