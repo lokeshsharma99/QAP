@@ -60,7 +60,6 @@ from workflows.jira_to_pr import jira_to_pr
 from workflows.pipeline_failure_assessment import pipeline_failure_assessment
 from workflows.regression_maintenance import regression_maintenance
 from workflows.spec_to_code import spec_to_code
-from workflows.technical_testing import technical_testing
 from workflows.triage_heal import triage_heal
 
 # ---------------------------------------------------------------------------
@@ -127,7 +126,6 @@ agent_os = AgentOS(
         full_regression,
         grooming,
         regression_maintenance,
-        technical_testing,
     ],
     knowledge=_kb_list if _kb_list else None,
     registry=registry,
