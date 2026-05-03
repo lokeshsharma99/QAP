@@ -193,7 +193,7 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
         <div className={cn('flex items-center', navCollapsed ? 'justify-center py-1' : 'justify-between px-1 pt-1')}>
           {!navCollapsed && (
             <div className="flex items-center gap-2">
-              <Icon type="agno" size="xs" />
+              <Icon type="qap" size="xs" />
               <span className="text-xs font-medium uppercase text-primary">Quality Autopilot</span>
             </div>
           )}
