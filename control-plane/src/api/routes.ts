@@ -139,6 +139,20 @@ export const APIRoutes = {
   AutomationRun:     (base: string) => `${base}/automation/run`,
   AutomationTraces:  (base: string) => `${base}/automation/traces`,
   AutomationSync:    (base: string) => `${base}/automation/sync`,
+  AutomationRunStream: (base: string, tags: string, useDocker: boolean, timeoutSecs: number) => {
+    const wsBase = base.replace(/^http/, 'ws')
+    const p = new URLSearchParams()
+    if (tags) p.set('tags', tags)
+    if (useDocker) p.set('use_docker', 'true')
+    if (timeoutSecs) p.set('timeout_seconds', String(timeoutSecs))
+    const qs = p.toString()
+    return qs ? `${wsBase}/automation/run/stream?${qs}` : `${wsBase}/automation/run/stream`
+  },
+  AutomationFileContent:    (base: string, path: string) => `${base}/automation/files/content?path=${encodeURIComponent(path)}`,
+  AutomationEditRequests:   (base: string, status?: string) => `${base}/automation/files/edit-requests${status ? `?status=${status}` : ''}`,
+  AutomationEditRequest:    (base: string) => `${base}/automation/files/edit-request`,
+  AutomationApproveEdit:    (base: string, id: string) => `${base}/automation/files/edit-requests/${id}/approve`,
+  AutomationRejectEdit:     (base: string, id: string) => `${base}/automation/files/edit-requests/${id}/reject`,
 
   // ── RTM ──────────────────────────────────────────────────────────────────
   RTM:               (base: string, ticket?: string, tag?: string) =>

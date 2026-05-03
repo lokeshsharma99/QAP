@@ -15,43 +15,39 @@ type NavSection = { type: 'section'; label: string; links: NavLink[] }
 
 const NAV_SECTIONS: NavSection[] = [
   {
+    // Core is always expanded and cannot be collapsed
     type: 'section', label: 'Core',
     links: [
-      { type: 'link', href: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
-      { type: 'link', href: '/chat',        icon: MessageSquare,   label: 'Chat' },
-      { type: 'link', href: '/sessions',    icon: History,         label: 'Sessions' },
+      { type: 'link', href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      { type: 'link', href: '/chat',      icon: MessageSquare,   label: 'Chat' },
+      { type: 'link', href: '/sessions',  icon: History,         label: 'Sessions' },
     ],
   },
   {
     type: 'section', label: 'Quality',
     links: [
-      { type: 'link', href: '/approvals',   icon: ShieldCheck,  label: 'Approvals' },
+      { type: 'link', href: '/automation',  icon: Terminal,     label: 'Automation' },
       { type: 'link', href: '/spec-review', icon: FileCheck,    label: 'Spec Review' },
       { type: 'link', href: '/healing',     icon: Wrench,       label: 'Healing' },
-      { type: 'link', href: '/automation',  icon: Terminal,     label: 'Automation' },
       { type: 'link', href: '/rtm',         icon: GitBranch,    label: 'RTM' },
       { type: 'link', href: '/evals',       icon: FlaskConical, label: 'Evals' },
     ],
   },
   {
-    type: 'section', label: 'Insights',
+    type: 'section', label: 'Platform',
     links: [
-      { type: 'link', href: '/traces',  icon: Activity,  label: 'Traces' },
-      { type: 'link', href: '/metrics', icon: BarChart2, label: 'Metrics' },
+      { type: 'link', href: '/traces',   icon: Activity,  label: 'Traces' },
+      { type: 'link', href: '/metrics',  icon: BarChart2, label: 'Metrics' },
+      { type: 'link', href: '/knowledge',icon: BookOpen,  label: 'Knowledge' },
+      { type: 'link', href: '/memory',   icon: Brain,     label: 'Memory' },
+      { type: 'link', href: '/culture',  icon: Sparkles,  label: 'Culture' },
+      { type: 'link', href: '/registry', icon: Database,  label: 'Registry' },
     ],
   },
   {
-    type: 'section', label: 'Knowledge',
+    type: 'section', label: 'Admin',
     links: [
-      { type: 'link', href: '/knowledge', icon: BookOpen,  label: 'Knowledge' },
-      { type: 'link', href: '/memory',    icon: Brain,     label: 'Memory' },
-      { type: 'link', href: '/culture',   icon: Sparkles,  label: 'Culture' },
-      { type: 'link', href: '/registry',  icon: Database,  label: 'Registry' },
-    ],
-  },
-  {
-    type: 'section', label: 'System',
-    links: [
+      { type: 'link', href: '/approvals', icon: ShieldCheck,   label: 'Approvals' },
       { type: 'link', href: '/scheduler', icon: CalendarClock, label: 'Scheduler' },
       { type: 'link', href: '/guide',     icon: Map,           label: 'Guide' },
       { type: 'link', href: '/settings',  icon: Settings,      label: 'Settings' },
@@ -137,20 +133,27 @@ const NavSectionGroup = ({
 
   return (
     <div className="mt-1">
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center gap-1 px-3 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-muted/60 hover:text-muted transition-colors"
-      >
-        <span className="flex-1 text-left">{section.label}</span>
-        <ChevronDown
-          className={cn('size-2.5 transition-transform duration-200', open ? 'rotate-0' : '-rotate-90')}
-        />
-      </button>
+      {section.label === 'Core' ? (
+        // Core is always visible — just show the label, no toggle
+        <div className="flex w-full items-center gap-1 px-3 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-muted/60 select-none">
+          <span className="flex-1 text-left">{section.label}</span>
+        </div>
+      ) : (
+        <button
+          onClick={onToggle}
+          className="flex w-full items-center gap-1 px-3 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-muted/60 hover:text-muted transition-colors"
+        >
+          <span className="flex-1 text-left">{section.label}</span>
+          <ChevronDown
+            className={cn('size-2.5 transition-transform duration-200', open ? 'rotate-0' : '-rotate-90')}
+          />
+        </button>
+      )}
       <AnimatePresence initial={false}>
-        {open && (
+        {(section.label === 'Core' || open) && (
           <motion.div
             key="content"
-            initial={{ height: 0, opacity: 0 }}
+            initial={section.label === 'Core' ? false : { height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
@@ -176,7 +179,7 @@ const NavSectionGroup = ({
 
 const Nav = ({ collapsed = false, pendingCounts = {} }: { collapsed?: boolean; pendingCounts?: Record<string, number> }) => {
   const pathname = usePathname()
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ Core: true, Quality: true })
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ Core: true, Quality: true, Platform: false, Admin: false })
 
   const toggle = (label: string) =>
     setOpenSections((prev) => ({ ...prev, [label]: !prev[label] }))
