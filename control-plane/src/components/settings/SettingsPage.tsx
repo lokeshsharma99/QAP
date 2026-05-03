@@ -1090,7 +1090,20 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
     const res = await fetch(`${endpointUrl}/auth/invite`, {
       method: 'POST', headers: hdrs(true), body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
     }).catch(() => null)
-    if (res?.ok) { setInviteEmail(''); toast.success(`Invite sent to ${inviteEmail}`); fetchInvites(); fetchOrg() }
+    if (res?.ok) {
+      const data = await res.json().catch(() => ({}))
+      setInviteEmail('')
+      fetchInvites()
+      fetchOrg()
+      if (data.email_sent) {
+        toast.success(`Invite email sent to ${inviteEmail}`)
+      } else {
+        toast.success(
+          `Invite created for ${inviteEmail} — email not sent (SMTP not configured). Share this link manually: ${data.accept_url ?? ''}`,
+          { duration: 10000 }
+        )
+      }
+    }
     else if (res?.status === 409) toast.error('Already invited or member exists')
     else toast.error('Failed to send invite')
     setInviting(false)
