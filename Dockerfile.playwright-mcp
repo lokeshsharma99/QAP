@@ -9,7 +9,7 @@
 #   - node:22-slim base instead of Ubuntu Noble full (~200 MB saved on base)
 #   - Chromium only: no Firefox, no WebKit binaries (~1.5 GB saved)
 #   - @playwright/mcp pre-installed at build time (no npx download at startup)
-#   - Chromium browser baked in at build time (no install-browser at startup)
+#   - Chromium browser baked in at build time via `npx playwright install chromium`
 # ===========================================================================
 
 FROM node:22-slim
@@ -27,12 +27,11 @@ RUN npm install -g @playwright/mcp@latest && \
 #
 #   playwright install-deps chromium       — apt-get installs the right OS packages
 #                                            for the current distro (Bookworm)
-#   @playwright/mcp install-browser          — downloads the playwright-managed
-#                                            chrome-for-testing binary (the channel
-#                                            @playwright/mcp resolves at runtime)
+#   playwright install chromium            — downloads the Playwright-managed Chromium
+#                                            binary (~150 MB) to ~/.cache/ms-playwright/
 # ---------------------------------------------------------------------------
 RUN npx playwright install-deps chromium && \
-    npx @playwright/mcp install-browser chrome-for-testing
+    npx playwright install chromium
 
 # ---------------------------------------------------------------------------
 # Runtime
@@ -40,4 +39,4 @@ RUN npx playwright install-deps chromium && \
 EXPOSE 8931
 
 CMD ["npx", "@playwright/mcp", "--port", "8931", "--host", "0.0.0.0", \
-     "--allowed-hosts", "*", "--browser", "chrome-for-testing"]
+     "--allowed-hosts", "*", "--browser", "chromium"]

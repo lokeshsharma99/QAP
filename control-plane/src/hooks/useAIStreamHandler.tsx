@@ -402,8 +402,9 @@ const useAIChatStreamHandler = () => {
                         updatedContent = 'Error parsing response'
                       }
                     }
-                    // For WorkflowCompleted: only update content if we got content (don't blank out streamed content)
-                    if (chunk.event === RunEvent.WorkflowCompleted && !updatedContent && message.content) {
+                    // For WorkflowCompleted: preserve any content already accumulated
+                    // from StepCompleted events; only replace if the event has actual content.
+                    if (chunk.event === RunEvent.WorkflowCompleted && !updatedContent) {
                       return message
                     }
                     return {
@@ -438,6 +439,35 @@ const useAIChatStreamHandler = () => {
             ) {
               const stepName = (chunk as RunResponse & { step_name?: string }).step_name
               addChatEvent({ type: 'run_done', label: `✓ Step${stepName ? `: ${stepName}` : ''} completed`, ts: Date.now() })
+              // Render step output into the chat bubble.
+              // Agno workflows do NOT emit RunContent events from inner agents —
+              // the step output arrives only via StepCompleted.content.
+              if (chunk.content !== null && chunk.content !== undefined) {
+                let stepContent = ''
+                if (typeof chunk.content === 'string') {
+                  stepContent = chunk.content
+                } else {
+                  try { stepContent = JSON.stringify(chunk.content, null, 2) } catch { /* skip */ }
+                }
+                if (stepContent) {
+                  flushSync(() => {
+                    setMessages((prevMessages) => {
+                      const newMessages = [...prevMessages]
+                      const idx = newMessages.length - 1
+                      const lastMessage = newMessages[idx]
+                      if (lastMessage && lastMessage.role === 'agent') {
+                        newMessages[idx] = {
+                          ...lastMessage,
+                          content: lastMessage.content
+                            ? lastMessage.content + '\n\n' + stepContent
+                            : stepContent,
+                        }
+                      }
+                      return newMessages
+                    })
+                  })
+                }
+              }
             } else if (
               chunk.event === RunEvent.WorkflowError ||
               chunk.event === RunEvent.StepError
