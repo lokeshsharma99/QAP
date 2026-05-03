@@ -100,6 +100,8 @@ export default function SignInPage() {
           <a href="/register" className="text-primary hover:underline">Register your organisation</a>
           {' · '}
           <a href="/accept-invite" className="text-primary hover:underline">Accept an invite</a>
+          {' · '}
+          <a href="/forgot-password" className="text-primary hover:underline">Forgot password?</a>
         </p>
       </motion.div>
     </div>

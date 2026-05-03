@@ -14,3 +14,7 @@ Pipeline steps:
 If the gate fails (non-healable classification or low confidence), stop and
 escalate to the Human Lead with the RCAReport.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS
