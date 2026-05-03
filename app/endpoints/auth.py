@@ -691,7 +691,8 @@ def get_me(authorization: Optional[str] = Header(None)):
     user = _validate_session(raw)
     if not user:
         raise HTTPException(401, "Not authenticated or session expired.")
-    return UserInfo(**user)
+    return UserInfo(user_id=user["id"], email=user["email"], name=user["name"],
+                    org_id=user["org_id"], role=user["role"])
 
 
 @router.post("/logout", summary="Invalidate current session")
