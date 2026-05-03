@@ -135,7 +135,7 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
   const { initialize } = useChatActions()
   const router = useRouter()
 
-  // Live badge counts for Approvals, Spec Review, Healing
+  // Live badge counts for Approvals
   usePendingCounts()
 
   useEffect(() => {
@@ -177,8 +177,6 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
   // Build badge map for Nav
   const navBadges: Record<string, number> = {}
   if (pendingCounts.approvals  > 0) navBadges['/approvals']   = pendingCounts.approvals
-  if (pendingCounts.specReview > 0) navBadges['/spec-review'] = pendingCounts.specReview
-  if (pendingCounts.healing    > 0) navBadges['/healing']     = pendingCounts.healing
 
   return (
     <div className="flex h-screen overflow-hidden bg-background/80">

@@ -8,13 +8,7 @@ const POLL_MS = 30_000
 /**
  * Polls pending counts for badge-enabled nav items.
  *
- *   /approvals   — GET /approvals?status=pending  (accurate pending count)
- *   /spec-review — set by SpecReview page itself when it loads
- *   /healing     — set by HealingDashboard page itself when it loads
- *
- * We intentionally do NOT use session-count proxies for spec-review / healing
- * because those return ALL historical sessions (not pending-only), causing false
- * badge counts.
+ *   /approvals — GET /approvals?status=pending (accurate pending count)
  */
 export function usePendingCounts() {
   const { selectedEndpoint, authToken, setPendingCounts } = useStore()

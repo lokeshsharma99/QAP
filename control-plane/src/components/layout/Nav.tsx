@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import {
   MessageSquare, LayoutDashboard,
-  FileCheck, Wrench, Activity, BookOpen, Brain, ShieldCheck, History, Settings, Map, CalendarClock,
+  Activity, BookOpen, Brain, ShieldCheck, History, Settings, Map, CalendarClock,
   FlaskConical, Database, BarChart2, Sparkles, ChevronDown, Terminal, GitBranch
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -27,8 +27,6 @@ const NAV_SECTIONS: NavSection[] = [
     type: 'section', label: 'Quality',
     links: [
       { type: 'link', href: '/automation',  icon: Terminal,     label: 'Automation' },
-      { type: 'link', href: '/spec-review', icon: FileCheck,    label: 'Spec Review' },
-      { type: 'link', href: '/healing',     icon: Wrench,       label: 'Healing' },
       { type: 'link', href: '/rtm',         icon: GitBranch,    label: 'RTM' },
       { type: 'link', href: '/evals',       icon: FlaskConical, label: 'Evals' },
     ],

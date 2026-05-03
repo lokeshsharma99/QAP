@@ -7,8 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import {
   Activity, ExternalLink, Bot, Users,
-  ShieldCheck, Zap, MessageSquare, Wrench, BarChart2, RefreshCw,
-  AlertCircle, ChevronRight, BookOpen, FlaskConical, AlertTriangle, Clock
+  ShieldCheck, Zap, MessageSquare, BarChart2, RefreshCw,
+  AlertCircle, ChevronRight, FlaskConical, AlertTriangle, Clock
 } from 'lucide-react'
 import { APIRoutes } from '@/api/routes'
 import { constructEndpointUrl } from '@/lib/constructEndpointUrl'
@@ -302,9 +302,8 @@ const SquadRosterCard = () => {
 
 const QUICK_ACTIONS = [
   { label: 'Chat with Agent',    href: '/?agent=architect',      icon: MessageSquare, color: 'text-brand'       },
-  { label: 'Spec Review',        href: '/spec-review',           icon: BookOpen,      color: 'text-positive'    },
-  { label: 'Healing Dashboard',  href: '/healing',               icon: Wrench,        color: 'text-warning'     },
-  { label: 'Approvals Queue',    href: '/approvals',             icon: ShieldCheck,   color: 'text-info'        },
+  { label: 'Approvals Queue',    href: '/approvals',             icon: ShieldCheck,   color: 'text-warning'     },
+  { label: 'Automation Health',  href: '/automation',            icon: BarChart2,     color: 'text-positive'    },
   { label: 'Metrics',            href: '/metrics',               icon: BarChart2,     color: 'text-purple-400'  },
   { label: 'Knowledge Base',     href: '/knowledge',             icon: FlaskConical,  color: 'text-muted'       },
 ]

@@ -1,6 +1,6 @@
 'use client'
 /**
- * ApprovalBlock — inline approval card rendered in the chat window and spec-review page.
+ * ApprovalBlock — inline approval card rendered in the chat window.
  *
  * Props:
  *   runId     – filter to approvals whose run_id matches (optional)

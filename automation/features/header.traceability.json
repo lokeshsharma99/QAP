@@ -1,0 +1,7 @@
+{
+  "AC-001": "Crown logo and GOV.UK name are present in the header",
+  "AC-002": "Service name \"Apply for Universal Credit\" is visible in the header",
+  "AC-003": "BETA banner is displayed below the header",
+  "AC-004": "Header layout is responsive on mobile, tablet, and desktop",
+  "AC-005": "Skip to main content link is present at the top of the page"
+}

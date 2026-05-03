@@ -100,8 +100,8 @@ interface Store {
   setAgentOverride: (id: string, override: AgentConfigOverride) => void
   clearAgentOverride: (id: string) => void
   // Sidebar pending-request badge counts
-  pendingCounts: { approvals: number; specReview: number; healing: number }
-  setPendingCounts: (patch: Partial<{ approvals: number; specReview: number; healing: number }>) => void
+  pendingCounts: { approvals: number }
+  setPendingCounts: (patch: Partial<{ approvals: number }>) => void
 }
 
 export const useStore = create<Store>()(
@@ -179,7 +179,7 @@ export const useStore = create<Store>()(
         delete next[id]
         return { agentOverrides: next }
       }),
-      pendingCounts: { approvals: 0, specReview: 0, healing: 0 },
+      pendingCounts: { approvals: 0 },
       setPendingCounts: (patch) => set((s) => ({ pendingCounts: { ...s.pendingCounts, ...patch } })),
     }),
 
