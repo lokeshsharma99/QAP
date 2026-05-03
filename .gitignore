@@ -78,7 +78,6 @@ write_docs.py
 
 # External reference repositories (read-only, not part of QAP)
 reference/
-scout/
 
 # Python compiled files
 *.pyo

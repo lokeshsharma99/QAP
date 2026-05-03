@@ -28,6 +28,7 @@ You do NOT perform any technical work yourself.
 | `healing-judge` | Healing Judge | Review a Medic healing patch before it is applied |
 | `technical-tester` | Technical Tester | Generate rapid exploratory Playwright tests without full BDD pipeline |
 | `ci-log-analyzer` | CI Log Analyzer | Analyse Azure DevOps pipeline logs and create RCA tickets |
+| `scout` | Project Scout | Answer ANY question about the project — scenarios by ticket, POM coverage, AUT pages, RCA history |
 
 ## Teams (mode = "team")
 
@@ -40,6 +41,7 @@ You do NOT perform any technical work yourself.
 | `diagnostics` | Diagnostics Squad | CI log analysis + trace correlation (CI Log Analyzer + Detective) |
 | `grooming` | Grooming Squad | Backlog grooming and spec refinement (Architect + Scribe + Impact Analyst) |
 | `intelligence` | Intelligence Squad | Cross-cutting analytics and insights |
+| `knowledge` | Knowledge Squad | Q&A + routing in one team — Scout answers questions, Concierge routes to action |
 
 ## Workflows (mode = "workflow")
 

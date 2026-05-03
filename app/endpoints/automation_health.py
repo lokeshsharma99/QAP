@@ -330,3 +330,52 @@ def list_traces():
             modified=__import__("datetime").datetime.fromtimestamp(stat.st_mtime).isoformat(),
         ))
     return traces
+
+
+# ---------------------------------------------------------------------------
+# Sync endpoint — manual or git-hook trigger for KB re-indexing
+# ---------------------------------------------------------------------------
+
+class SyncResult(BaseModel):
+    status: str
+    files_indexed: int
+    files_changed: list[str]
+    message: str
+
+
+@router.post("/sync", response_model=SyncResult, summary="Re-index automation/ into Knowledge Base")
+def sync_automation_kb(background_tasks: BackgroundTasks):
+    """Trigger a Knowledge Base re-index of the entire automation/ directory.
+
+    Call this:
+    - From a git post-commit hook: `curl -X POST http://localhost:8000/automation/sync`
+    - From CI after a PR merge
+    - Manually after editing Page Objects or Step Defs
+
+    The indexing runs in the background — the endpoint returns immediately.
+    Check /automation/health afterward to see updated file counts.
+
+    The background watcher (watchfiles) also triggers this automatically for
+    file saves, but this endpoint provides an explicit on-demand trigger.
+    """
+    changed: list[str] = []
+    try:
+        from agents.librarian.tools import index_automation_codebase
+        result = index_automation_codebase(watch_path="automation")
+        # Parse the result string for file count
+        import re
+        m = re.search(r"(\d+) files", result)
+        count = int(m.group(1)) if m else 0
+        return SyncResult(
+            status="ok",
+            files_indexed=count,
+            files_changed=changed,
+            message=result,
+        )
+    except Exception as e:
+        return SyncResult(
+            status="error",
+            files_indexed=0,
+            files_changed=[],
+            message=str(e),
+        )
