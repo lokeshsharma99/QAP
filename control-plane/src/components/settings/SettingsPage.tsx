@@ -1172,12 +1172,6 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
       {org && (
         <div className="rounded-2xl border border-primary/10 bg-primaryAccent p-5 grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Plan</p>
-            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize', planBadgeClass)}>
-              {org.plan || 'free'}
-            </span>
-          </div>
-          <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Members</p>
             <p className="text-lg font-semibold text-primary">{org.members?.length ?? 0}</p>
           </div>
