@@ -27,7 +27,6 @@ from agents.librarian import librarian
 from agents.medic import medic
 from agents.pipeline_analyst import pipeline_analyst
 from agents.scribe import scribe
-from agents.technical_tester import technical_tester
 from app.endpoints.agent_config import router as agent_config_router
 from app.endpoints.auth import router as auth_router
 from app.endpoints.automation_health import router as automation_health_router
@@ -104,7 +103,6 @@ agent_os = AgentOS(
         impact_analyst,
         pipeline_analyst,
         healing_judge,
-        technical_tester,
         scout,
     ],
     teams=[

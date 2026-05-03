@@ -203,7 +203,6 @@ QAP/
 │   ├── impact_analyst   impact_analysis                → ImpactReport
 │   ├── pipeline_analyst pipeline_rca                   → PipelineRCAReport
 │   ├── ci_log_analyzer  rca_analysis                   → ADO tickets
-│   ├── technical_tester test_generation                → Playwright tests
 │   └── healing_judge    healing_validation             → HealingVerdict
 ├── teams/           6 squads (all TeamMode.coordinate)
 │   ├── strategy         Architect + Scribe

@@ -1446,7 +1446,6 @@ The following agents are implemented but not in the original squad plan:
 |-------|----|--------------|-------|
 | CI Log Analyzer | `ci_log_analyzer` | `rca_analysis` | Analyzes Azure DevOps pipeline logs; creates ADO tickets after HITL approval |
 | Healing Judge | `healing_judge` | `healing_validation` | Adversarial review of Medic patches before application |
-| Technical Tester | `technical_tester` | `test_generation` | Playwright Test Agent planner/generator/healer for rapid exploratory tests |
 | Impact Analyst | `impact_analyst` | `impact_analysis` | Analyzes change impact across Page Objects and Step Defs |
 | Pipeline Analyst | `pipeline_analyst` | `pipeline_analysis` | CI/CD pipeline trend analysis and flakiness scoring |
 | Curator | `curator` | `kb_maintenance` | Manages knowledge base pruning and obsolescence detection |

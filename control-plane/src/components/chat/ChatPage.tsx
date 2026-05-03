@@ -1,12 +1,11 @@
 'use client'
-import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useStore } from '@/store'
 import useChatActions from '@/hooks/useChatActions'
 import useAIChatStreamHandler from '@/hooks/useAIStreamHandler'
 import useSessionLoader from '@/hooks/useSessionLoader'
 import { TextArea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StickToBottom } from 'use-stick-to-bottom'
 import Icon from '@/components/ui/icon'
@@ -23,9 +22,9 @@ import dayjs from 'dayjs'
 import { toast } from 'sonner'
 import { ChatMessage } from '@/types/os'
 import {
-  ChevronDown, ChevronUp, Wrench, Brain, Plus, PanelRightOpen, PanelRightClose,
-  Bot, Cpu, Database, Hash, Clock, CheckCircle, XCircle, Zap, GitBranch, Activity,
-  Users, Settings, BookOpen, MemoryStick, Layers, MessageSquare, MessagesSquare,
+  ChevronDown, Wrench, Brain, Plus, PanelRightOpen, PanelRightClose,
+  Bot, Cpu, CheckCircle, XCircle, GitBranch, Activity,
+  Users, BookOpen, MemoryStick, Layers, MessageSquare, MessagesSquare,
   Play, CornerDownRight, ArrowUp, Paperclip, X as XIcon, FileText, Image as ImageIcon,
   Hammer, ChevronRight, Copy, Check, Square, Search, Settings2
 } from 'lucide-react'
@@ -38,159 +37,10 @@ import { constructEndpointUrl } from '@/lib/constructEndpointUrl'
 // ---------------------------------------------------------------------------
 // Tool Calls — accordion item inside the sidebar panel
 // ---------------------------------------------------------------------------
-const ToolCallAccordionItem = ({ toolCall }: { toolCall: NonNullable<ChatMessage['tool_calls']>[0] }) => {
-  const [open, setOpen] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const anyCall = toolCall as any
-  const durationMs: string | null =
-    anyCall.metrics?.time != null ? (anyCall.metrics.time * 1000).toFixed(3)
-    : anyCall.metrics?.execution_time != null ? Number(anyCall.metrics.execution_time).toFixed(3)
-    : null
-
-  return (
-    <div className="w-full rounded-lg border border-border bg-primaryAccent p-4">
-      <h3 className="flex">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="flex flex-1 items-center gap-2 justify-between text-sm font-medium"
-        >
-          <div className="flex w-full">
-            <div className="flex flex-col gap-1">
-              <p className="font-inter text-[0.875rem] font-medium leading-5 tracking-[-0.02em] text-left">
-                {toolCall.tool_name}
-              </p>
-              {toolCall.tool_call_error && (
-                <span className="text-[0.7rem] text-destructive">error</span>
-              )}
-            </div>
-          </div>
-          <ChevronDown
-            className={cn(
-              'shrink-0 transition-transform duration-200 text-muted bg-accent border border-border/50 size-6 rounded-sm p-1',
-              open && 'rotate-180'
-            )}
-          />
-        </button>
-      </h3>
-
-      {open && (
-        <div className="mt-4 space-y-4">
-          {/* Tool Name */}
-          <div>
-            <p className="text-xs font-medium uppercase text-muted mb-1">Tool Name</p>
-            <p className="font-inter text-[0.875rem] font-medium tracking-[-0.02em]">{toolCall.tool_name}</p>
-          </div>
-
-          {/* Tool Args */}
-          {toolCall.tool_args && Object.keys(toolCall.tool_args).length > 0 && (
-            <div>
-              <p className="text-xs font-medium uppercase text-muted mb-2">Tool Args</p>
-              <div className="space-y-2">
-                {Object.entries(toolCall.tool_args).map(([key, value]) => (
-                  <div key={key}>
-                    <p className="text-xs text-muted/60 mb-0.5">{key} :</p>
-                    <pre className="overflow-x-auto rounded bg-background px-2 py-1.5 text-xs text-primary whitespace-pre-wrap break-all font-dmmono">
-                      {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
-                    </pre>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Metrics */}
-          {durationMs && (
-            <div>
-              <p className="text-xs font-medium uppercase text-muted mb-1">Tool Metrics</p>
-              <p className="text-xs font-dmmono text-muted">Duration: {durationMs} ms</p>
-            </div>
-          )}
-
-          {/* Result */}
-          {toolCall.content && (
-            <div>
-              <p className="text-xs font-medium uppercase text-muted mb-1">Tool Result</p>
-              <pre
-                className={cn(
-                  'max-h-64 overflow-y-auto rounded px-2 py-1.5 text-xs font-dmmono whitespace-pre-wrap break-all',
-                  toolCall.tool_call_error ? 'bg-destructive/10 text-destructive' : 'bg-background text-primary'
-                )}
-              >
-                {typeof toolCall.content === 'string'
-                  ? toolCall.content
-                  : JSON.stringify(toolCall.content, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // Tool Calls — sliding sidebar panel
 // ---------------------------------------------------------------------------
-const ToolCallsSidebar = ({
-  open,
-  onClose,
-  toolCalls,
-}: {
-  open: boolean
-  onClose: () => void
-  toolCalls: NonNullable<ChatMessage['tool_calls']>
-}) => (
-  <AnimatePresence>
-    {open && (
-      <>
-        {/* invisible backdrop to close on outside click */}
-        <motion.div
-          key="tc-backdrop"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-40"
-          onClick={onClose}
-        />
-        {/* panel */}
-        <motion.div
-          key="tc-panel"
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="fixed inset-y-0 right-0 z-50 flex w-[500px] flex-col bg-accent border-l border-border shadow-xl"
-          role="dialog"
-          aria-label="Tool Calls"
-        >
-          {/* header */}
-          <div className="sticky top-0 z-20 flex items-center border-b border-border bg-accent px-6 py-4 shrink-0">
-            <h2 className="font-inter text-[0.875rem] font-medium leading-normal tracking-[-0.02em] truncate min-w-0 flex-1 pr-8">
-              Tool Calls
-            </h2>
-            <button
-              onClick={onClose}
-              className="inline-flex size-6 items-center justify-center rounded-sm bg-secondary text-primary opacity-70 hover:opacity-100 transition-opacity"
-            >
-              <XIcon style={{ width: '10.67px', height: '10.67px' }} />
-              <span className="sr-only">Close</span>
-            </button>
-          </div>
-          {/* scrollable content */}
-          <div className="flex-1 overflow-y-auto p-6 pt-4">
-            <div className="flex flex-col gap-4">
-              {toolCalls.map((tc, i) => (
-                <ToolCallAccordionItem key={i} toolCall={tc} />
-              ))}
-            </div>
-          </div>
-        </motion.div>
-      </>
-    )}
-  </AnimatePresence>
-)
 
 // ---------------------------------------------------------------------------
 // Inline tool call steps — numbered timeline inside the chat message
@@ -198,7 +48,6 @@ const ToolCallsSidebar = ({
 const InlineToolSteps = ({ toolCalls }: { toolCalls: NonNullable<ChatMessage['tool_calls']> }) => {
   const [expanded, setExpanded] = useState(false)
   const [openIdx, setOpenIdx] = useState<number | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getDuration = (tc: NonNullable<ChatMessage['tool_calls']>[0]) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const a = tc as any
@@ -902,18 +751,7 @@ const EntitySelector = () => {
 // Right panel — Agent config + SSE event log
 // ---------------------------------------------------------------------------
 
-const EventTypeIcon = ({ type }: { type: string }) => {
-  switch (type) {
-    case 'tool_start':  return <Wrench className="size-3 text-info" />
-    case 'tool_done':   return <CheckCircle className="size-3 text-positive" />
-    case 'reasoning':   return <Brain className="size-3 text-warning" />
-    case 'run_start':   return <Zap className="size-3 text-brand" />
-    case 'run_done':    return <CheckCircle className="size-3 text-positive" />
-    case 'error':       return <XCircle className="size-3 text-destructive" />
-    case 'memory':      return <Database className="size-3 text-muted" />
-    default:            return <Hash className="size-3 text-muted" />
-  }
-}
+// ...existing code...
 
 // ---------------------------------------------------------------------------
 // Inline Activity Log (toggled in toolbar)
@@ -1222,12 +1060,6 @@ const AGENT_META: Record<string, { skill: string; description: string; jiraAcces
     jiraAccess: 'None',
     squad: 'Self-Healing Squad',
   },
-  'technical_tester': {
-    skill: 'test_generation',
-    description: 'Rapid exploratory tester using Playwright Test Agents. Does not require a Gherkin spec — autonomously plans a test session, generates Playwright tests, executes them, and heals any failures on the fly. Ideal for smoke tests and new-feature sanity checks.',
-    jiraAccess: 'None',
-    squad: 'Code Generation Squad',
-  },
   'impact-analyst': {
     skill: 'impact_analysis',
     description: 'Analyses GitHub PRs and Issues against the existing automation suite. Identifies missing coverage, obsolete tests, and stale locators. Assigns P0–P3 regression risk and produces a recommended action list for the Engineer and Scribe.',
@@ -1338,43 +1170,7 @@ const WORKFLOW_META: Record<string, { description: string; pipeline: string[]; i
   },
 }
 
-const TEAM_META: Record<string, { purpose: string; responsibility: string; outputContract: string }> = {
-  'strategy': {
-    purpose: 'Spec Writing Squad — bridges Business Analysts and the Technical team.',
-    responsibility: 'Parse Jira tickets into structured RequirementContext (Architect), then author BDD Gherkin specs with full traceability to every acceptance criterion (Scribe).',
-    outputContract: 'RequirementContext → GherkinSpec',
-  },
-  'context': {
-    purpose: 'Discovery & Indexing Squad — maintain the Digital Twin of your AUT and codebase.',
-    responsibility: 'Crawl the AUT to generate the Site Manifesto with Accessibility Tree snapshots (Discovery), re-index Page Objects and Step Definitions into PgVector on every Git commit (Librarian).',
-    outputContract: 'SiteManifesto + PgVector Automation KB',
-  },
-  'engineering': {
-    purpose: 'Code Generation Squad — generate production-grade Playwright automation code.',
-    responsibility: 'Write modular POMs and Step Definitions using the Look-Before-You-Leap pattern (Engineer), provision fresh test data with PII masking and cleanup queries (Data Agent), submit GitHub PRs.',
-    outputContract: 'RunContext → POM + StepDefs → GitHub PR',
-  },
-  'operations': {
-    purpose: 'Self-Healing Squad — keep the regression suite green autonomously.',
-    responsibility: 'Classify failures from trace.zip as LOCATOR_STALE / LOGIC_CHANGE / DATA_MISMATCH / ENV_FAILURE (Detective), apply surgical one-locator healing patches verified 3× (Medic).',
-    outputContract: 'RCAReport → HealingPatch (verified 3×)',
-  },
-  'diagnostics': {
-    purpose: 'CI Failure Squad — correlate pipeline logs with Playwright traces.',
-    responsibility: 'Analyse GitHub Actions / ADO pipeline failures with log-level detail (CI Log Analyzer), cross-reference with Playwright trace analysis (Detective), create Jira/ADO tickets after HITL approval.',
-    outputContract: 'PipelineRCAReport + RCAReport → ADO ticket (HITL)',
-  },
-  'grooming_team': {
-    purpose: 'Backlog Grooming Squad — collaborative backlog refinement from three perspectives.',
-    responsibility: 'BA perspective on testability (Architect), SDET assessment of automation feasibility and edge cases (Impact Analyst), combined into actionable grooming assessment posted to Jira.',
-    outputContract: 'GroomingAssessment → Jira comment',
-  },
-  'intelligence': {
-    purpose: 'Impact Analysis Squad — answers "what needs to change?" and "why did this fail?"',
-    responsibility: 'Analyse PRs and Issues to identify missing/obsolete/stale tests and compute regression risk (Impact Analyst), analyse CI pipeline failures and produce remediation plans (Pipeline Analyst).',
-    outputContract: 'ImpactReport + PipelineRCAReport',
-  },
-}
+// ...existing code...
 
 const StepTree = ({ steps, depth = 0 }: { steps: WorkflowStep[]; depth?: number }) => (
   <div className={cn('space-y-1', depth > 0 && 'ml-3 border-l border-accent/40 pl-2')}>
@@ -1403,7 +1199,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
   agentId: string | null; teamId: string | null; workflowId: string | null; sessionId: string | null
   clearChat: () => void; setSessionId: (id: string | null) => void
 }) => {
-  const { mode, chatEvents, isStreaming, selectedEndpoint, authToken, sessionsData, isSessionsLoading } = useStore()
+  const { mode, selectedEndpoint, authToken, sessionsData, isSessionsLoading } = useStore()
   const [tab, setTab] = useState<'details' | 'config' | 'memory' | 'steps' | 'members'>('details')
   const [agentDetail, setAgentDetail] = useState<AgentFullDetail | null>(null)
   const [teamDetail, setTeamDetail] = useState<TeamFullDetail | null>(null)

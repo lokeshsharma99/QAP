@@ -221,7 +221,7 @@ const RecentTracesCard = ({ endpoint, authToken }: { endpoint: string; authToken
 const SQUAD_MAP: Record<string, string[]> = {
   'Strategy':    ['architect', 'scribe'],
   'Context':     ['discovery', 'librarian'],
-  'Engineering': ['engineer', 'data-agent', 'data_agent', 'technical_tester', 'technical-tester'],
+  'Engineering': ['engineer', 'data-agent', 'data_agent'],
   'Operations':  ['detective', 'medic', 'curator'],
   'Quality':     ['judge', 'healing_judge', 'healing-judge'],
   'Diagnostics': ['ci_log_analyzer', 'ci-log-analyzer', 'pipeline-analyst', 'pipeline_analyst', 'impact-analyst', 'impact_analyst'],
