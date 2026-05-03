@@ -10,7 +10,6 @@ from agno.agent import Agent
 from agno.compression.manager import CompressionManager
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig, UserProfileConfig
 from agno.memory import MemoryManager
-from app.guardrails import prompt_injection_guardrail
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 from agno.tools.user_control_flow import UserControlFlowTools
@@ -124,11 +123,13 @@ architect = Agent(
     # Instructions
     instructions=INSTRUCTIONS,
     # Guardrails (pre-hooks for input validation)
-    # Note: pii_detection_guardrail excluded — architect processes Jira ticket content,
-    # PR descriptions, and linked requirements that legitimately contain email/phone patterns.
-    pre_hooks=[
-        prompt_injection_guardrail,
-    ],
+    # Both guardrails excluded for Architect:
+    # - pii_detection_guardrail: Jira ticket content legitimately contains email/phone patterns.
+    # - prompt_injection_guardrail: Jira ticket descriptions, PR text, and delegated task
+    #   messages from the team leader can contain phrases like "system prompt", "simulate",
+    #   "act as" etc. as part of legitimate technical requirements — causing false positives.
+    #   Input trust boundary for Architect is the team leader (internal) and Jira API
+    #   (authenticated), not raw end-user input.
     # Feature-specific
     session_state={
         "analyzed_requirements": [],
