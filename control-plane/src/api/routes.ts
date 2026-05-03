@@ -9,6 +9,11 @@ export const APIRoutes = {
   AuthAcceptInvite:  (base: string) => `${base}/auth/accept-invite`,
   AuthUsers:         (base: string) => `${base}/auth/users`,
   AuthDeactivate:    (base: string, userId: string) => `${base}/auth/users/${userId}`,
+  AuthChangeRole:    (base: string, userId: string) => `${base}/auth/users/${userId}/role`,
+  AuthForgotPassword:(base: string) => `${base}/auth/forgot-password`,
+  AuthResetPassword: (base: string) => `${base}/auth/reset-password`,
+  AuthChangePassword:(base: string) => `${base}/auth/change-password`,
+  AuthPermissions:   (base: string) => `${base}/auth/permissions`,
 
   // ── Core ────────────────────────────────────────────────────────────────
   Status:      (base: string) => `${base}/health`,

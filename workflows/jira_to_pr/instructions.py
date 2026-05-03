@@ -31,3 +31,7 @@ Contracts passed between agents:
 
 Never bypass a Judge gate. Never submit a PR before code approval.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

@@ -92,8 +92,17 @@ def _ensure_tables() -> None:
                         expires_at  TIMESTAMPTZ NOT NULL,
                         created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
                     );
+                    CREATE TABLE IF NOT EXISTS qap_password_resets (
+                        token       TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
+                        user_id     TEXT NOT NULL REFERENCES qap_users(id) ON DELETE CASCADE,
+                        org_id      TEXT NOT NULL,
+                        expires_at  TIMESTAMPTZ NOT NULL,
+                        used        BOOLEAN NOT NULL DEFAULT FALSE,
+                        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    );
                     CREATE INDEX IF NOT EXISTS idx_qap_sessions_user ON qap_sessions(user_id);
                     CREATE INDEX IF NOT EXISTS idx_qap_invites_email ON qap_invites(email);
+                    CREATE INDEX IF NOT EXISTS idx_qap_resets_user ON qap_password_resets(user_id);
                 """)
             conn.commit()
     except Exception as e:
@@ -191,6 +200,61 @@ def _send_invite_email(to_email: str, invite_token: str, inviter_name: str, org_
 
 
 # ---------------------------------------------------------------------------
+# RBAC helpers
+# ---------------------------------------------------------------------------
+
+# Permission matrix: maps role → set of allowed actions
+_ROLE_PERMISSIONS: dict[str, set[str]] = {
+    "admin": {
+        "invite_member",
+        "list_users",
+        "deactivate_user",
+        "change_role",
+        "view_all_sessions",
+        "revoke_session",
+        "trigger_automation_sync",
+        "manage_kb",
+    },
+    "member": {
+        "view_own_profile",
+        "change_own_password",
+    },
+    # owner is a superset of admin
+    "owner": {
+        "invite_member",
+        "list_users",
+        "deactivate_user",
+        "change_role",
+        "view_all_sessions",
+        "revoke_session",
+        "trigger_automation_sync",
+        "manage_kb",
+        "delete_org",
+        "transfer_ownership",
+    },
+}
+
+
+def _require_role(caller: dict | None, *roles: str) -> dict:
+    """Raise 401/403 unless caller's role is in the allowed set. Returns caller."""
+    if not caller:
+        raise HTTPException(401, "Not authenticated or session expired.")
+    if caller["role"] not in roles:
+        raise HTTPException(403, f"Requires role: {' or '.join(roles)}. Your role: {caller['role']}")
+    return caller
+
+
+def _require_permission(caller: dict | None, permission: str) -> dict:
+    """Raise 401/403 unless caller's role has the named permission."""
+    if not caller:
+        raise HTTPException(401, "Not authenticated or session expired.")
+    allowed = _ROLE_PERMISSIONS.get(caller["role"], set())
+    if permission not in allowed:
+        raise HTTPException(403, f"Permission denied: '{permission}' requires a higher role.")
+    return caller
+
+
+# ---------------------------------------------------------------------------
 # Request / Response models
 # ---------------------------------------------------------------------------
 
@@ -240,6 +304,25 @@ class InviteResponse(BaseModel):
     expires_at: str
     email_sent: bool
     accept_url: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ChangeRoleRequest(BaseModel):
+    user_id: str
+    role: str  # "member" | "admin"
 
 
 # ---------------------------------------------------------------------------
@@ -331,11 +414,7 @@ def invite_member(
     """Generate an invite token for a new member. Admin/owner only."""
     import psycopg
     token = (authorization or "").removeprefix("Bearer ").strip()
-    caller = _validate_session(token)
-    if not caller:
-        raise HTTPException(401, "Not authenticated.")
-    if caller["role"] not in ("admin", "owner"):
-        raise HTTPException(403, "Only admins can invite members.")
+    caller = _require_permission(_validate_session(token), "invite_member")
 
     expires = datetime.now(timezone.utc) + timedelta(hours=_INVITE_TTL_HOURS)
     invite_token = secrets.token_urlsafe(32)
@@ -370,6 +449,37 @@ def invite_member(
         pass
 
     email_sent = _send_invite_email(body.email, invite_token, caller["name"], org_name)
+
+
+def _send_reset_email(to_email: str, name: str, reset_token: str) -> bool:
+    """Send password-reset email if SMTP is configured. Returns True on success."""
+    if not _SMTP_HOST or not _SMTP_USER:
+        logger.info("SMTP not configured — reset token: %s", reset_token)
+        return False
+    reset_url = f"{_APP_BASE_URL}/reset-password?token={reset_token}"
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Quality Autopilot — Reset your password"
+        msg["From"] = _FROM_EMAIL
+        msg["To"] = to_email
+        html = f"""
+        <p>Hi {name},</p>
+        <p>We received a request to reset your Quality Autopilot password.</p>
+        <p><a href="{reset_url}" style="background:#0057FF;color:#fff;padding:10px 20px;
+        border-radius:6px;text-decoration:none;">Reset Password</a></p>
+        <p>This link expires in {_RESET_TTL_HOURS} hours. If you didn't request this, ignore this email.</p>
+        <p>Or copy this URL: {reset_url}</p>
+        """
+        msg.attach(MIMEText(html, "html"))
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(_SMTP_HOST, _SMTP_PORT) as s:
+            s.starttls(context=ctx)
+            s.login(_SMTP_USER, _SMTP_PASS)
+            s.sendmail(_FROM_EMAIL, to_email, msg.as_string())
+        return True
+    except Exception as e:
+        logger.warning("Failed to send reset email: %s", e)
+        return False
     accept_url = f"{_APP_BASE_URL}/accept-invite?token={invite_token}"
 
     return InviteResponse(
@@ -484,11 +594,7 @@ def logout(authorization: Optional[str] = Header(None)):
 def list_users(authorization: Optional[str] = Header(None)):
     """List all active users in the caller's org. Admin only."""
     raw = (authorization or "").removeprefix("Bearer ").strip()
-    caller = _validate_session(raw)
-    if not caller:
-        raise HTTPException(401, "Not authenticated.")
-    if caller["role"] not in ("admin", "owner"):
-        raise HTTPException(403, "Admin access required.")
+    caller = _require_permission(_validate_session(raw), "list_users")
     try:
         import psycopg
         with psycopg.connect(_psycopg_url) as conn:
@@ -508,11 +614,7 @@ def list_users(authorization: Optional[str] = Header(None)):
 def deactivate_user(user_id: str, authorization: Optional[str] = Header(None)):
     """Soft-delete (deactivate) a user. Admin only. Cannot deactivate yourself."""
     raw = (authorization or "").removeprefix("Bearer ").strip()
-    caller = _validate_session(raw)
-    if not caller:
-        raise HTTPException(401, "Not authenticated.")
-    if caller["role"] not in ("admin", "owner"):
-        raise HTTPException(403, "Admin access required.")
+    caller = _require_permission(_validate_session(raw), "deactivate_user")
     if caller["id"] == user_id:
         raise HTTPException(400, "Cannot deactivate yourself.")
     try:
@@ -527,3 +629,169 @@ def deactivate_user(user_id: str, authorization: Optional[str] = Header(None)):
     except Exception as e:
         raise HTTPException(500, str(e))
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Password reset (forgot password flow)
+# ---------------------------------------------------------------------------
+
+_RESET_TTL_HOURS = int(os.getenv("RESET_TTL_HOURS", "2"))
+
+
+@router.post("/forgot-password", summary="Request a password reset link")
+def forgot_password(body: ForgotPasswordRequest):
+    """Generate a password-reset token and send it by email (if SMTP is set).
+
+    Works for BOTH invited users who already have accounts AND any registered user.
+    Always returns 200 so attackers cannot enumerate registered emails.
+    """
+    import psycopg
+    try:
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, name, org_id, is_active FROM qap_users WHERE email = %s",
+                    (body.email,)
+                )
+                row = cur.fetchone()
+    except Exception as e:
+        logger.error("forgot-password DB error: %s", e)
+        return {"ok": True, "message": "If that email exists, a reset link has been sent."}
+
+    # Silent success even if user not found (anti-enumeration)
+    if not row or not row[3]:  # not found or inactive
+        return {"ok": True, "message": "If that email exists, a reset link has been sent."}
+
+    user_id, name, org_id, _ = row
+    reset_token = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(hours=_RESET_TTL_HOURS)
+
+    try:
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                # Invalidate any existing reset tokens for this user
+                cur.execute(
+                    "UPDATE qap_password_resets SET used = TRUE WHERE user_id = %s AND used = FALSE",
+                    (user_id,)
+                )
+                cur.execute(
+                    "INSERT INTO qap_password_resets (token, user_id, org_id, expires_at) VALUES (%s, %s, %s, %s)",
+                    (reset_token, user_id, org_id, expires),
+                )
+            conn.commit()
+    except Exception as e:
+        logger.error("failed to create reset token: %s", e)
+        return {"ok": True, "message": "If that email exists, a reset link has been sent."}
+
+    reset_url = f"{_APP_BASE_URL}/reset-password?token={reset_token}"
+    _send_reset_email(body.email, name, reset_token)
+    logger.info("Password reset token for %s: %s", body.email, reset_url)
+    return {"ok": True, "message": "If that email exists, a reset link has been sent.",
+            "reset_url": reset_url}  # returned for dev/SMTP-less environments
+
+
+@router.post("/reset-password", summary="Set a new password using a reset token")
+def reset_password(body: ResetPasswordRequest):
+    """Accept a reset token and set the new password. Token is single-use."""
+    if len(body.new_password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters.")
+    import psycopg
+    try:
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT r.user_id FROM qap_password_resets r
+                    JOIN qap_users u ON u.id = r.user_id
+                    WHERE r.token = %s AND r.used = FALSE AND r.expires_at > NOW() AND u.is_active = TRUE
+                """, (body.token,))
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(400, "Reset token not found, expired, or already used.")
+                user_id = row[0]
+                pw_hash = _hash_password(body.new_password)
+                cur.execute("UPDATE qap_users SET password_hash = %s WHERE id = %s", (pw_hash, user_id))
+                cur.execute("UPDATE qap_password_resets SET used = TRUE WHERE token = %s", (body.token,))
+                # Invalidate all existing sessions (force re-login after password change)
+                cur.execute("DELETE FROM qap_sessions WHERE user_id = %s", (user_id,))
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("reset-password error: %s", e)
+        raise HTTPException(500, "Password reset failed.")
+    return {"ok": True, "message": "Password updated. Please sign in with your new password."}
+
+
+@router.post("/change-password", summary="Change own password (authenticated)")
+def change_password(body: ChangePasswordRequest, authorization: Optional[str] = Header(None)):
+    """Change password for the currently signed-in user."""
+    raw = (authorization or "").removeprefix("Bearer ").strip()
+    caller = _validate_session(raw)
+    if not caller:
+        raise HTTPException(401, "Not authenticated.")
+    if len(body.new_password) < 8:
+        raise HTTPException(400, "New password must be at least 8 characters.")
+    import psycopg
+    try:
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT password_hash FROM qap_users WHERE id = %s", (caller["id"],))
+                row = cur.fetchone()
+                if not row or not _verify_password(body.current_password, row[0]):
+                    raise HTTPException(400, "Current password is incorrect.")
+                pw_hash = _hash_password(body.new_password)
+                cur.execute("UPDATE qap_users SET password_hash = %s WHERE id = %s",
+                            (pw_hash, caller["id"]))
+                # Invalidate all other sessions except current
+                cur.execute(
+                    "DELETE FROM qap_sessions WHERE user_id = %s AND token != %s",
+                    (caller["id"], raw)
+                )
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    return {"ok": True, "message": "Password changed. All other sessions have been signed out."}
+
+
+# ---------------------------------------------------------------------------
+# RBAC: role management
+# ---------------------------------------------------------------------------
+
+@router.patch("/users/{user_id}/role", summary="Change a user's role (admin only)")
+def change_user_role(user_id: str, body: ChangeRoleRequest, authorization: Optional[str] = Header(None)):
+    """Promote or demote a member. Owner can promote to admin; admin cannot create owner."""
+    raw = (authorization or "").removeprefix("Bearer ").strip()
+    caller = _require_permission(_validate_session(raw), "change_role")
+    if body.role not in ("member", "admin"):
+        raise HTTPException(400, "Role must be 'member' or 'admin'. 'owner' is set at registration only.")
+    if caller["id"] == user_id:
+        raise HTTPException(400, "Cannot change your own role.")
+    import psycopg
+    try:
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE qap_users SET role = %s WHERE id = %s AND org_id = %s AND role != 'owner'",
+                    (body.role, user_id, caller["org_id"])
+                )
+                if cur.rowcount == 0:
+                    raise HTTPException(404, "User not found or cannot demote an owner.")
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    return {"ok": True, "user_id": user_id, "new_role": body.role}
+
+
+@router.get("/permissions", summary="Get current user's permissions")
+def get_permissions(authorization: Optional[str] = Header(None)):
+    """Return the full permission set for the signed-in user's role."""
+    raw = (authorization or "").removeprefix("Bearer ").strip()
+    caller = _validate_session(raw)
+    if not caller:
+        raise HTTPException(401, "Not authenticated.")
+    perms = sorted(_ROLE_PERMISSIONS.get(caller["role"], set()))
+    return {"role": caller["role"], "permissions": perms}

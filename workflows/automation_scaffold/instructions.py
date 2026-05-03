@@ -63,3 +63,7 @@ Definition of Done:
 - Example files provided for user guidance
 - All files follow coding conventions
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

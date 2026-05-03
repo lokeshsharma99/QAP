@@ -79,3 +79,7 @@ If any step fails:
 - Provide RCA and recommendations
 - Do not proceed if quality gate fails (confidence <90%)
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

@@ -47,3 +47,7 @@ If any step fails:
 - Provide RCA and recommendations
 - Do not proceed with healing if confidence < 80%
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

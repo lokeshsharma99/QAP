@@ -17,3 +17,7 @@ Pipeline steps:
 If either Judge gate fails with confidence 0.80–0.98, pause for Human Lead review.
 If confidence < 0.80, auto-reject and send back to the producing agent.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS
