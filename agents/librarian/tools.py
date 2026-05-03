@@ -695,6 +695,28 @@ def generate_obsolescence_report(watch_path: str = "automation") -> str:
 
 
 # ---------------------------------------------------------------------------
+# Module-level helper used by the app/main.py background file watcher.
+# Thin wrapper over AutomationFileWatcher.re_index_file() so it can be
+# called without instantiating the full Librarian agent.
+# ---------------------------------------------------------------------------
+
+_watcher_instance: AutomationFileWatcher | None = None
+
+
+def _reindex_single_file(file_path: str) -> None:
+    """Re-index a single automation/ file into the Knowledge Base.
+
+    Called by the background watchfiles task in app/main.py whenever a file
+    is created, modified, or deleted. Uses a module-level singleton watcher
+    to avoid re-creating the Knowledge DB connection on every file event.
+    """
+    global _watcher_instance
+    if _watcher_instance is None:
+        _watcher_instance = AutomationFileWatcher()
+    _watcher_instance.re_index_file(file_path)
+
+
+# ---------------------------------------------------------------------------
 # LibrarianToolkit
 # ---------------------------------------------------------------------------
 class LibrarianToolkit(Toolkit):

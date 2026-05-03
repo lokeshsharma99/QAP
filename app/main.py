@@ -15,6 +15,7 @@ from agno.os import AgentOS
 from agents.architect import architect
 from agents.concierge import concierge
 from agents.curator import curator
+from agents.scout import scout
 from agents.data_agent import data_agent
 from agents.detective import detective
 from agents.discovery import discovery
@@ -46,6 +47,7 @@ from teams.diagnostics import diagnostics_team
 from teams.engineering import engineering_team
 from teams.grooming import grooming_team
 from teams.intelligence import intelligence_team
+from teams.knowledge import knowledge_team
 from teams.operations import operations_team
 from teams.strategy import strategy_team
 from workflows.automation_scaffold import automation_scaffold
@@ -102,6 +104,7 @@ agent_os = AgentOS(
         pipeline_analyst,
         healing_judge,
         technical_tester,
+        scout,
     ],
     teams=[
         context_team,
@@ -111,6 +114,7 @@ agent_os = AgentOS(
         diagnostics_team,
         grooming_team,
         intelligence_team,
+        knowledge_team,
     ],
     workflows=[
         discovery_onboard,
@@ -208,6 +212,79 @@ app.include_router(rtm_router)
 app.include_router(culture_router)
 app.include_router(profile_router)
 app.include_router(organization_router)
+
+# ---------------------------------------------------------------------------
+# Automation folder watcher — event-driven KB sync
+#
+# Uses the `watchfiles` package (already installed via uvicorn[standard]).
+# Monitors automation/ for any file changes: creates, edits, or deletes.
+# On change → calls the Librarian's re_index_file() for that specific file.
+# Debounced per-file: same file only re-indexed once per 5-second window.
+# Runs as an asyncio background task during the FastAPI process lifetime.
+# ---------------------------------------------------------------------------
+import asyncio  # noqa: E402
+import logging  # noqa: E402
+from contextlib import asynccontextmanager  # noqa: E402
+
+_watcher_logger = logging.getLogger("qap.watcher")
+_AUTOMATION_PATH = Path(__file__).resolve().parent.parent / "automation"
+
+_WATCH_EXTENSIONS = {".ts", ".js", ".feature", ".json"}
+_debounce_cache: dict[str, float] = {}
+_DEBOUNCE_SECONDS = 5.0
+
+
+async def _watch_automation_dir() -> None:
+    """Background coroutine: watch automation/ and re-index on every change."""
+    try:
+        from watchfiles import awatch, Change
+
+        _watcher_logger.info(f"[watcher] Watching {_AUTOMATION_PATH} for changes…")
+        async for changes in awatch(str(_AUTOMATION_PATH), stop_event=asyncio.Event()):
+            for change_type, file_path in changes:
+                # Skip files we don't index
+                if Path(file_path).suffix not in _WATCH_EXTENSIONS:
+                    continue
+                # Skip node_modules and hidden dirs
+                if "node_modules" in file_path or "/.git/" in file_path or "\\.git\\" in file_path:
+                    continue
+
+                # Debounce — don't re-index same file twice within 5 seconds
+                now = asyncio.get_event_loop().time()
+                last = _debounce_cache.get(file_path, 0.0)
+                if now - last < _DEBOUNCE_SECONDS:
+                    continue
+                _debounce_cache[file_path] = now
+
+                action = {Change.added: "added", Change.modified: "modified", Change.deleted: "deleted"}.get(change_type, "changed")
+                _watcher_logger.info(f"[watcher] File {action}: {file_path}")
+
+                # Run indexing in a thread pool so it doesn't block the event loop
+                try:
+                    from agents.librarian.tools import _reindex_single_file
+                    await asyncio.get_event_loop().run_in_executor(
+                        None, _reindex_single_file, file_path
+                    )
+                    _watcher_logger.info(f"[watcher] Re-indexed: {file_path}")
+                except Exception as exc:
+                    _watcher_logger.warning(f"[watcher] Re-index failed for {file_path}: {exc}")
+
+    except ImportError:
+        _watcher_logger.warning("[watcher] watchfiles not installed — file watching disabled.")
+    except Exception as exc:
+        _watcher_logger.error(f"[watcher] Unexpected error: {exc}")
+
+
+# Register the watcher as a FastAPI startup event
+@app.on_event("startup")
+async def _start_watcher() -> None:
+    """Start the automation/ file watcher as a background asyncio task."""
+    if _AUTOMATION_PATH.exists():
+        asyncio.create_task(_watch_automation_dir())
+        _watcher_logger.info("[watcher] Background file watcher started.")
+    else:
+        _watcher_logger.warning("[watcher] automation/ dir not found — watcher not started.")
+
 
 if __name__ == "__main__":
     agent_os.serve(

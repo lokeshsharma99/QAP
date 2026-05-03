@@ -122,6 +122,7 @@ export const APIRoutes = {
   AutomationReport:  (base: string, raw?: boolean) => `${base}/automation/report${raw ? '?raw=true' : ''}`,
   AutomationRun:     (base: string) => `${base}/automation/run`,
   AutomationTraces:  (base: string) => `${base}/automation/traces`,
+  AutomationSync:    (base: string) => `${base}/automation/sync`,
 
   // ── RTM ──────────────────────────────────────────────────────────────────
   RTM:               (base: string, ticket?: string, tag?: string) =>
