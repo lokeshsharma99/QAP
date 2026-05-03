@@ -4,12 +4,13 @@ Discovery Agent Tools
 
 Custom web crawling tools for the Discovery Agent (ui_crawler skill).
 
-Primary strategy: Crawl4AI (AsyncWebCrawler) — multi-level deep crawl with
-  BFS link traversal, Playwright-rendered pages, clean LLM-ready fit_markdown,
-  and structured link/component extraction.
+Primary strategy: Crawl4AI (AsyncWebCrawler) — multi-level BFS deep crawl with
+  Playwright-rendered pages, clean LLM-ready fit_markdown (PruningContentFilter),
+  internal link graph, and per-page metadata (depth, score).
 
-Fallback (save_learning, helpers): unchanged BS4 helpers kept for the
-  Playwright MCP accessibility-tree merge path and miscellaneous utilities.
+Secondary: `fetch_page` — single-page render via plain arun() (no deep crawl overhead).
+
+KB persistence: `DiscoveryToolkit.save_learning` — unchanged.
 """
 
 import asyncio
@@ -17,32 +18,14 @@ import hashlib
 import json
 import re
 from datetime import datetime
-from typing import Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 from agno.run import RunContext
 from agno.tools import Toolkit, tool
 
-from contracts.site_manifesto import PageEntry, SiteManifesto, UIComponent
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-_DEFAULT_ROUTES = [
-    "/",
-    "/login",
-    "/register",
-    "/dashboard",
-    "/home",
-    "/about",
-    "/contact",
-    "/profile",
-    "/settings",
-    "/products",
-    "/cart",
-    "/checkout",
-]
-
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -87,6 +70,23 @@ def _run_async(coro):
         return asyncio.run(coro)
 
 
+def _extract_markdown(result) -> str:
+    """Extract the best available markdown from a CrawlResult.
+
+    Prefers fit_markdown (pruned) > raw_markdown > str fallback.
+    """
+    md = result.markdown
+    if md is None:
+        return ""
+    if hasattr(md, "fit_markdown") and md.fit_markdown:
+        return md.fit_markdown
+    if hasattr(md, "raw_markdown") and md.raw_markdown:
+        return md.raw_markdown
+    if isinstance(md, str):
+        return md
+    return ""
+
+
 async def _crawl4ai_deep(
     base_url: str,
     max_depth: int = 2,
@@ -94,11 +94,17 @@ async def _crawl4ai_deep(
 ) -> list[dict]:
     """
     Run a Crawl4AI BFS deep crawl and return a list of page dicts:
-        {url, title, status_code, markdown, links_internal, links_external, error}
+        {url, title, status_code, depth, score, markdown,
+         links_internal, links_external, error}
 
-    Uses fit_markdown (pruning filter) to strip nav/footer boilerplate, keeping
-    ~80 % fewer tokens than raw HTML while preserving all actionable content.
+    Uses fit_markdown (PruningContentFilter) to strip nav/footer boilerplate —
+    ~80% fewer tokens while preserving all actionable content.
     Playwright-based rendering is handled internally by Crawl4AI.
+
+    BrowserConfig optimisations for text-only content discovery:
+    - light_mode: disables background GPU/rendering features
+    - avoid_ads: blocks ad + tracker domains at the browser level
+    - avoid_css: skips CSS files (we only need text + links)
     """
     try:
         from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig
@@ -114,6 +120,10 @@ async def _crawl4ai_deep(
     browser_config = BrowserConfig(
         headless=True,
         user_agent=_USER_AGENT,
+        light_mode=True,       # disable background rendering features
+        avoid_ads=True,        # block ad/tracker domains
+        avoid_css=True,        # skip CSS files — text/links only
+        verbose=False,
     )
 
     config = CrawlerRunConfig(
@@ -127,6 +137,14 @@ async def _crawl4ai_deep(
             content_filter=PruningContentFilter(threshold=0.4),
             options={"citations": False},
         ),
+        # Content quality filters — reduce boilerplate noise in markdown
+        word_count_threshold=10,
+        excluded_tags=["nav", "header", "footer", "script", "style"],
+        exclude_social_media_links=True,
+        # Security: keep internal links HTTPS even if server redirects to HTTP
+        preserve_https_for_internal_links=True,
+        # Performance: don't wait for full network idle
+        wait_until="domcontentloaded",
         stream=True,
         verbose=False,
     )
@@ -141,15 +159,10 @@ async def _crawl4ai_deep(
 
             page["status_code"] = result.status_code
             page["title"] = _extract_title_from_html(result.html or "")
-            # fit_markdown is the pruned, LLM-ready version; fall back to raw if absent
-            md = result.markdown
-            if md is not None:
-                if hasattr(md, "fit_markdown") and md.fit_markdown:
-                    page["markdown"] = md.fit_markdown
-                elif hasattr(md, "raw_markdown") and md.raw_markdown:
-                    page["markdown"] = md.raw_markdown
-                elif isinstance(md, str):
-                    page["markdown"] = md
+            # Depth and relevance score from BFS metadata
+            page["depth"] = result.metadata.get("depth", 0) if result.metadata else 0
+            page["score"] = result.metadata.get("score") if result.metadata else None
+            page["markdown"] = _extract_markdown(result)
             page["links_internal"] = [
                 lnk.get("href", "") for lnk in result.links.get("internal", [])
             ]
@@ -159,6 +172,61 @@ async def _crawl4ai_deep(
             pages.append(page)
 
     return pages
+
+
+async def _crawl4ai_single(url: str) -> dict:
+    """
+    Fetch a single page with Crawl4AI (no deep crawl strategy overhead) and
+    return a page dict: {url, title, status_code, markdown, links_internal, error}
+
+    Used by `fetch_page` — cleaner and faster than using BFSDeepCrawlStrategy
+    with max_depth=0 for single-page retrieval.
+    """
+    try:
+        from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig
+        from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
+        from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+        from crawl4ai.content_filter_strategy import PruningContentFilter
+    except ImportError:
+        return {"url": url, "error": "crawl4ai not installed. Run: pip install crawl4ai"}
+
+    browser_config = BrowserConfig(
+        headless=True,
+        user_agent=_USER_AGENT,
+        light_mode=True,
+        avoid_ads=True,
+        avoid_css=True,
+        verbose=False,
+    )
+
+    config = CrawlerRunConfig(
+        scraping_strategy=LXMLWebScrapingStrategy(),
+        markdown_generator=DefaultMarkdownGenerator(
+            content_filter=PruningContentFilter(threshold=0.4),
+            options={"citations": False},
+        ),
+        word_count_threshold=10,
+        excluded_tags=["nav", "header", "footer", "script", "style"],
+        preserve_https_for_internal_links=True,
+        wait_until="domcontentloaded",
+        verbose=False,
+    )
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        result = await crawler.arun(url, config=config)
+
+    if not result.success:
+        return {"url": url, "error": result.error_message or "crawl failed"}
+
+    return {
+        "url": result.url,
+        "title": _extract_title_from_html(result.html or ""),
+        "status_code": result.status_code,
+        "markdown": _extract_markdown(result),
+        "links_internal": [
+            lnk.get("href", "") for lnk in result.links.get("internal", [])
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -244,10 +312,11 @@ class Crawl4AIToolkit(Toolkit):
         return json.dumps(result, indent=2)
 
     def fetch_page(self, url: str) -> str:
-        """Fetch a single page with Crawl4AI and return its markdown + internal links.
+        """Fetch a single page with Crawl4AI and return its full markdown + internal links.
 
-        Use this to get the rendered content of one specific page when you need more
-        detail than ui_crawler's markdown_preview provides.
+        Faster than ui_crawler for individual pages — uses a plain arun() call
+        without BFS deep crawl strategy overhead. Use this when you need the full
+        fit_markdown for a specific page that was discovered by ui_crawler.
 
         Args:
             url: Full URL to fetch.
@@ -255,10 +324,7 @@ class Crawl4AIToolkit(Toolkit):
         Returns:
             JSON with url, title, markdown (fit), links_internal, status_code.
         """
-        pages_raw = _run_async(_crawl4ai_deep(url, max_depth=0, max_pages=1))
-        if not pages_raw:
-            return json.dumps({"url": url, "error": "no result"})
-        p = pages_raw[0]
+        p = _run_async(_crawl4ai_single(url))
         return json.dumps({
             "url": p.get("url", url),
             "title": p.get("title", "Untitled"),
