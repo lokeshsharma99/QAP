@@ -1,4 +1,5 @@
 import {
+  QapIcon,
   AgnoIcon,
   UserIcon,
   AgentIcon,
@@ -25,6 +26,7 @@ import {
 import { PlusIcon } from '@radix-ui/react-icons'
 
 export const ICONS: IconTypeMap = {
+  qap: QapIcon,
   agno: AgnoIcon,
   user: UserIcon,
   agent: AgentIcon,
