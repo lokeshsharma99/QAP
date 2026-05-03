@@ -14,6 +14,10 @@ export const APIRoutes = {
   AuthResetPassword: (base: string) => `${base}/auth/reset-password`,
   AuthChangePassword:(base: string) => `${base}/auth/change-password`,
   AuthPermissions:   (base: string) => `${base}/auth/permissions`,
+  AuthOrgLookup:     (base: string, name: string) => `${base}/auth/org-lookup?name=${encodeURIComponent(name)}`,
+  AuthCreateOrg:     (base: string) => `${base}/auth/org`,
+  AuthInvites:       (base: string) => `${base}/auth/invites`,
+  AuthCancelInvite:  (base: string, token: string) => `${base}/auth/invites/${encodeURIComponent(token)}`,
 
   // ── Core ────────────────────────────────────────────────────────────────
   Status:      (base: string) => `${base}/health`,

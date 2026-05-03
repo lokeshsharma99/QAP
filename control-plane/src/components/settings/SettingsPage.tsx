@@ -12,7 +12,7 @@ import {
   Server, KeyRound, Bot, Database, Globe, Wrench,
   ShieldCheck, RefreshCw, Save, Eye, EyeOff, CheckCircle2,
   AlertCircle, CircleDot, Cpu, Zap, Users, GitBranch, WifiOff, Wifi, ChevronDown,
-  User, Building2, Trash2, Copy,
+  User, Building2, Trash2, Copy, Loader2,
 } from 'lucide-react'
 import AgentConfigPanel from '@/components/chat/AgentConfigPanel'
 
@@ -896,8 +896,8 @@ const ProfileSection = ({ endpointUrl, authToken }: { endpointUrl: string; authT
     if (!pw.next || pw.next !== pw.confirm) { toast.error('New passwords do not match'); return }
     setSavingPw(true)
     try {
-      const res = await fetch(`${endpointUrl}/profile/password`, {
-        method: 'PUT',
+      const res = await fetch(`${endpointUrl}/auth/change-password`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', ...hdrs() },
         body: JSON.stringify({ current_password: pw.current, new_password: pw.next }),
       })
@@ -1031,6 +1031,8 @@ interface PendingInvite {
 }
 
 const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; authToken: string }) => {
+  const { currentUser } = useStore()
+  const isSuperuser = currentUser?.role === 'superuser'
   const [org, setOrg] = useState<OrgData | null>(null)
   const [orgName, setOrgName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
@@ -1041,6 +1043,9 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
   const [inviting, setInviting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  // Superuser: create org
+  const [newOrgName, setNewOrgName] = useState('')
+  const [creatingOrg, setCreatingOrg] = useState(false)
 
   const hdrs = useCallback(
     (json = false): Record<string, string> => ({
@@ -1060,7 +1065,7 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
   }, [endpointUrl, hdrs])
 
   const fetchInvites = useCallback(async () => {
-    const res = await fetch(`${endpointUrl}/organization/invites`, { headers: hdrs() }).catch(() => null)
+    const res = await fetch(`${endpointUrl}/auth/invites`, { headers: hdrs() }).catch(() => null)
     if (res?.ok) {
       const data = await res.json()
       setPendingInvites(Array.isArray(data) ? data : [])
@@ -1082,17 +1087,17 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
   const invite = async () => {
     if (!inviteEmail.trim()) return
     setInviting(true)
-    const res = await fetch(`${endpointUrl}/organization/members`, {
+    const res = await fetch(`${endpointUrl}/auth/invite`, {
       method: 'POST', headers: hdrs(true), body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
     }).catch(() => null)
-    if (res?.ok) { setOrg(await res.json()); setInviteEmail(''); toast.success(`${inviteEmail} invited`); fetchInvites() }
-    else if (res?.status === 409) toast.error('Member already in organization')
-    else toast.error('Failed to invite member')
+    if (res?.ok) { setInviteEmail(''); toast.success(`Invite sent to ${inviteEmail}`); fetchInvites(); fetchOrg() }
+    else if (res?.status === 409) toast.error('Already invited or member exists')
+    else toast.error('Failed to send invite')
     setInviting(false)
   }
 
   const cancelInvite = async (id: string) => {
-    const res = await fetch(`${endpointUrl}/organization/invites/${encodeURIComponent(id)}`, {
+    const res = await fetch(`${endpointUrl}/auth/invites/${encodeURIComponent(id)}`, {
       method: 'DELETE', headers: hdrs(),
     }).catch(() => null)
     if (res?.ok) { fetchInvites(); toast.success('Invite cancelled') }
@@ -1111,6 +1116,27 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
     if (!org?.id) return
     try { await navigator.clipboard.writeText(org.id); setCopiedId(true); setTimeout(() => setCopiedId(false), 1500) }
     catch { toast.error('Copy failed') }
+  }
+
+  const createOrg = async () => {
+    if (!newOrgName.trim()) return
+    setCreatingOrg(true)
+    try {
+      const res = await fetch(`${endpointUrl}/auth/org`, {
+        method: 'POST', headers: hdrs(true),
+        body: JSON.stringify({ org_name: newOrgName.trim() }),
+      }).catch(() => null)
+      if (res?.ok) {
+        const d = await res.json()
+        toast.success(`Organisation "${d.org_name}" created (ID: ${d.org_id})`)
+        setNewOrgName('')
+      } else {
+        const err = await res?.json().catch(() => ({}))
+        toast.error((err as { detail?: string }).detail ?? 'Failed to create organisation')
+      }
+    } finally {
+      setCreatingOrg(false)
+    }
   }
 
   const deleteOrg = async () => {
@@ -1270,6 +1296,34 @@ const OrganizationSection = ({ endpointUrl, authToken }: { endpointUrl: string; 
           ))}
         </div>
       </div>
+
+      {/* Superuser: Create new organisation */}
+      {isSuperuser && (
+        <div className="rounded-2xl border border-accent bg-primaryAccent p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-primary">Create Organisation</span>
+            <span className="text-[10px] rounded-full bg-brand/10 text-brand px-2 py-0.5 font-semibold uppercase tracking-wide">Superuser</span>
+          </div>
+          <p className="text-[11px] text-muted">Create a new organisation. Once created, users can sign up to join it or be invited.</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newOrgName}
+              onChange={e => setNewOrgName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') createOrg() }}
+              placeholder="Organisation name…"
+              className="flex-1 bg-background border border-accent rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition"
+            />
+            <Button
+              onClick={createOrg}
+              disabled={creatingOrg || !newOrgName.trim()}
+              size="sm"
+            >
+              {creatingOrg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Create'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Danger zone */}
       <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-5 space-y-3">
