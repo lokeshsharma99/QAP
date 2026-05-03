@@ -146,7 +146,7 @@ export default function HealingDashboard() {
   const agentId = searchParams.get('agent') ?? 'medic'
   const dbId    = searchParams.get('db_id') ?? 'quality-autopilot-db'
 
-  const { selectedEndpoint, authToken } = useStore()
+  const { selectedEndpoint, authToken, setPendingCounts } = useStore()
 
   const [patches, setPatches] = useState<HealingPatch[]>([])
   const [loading, setLoading] = useState(false)
@@ -195,6 +195,8 @@ export default function HealingDashboard() {
       }
 
       setPatches(found)
+      // Update sidebar badge with actual pending count
+      setPendingCounts({ healing: found.filter(p => p.status === 'pending').length })
     } catch {
       toast.error('Failed to load healing patches')
     } finally {
@@ -205,11 +207,19 @@ export default function HealingDashboard() {
   useEffect(() => { fetchPatches() }, [fetchPatches])
 
   const handleApprove = (id: string) => {
-    setPatches((prev) => prev.map((p) => p.id === id ? { ...p, status: 'approved' as const } : p))
+    setPatches((prev) => {
+      const next = prev.map((p) => p.id === id ? { ...p, status: 'approved' as const } : p)
+      setPendingCounts({ healing: next.filter(p => p.status === 'pending').length })
+      return next
+    })
     toast.success('Patch approved — Healing Judge confidence met')
   }
   const handleReject = (id: string) => {
-    setPatches((prev) => prev.map((p) => p.id === id ? { ...p, status: 'rejected' as const } : p))
+    setPatches((prev) => {
+      const next = prev.map((p) => p.id === id ? { ...p, status: 'rejected' as const } : p)
+      setPendingCounts({ healing: next.filter(p => p.status === 'pending').length })
+      return next
+    })
     toast.error('Patch rejected — Sent back to Detective + Medic')
   }
 

@@ -83,7 +83,7 @@ const SideNavItem = ({
       <div className="relative shrink-0">
         <NavIcon className="size-4" />
         {!!badge && (
-          <span className="absolute -right-1.5 -top-1.5 flex size-3.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
+          <span className="absolute -right-1.5 -top-1.5 flex size-3.5 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white animate-[pulse_2s_ease-in-out_infinite]">
             {badge > 9 ? '9+' : badge}
           </span>
         )}
@@ -107,14 +107,14 @@ const NavSectionGroup = ({
   open,
   onToggle,
   pathname,
-  approvalCount,
+  pendingCounts,
 }: {
   section: NavSection
   sidebarCollapsed: boolean
   open: boolean
   onToggle: () => void
   pathname: string
-  approvalCount: number
+  pendingCounts: Record<string, number>
 }) => {
   if (sidebarCollapsed) {
     return (
@@ -128,7 +128,7 @@ const NavSectionGroup = ({
             label={link.label}
             isActive={pathname === link.href || (link.href !== '/dashboard' && pathname.startsWith(link.href))}
             collapsed
-            badge={link.href === '/approvals' ? approvalCount : undefined}
+            badge={pendingCounts[link.href]}
           />
         ))}
       </>
@@ -164,7 +164,7 @@ const NavSectionGroup = ({
                 label={link.label}
                 isActive={pathname === link.href || (link.href !== '/dashboard' && pathname.startsWith(link.href))}
                 collapsed={false}
-                badge={link.href === '/approvals' ? approvalCount : undefined}
+                badge={pendingCounts[link.href]}
               />
             ))}
           </motion.div>
@@ -174,7 +174,7 @@ const NavSectionGroup = ({
   )
 }
 
-const Nav = ({ collapsed = false, approvalCount = 0 }: { collapsed?: boolean; approvalCount?: number }) => {
+const Nav = ({ collapsed = false, pendingCounts = {} }: { collapsed?: boolean; pendingCounts?: Record<string, number> }) => {
   const pathname = usePathname()
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ Core: true })
 
@@ -191,7 +191,7 @@ const Nav = ({ collapsed = false, approvalCount = 0 }: { collapsed?: boolean; ap
           open={!!openSections[section.label]}
           onToggle={() => toggle(section.label)}
           pathname={pathname}
-          approvalCount={approvalCount}
+          pendingCounts={pendingCounts}
         />
       ))}
     </nav>
