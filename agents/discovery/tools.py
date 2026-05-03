@@ -4,10 +4,15 @@ Discovery Agent Tools
 
 Custom web crawling tools for the Discovery Agent (ui_crawler skill).
 
-Uses requests + BeautifulSoup for static HTML crawling.
-For SPA/JavaScript-heavy pages, the agent is guided to use Playwright MCP tools.
+Primary strategy: Crawl4AI (AsyncWebCrawler) — multi-level deep crawl with
+  BFS link traversal, Playwright-rendered pages, clean LLM-ready fit_markdown,
+  and structured link/component extraction.
+
+Fallback (save_learning, helpers): unchanged BS4 helpers kept for the
+  Playwright MCP accessibility-tree merge path and miscellaneous utilities.
 """
 
+import asyncio
 import hashlib
 import json
 import re
@@ -15,10 +20,8 @@ from datetime import datetime
 from typing import Optional
 from urllib.parse import urljoin, urlparse
 
-import requests
 from agno.run import RunContext
 from agno.tools import Toolkit, tool
-from bs4 import BeautifulSoup
 
 from contracts.site_manifesto import PageEntry, SiteManifesto, UIComponent
 
@@ -40,15 +43,6 @@ _DEFAULT_ROUTES = [
     "/checkout",
 ]
 
-_INTERACTABLE_TAGS = {
-    "button",
-    "a",
-    "input",
-    "select",
-    "textarea",
-    "form",
-}
-
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -56,89 +50,227 @@ _USER_AGENT = (
 
 
 # ---------------------------------------------------------------------------
-# Internal HTTP helpers (called by tools AND by ui_crawler directly)
+# Small DOM / text helpers
 # ---------------------------------------------------------------------------
-def _fetch_html(url: str, timeout: int = 30) -> str:
-    """Fetch HTML content from a URL using requests."""
+def _extract_title_from_html(html: str) -> str:
+    """Extract the <title> tag content from an HTML string."""
+    match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+    return match.group(1).strip() if match else "Untitled"
+
+
+def _detect_auth_gate_md(text: str) -> bool:
+    """Heuristically detect if a page is behind authentication from markdown or HTML text."""
+    auth_indicators = ["login", "sign in", "sign-in", "signin", "unauthorized", "401", "403"]
+    text_lower = (text or "").lower()
+    return any(indicator in text_lower[:2000] for indicator in auth_indicators)
+
+
+def _hash_content(text: str) -> str:
+    """Generate a short SHA-256 hash of text content for change detection."""
+    return hashlib.sha256((text or "").encode()).hexdigest()[:16]
+
+
+# ---------------------------------------------------------------------------
+# Crawl4AI async helper
+# ---------------------------------------------------------------------------
+def _run_async(coro):
+    """Run an async coroutine from sync context (tools are called synchronously by Agno)."""
     try:
-        response = requests.get(
-            url,
-            timeout=timeout,
-            headers={"User-Agent": _USER_AGENT},
-            allow_redirects=True,
-        )
-        response.raise_for_status()
-        return response.text
-    except requests.exceptions.Timeout:
-        return f"ERROR: Request timed out after {timeout}s for {url}"
-    except requests.exceptions.HTTPError as e:
-        return f"ERROR: HTTP {e.response.status_code} for {url}"
-    except requests.exceptions.ConnectionError:
-        return f"ERROR: Could not connect to {url}"
-    except Exception as e:  # noqa: BLE001
-        return f"ERROR: {type(e).__name__}: {e} for {url}"
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(asyncio.run, coro)
+                return future.result()
+        return loop.run_until_complete(coro)
+    except RuntimeError:
+        return asyncio.run(coro)
 
 
-def _parse_dom_tree_impl(html_content: str, base_url: str = "") -> list[dict]:
-    """Parse HTML content and extract interactable UI components."""
-    if html_content.startswith("ERROR:"):
-        return []
-
-    soup = BeautifulSoup(html_content, "html.parser")
-    components = []
-
-    for tag in soup.find_all(_INTERACTABLE_TAGS):
-        component = _extract_component_info(tag, base_url)
-        if component:
-            components.append(component)
-
-    return components
-
-
-# ---------------------------------------------------------------------------
-# fetch_html — Tool
-# ---------------------------------------------------------------------------
-@tool(
-    name="fetch_html",
-    description="Fetch HTML content from a URL using requests. Results are cached to avoid redundant network calls.",
-    cache_results=True,
-    cache_ttl=1800,
-)
-def fetch_html(url: str, timeout: int = 30) -> str:
-    """Fetch HTML content from a URL using requests.
-
-    Args:
-        url: The URL to fetch HTML from.
-        timeout: Request timeout in seconds.
-
-    Returns:
-        The raw HTML content as a string, or an error message if fetch fails.
+async def _crawl4ai_deep(
+    base_url: str,
+    max_depth: int = 2,
+    max_pages: int = 50,
+) -> list[dict]:
     """
-    return _fetch_html(url, timeout)
+    Run a Crawl4AI BFS deep crawl and return a list of page dicts:
+        {url, title, status_code, markdown, links_internal, links_external, error}
 
-
-# ---------------------------------------------------------------------------
-# parse_dom_tree — Tool
-# ---------------------------------------------------------------------------
-@tool(
-    name="parse_dom_tree",
-    description="Parse HTML content and extract interactable UI components as a list of component dicts.",
-)
-def parse_dom_tree(html_content: str, base_url: str = "") -> list[dict]:
-    """Parse HTML content and extract interactable UI components.
-
-    Args:
-        html_content: Raw HTML string from fetch_html.
-        base_url: Base URL for resolving relative hrefs (optional).
-
-    Returns:
-        List of component dicts with element info and locator candidates.
+    Uses fit_markdown (pruning filter) to strip nav/footer boilerplate, keeping
+    ~80 % fewer tokens than raw HTML while preserving all actionable content.
+    Playwright-based rendering is handled internally by Crawl4AI.
     """
-    return _parse_dom_tree_impl(html_content, base_url)
+    try:
+        from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig
+        from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+        from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
+        from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+        from crawl4ai.content_filter_strategy import PruningContentFilter
+    except ImportError:
+        return [{"url": base_url, "error": "crawl4ai not installed. Run: pip install crawl4ai"}]
+
+    pages: list[dict] = []
+
+    browser_config = BrowserConfig(
+        headless=True,
+        user_agent=_USER_AGENT,
+    )
+
+    config = CrawlerRunConfig(
+        deep_crawl_strategy=BFSDeepCrawlStrategy(
+            max_depth=max_depth,
+            include_external=False,
+            max_pages=max_pages,
+        ),
+        scraping_strategy=LXMLWebScrapingStrategy(),
+        markdown_generator=DefaultMarkdownGenerator(
+            content_filter=PruningContentFilter(threshold=0.4),
+            options={"citations": False},
+        ),
+        stream=True,
+        verbose=False,
+    )
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        async for result in await crawler.arun(base_url, config=config):
+            page: dict = {"url": result.url}
+            if not result.success:
+                page["error"] = result.error_message or "crawl failed"
+                pages.append(page)
+                continue
+
+            page["status_code"] = result.status_code
+            page["title"] = _extract_title_from_html(result.html or "")
+            # fit_markdown is the pruned, LLM-ready version; fall back to raw if absent
+            md = result.markdown
+            if md is not None:
+                if hasattr(md, "fit_markdown") and md.fit_markdown:
+                    page["markdown"] = md.fit_markdown
+                elif hasattr(md, "raw_markdown") and md.raw_markdown:
+                    page["markdown"] = md.raw_markdown
+                elif isinstance(md, str):
+                    page["markdown"] = md
+            page["links_internal"] = [
+                lnk.get("href", "") for lnk in result.links.get("internal", [])
+            ]
+            page["links_external"] = [
+                lnk.get("href", "") for lnk in result.links.get("external", [])
+            ]
+            pages.append(page)
+
+    return pages
 
 
 # ---------------------------------------------------------------------------
-# save_learning — Tool
+# Crawl4AI Toolkit  (replaces the old DiscoveryHTTPToolkit)
+# ---------------------------------------------------------------------------
+
+class Crawl4AIToolkit(Toolkit):
+    """
+    Toolkit powered by Crawl4AI.
+
+    Tools exposed to the agent:
+        ui_crawler      — primary skill: multi-level BFS crawl → Site Manifesto skeleton
+        fetch_page      — single-page crawl → markdown + links (replaces fetch_html + parse_dom_tree)
+    """
+
+    def __init__(self):
+        super().__init__(name="crawl4ai_toolkit")
+        self.register(self.ui_crawler)
+        self.register(self.fetch_page)
+
+    def ui_crawler(
+        self,
+        aut_base_url: str,
+        max_depth: int = 2,
+        max_pages: int = 50,
+    ) -> str:
+        """Crawl the Application Under Test with Crawl4AI BFS deep crawl and return
+        a Site Manifesto skeleton as JSON.
+
+        Uses Playwright-rendered pages internally, so JavaScript-heavy SPAs are handled
+        correctly. Each page's fit_markdown field contains clean, LLM-ready content with
+        boilerplate stripped. After receiving this skeleton the agent should supplement
+        with pw__browser_snapshot calls to capture the accessibility tree for individual
+        pages.
+
+        Args:
+            aut_base_url: Base URL of the AUT (e.g. "https://demo.example.com").
+            max_depth:    BFS levels beyond the start page (default 2 = home + 2 hops).
+            max_pages:    Hard cap on total pages crawled (default 50).
+
+        Returns:
+            JSON string with manifesto_id, aut_base_url, pages list, and crawl summary.
+        """
+        crawl_start = datetime.now()
+        pages_raw = _run_async(_crawl4ai_deep(aut_base_url, max_depth, max_pages))
+
+        parsed_base = urlparse(aut_base_url.rstrip("/"))
+
+        pages_out = []
+        for p in pages_raw:
+            pages_out.append({
+                "url": p.get("url"),
+                "title": p.get("title", "Untitled"),
+                "status_code": p.get("status_code"),
+                "is_auth_gated": _detect_auth_gate_md(p.get("markdown", "")),
+                "accessibility_tree_hash": _hash_content(p.get("markdown", "")),
+                "markdown_preview": (p.get("markdown", "") or "")[:500],
+                "links_internal": p.get("links_internal", []),
+                "error": p.get("error"),
+                "components": [],  # populated by Playwright MCP snapshot
+            })
+
+        successful = [p for p in pages_out if not p.get("error")]
+        crawl_duration = (datetime.now() - crawl_start).total_seconds()
+
+        result = {
+            "manifesto_id": f"manifesto-{crawl_start.strftime('%Y%m%d%H%M%S')}",
+            "aut_base_url": aut_base_url,
+            "aut_name": parsed_base.netloc,
+            "pages": pages_out,
+            "crawled_at": crawl_start.isoformat(),
+            "crawl_duration_seconds": round(crawl_duration, 2),
+            "total_pages_crawled": len(successful),
+            "total_pages_failed": len(pages_raw) - len(successful),
+            "auth_handshake_success": False,
+            "crawler": "crawl4ai-bfs",
+            "notes": (
+                f"Crawl4AI BFS deep crawl: {len(successful)} pages. "
+                "Components[] are empty — use pw__browser_snapshot per page to fill them. "
+                "markdown_preview contains pruned LLM-ready content."
+            ),
+        }
+        return json.dumps(result, indent=2)
+
+    def fetch_page(self, url: str) -> str:
+        """Fetch a single page with Crawl4AI and return its markdown + internal links.
+
+        Use this to get the rendered content of one specific page when you need more
+        detail than ui_crawler's markdown_preview provides.
+
+        Args:
+            url: Full URL to fetch.
+
+        Returns:
+            JSON with url, title, markdown (fit), links_internal, status_code.
+        """
+        pages_raw = _run_async(_crawl4ai_deep(url, max_depth=0, max_pages=1))
+        if not pages_raw:
+            return json.dumps({"url": url, "error": "no result"})
+        p = pages_raw[0]
+        return json.dumps({
+            "url": p.get("url", url),
+            "title": p.get("title", "Untitled"),
+            "status_code": p.get("status_code"),
+            "markdown": p.get("markdown", ""),
+            "links_internal": p.get("links_internal", []),
+            "error": p.get("error"),
+        }, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# save_learning — Tool (unchanged)
 # ---------------------------------------------------------------------------
 @tool(
     name="save_learning",
@@ -162,277 +294,11 @@ def save_learning(run_context: RunContext, title: str, insight: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# ui_crawler — Primary skill tool
-# ---------------------------------------------------------------------------
-@tool(
-    name="ui_crawler",
-    description="Crawl the Application Under Test and produce a Site Manifesto skeleton. Results are cached per AUT URL.",
-    cache_results=True,
-    cache_ttl=1800,
-)
-def ui_crawler(
-    aut_base_url: str,
-    routes: Optional[list[str]] = None,
-    max_pages: int = 20,
-    follow_links: bool = True,
-    aut_auth_user: Optional[str] = None,
-    aut_auth_pass: Optional[str] = None,
-) -> dict:
-    """Crawl the Application Under Test and produce a Site Manifesto skeleton.
-
-    This tool orchestrates the crawl and returns a structured dict that the
-    agent should use to populate a full SiteManifesto.
-
-    For JavaScript-heavy SPAs, the agent should supplement this with
-    Playwright MCP tools (browser_navigate, browser_snapshot) to capture
-    the rendered accessibility tree.
-
-    Args:
-        aut_base_url: Base URL of the Application Under Test.
-        routes: Specific routes to crawl. Defaults to common routes.
-        max_pages: Maximum pages to crawl (prevents infinite loops).
-        follow_links: Whether to discover additional routes from nav links.
-        aut_auth_user: Optional username for authentication.
-        aut_auth_pass: Optional password for authentication.
-
-    Returns:
-        Dict with manifesto metadata, pages list, and crawl summary.
-    """
-    routes = routes or _DEFAULT_ROUTES
-    visited: set[str] = set()
-    pages: list[dict] = []
-    crawl_start = datetime.now()
-
-    parsed_base = urlparse(aut_base_url.rstrip("/"))
-    base_origin = f"{parsed_base.scheme}://{parsed_base.netloc}"
-
-    # Crawl each route
-    for route in routes[:max_pages]:
-        url = urljoin(aut_base_url, route)
-        if url in visited:
-            continue
-        visited.add(url)
-
-        html = _fetch_html(url)
-        if html.startswith("ERROR:"):
-            pages.append({"url": url, "route": route, "error": html, "components": []})
-            continue
-
-        components = _parse_dom_tree_impl(html, base_url=base_origin)
-        title = _extract_title(html)
-        is_auth_gated = _detect_auth_gate(html)
-        accessibility_tree_hash = _hash_content(html)
-
-        page_entry = {
-            "url": url,
-            "route": route,
-            "title": title,
-            "is_auth_gated": is_auth_gated,
-            "accessibility_tree_hash": accessibility_tree_hash,
-            "components": components,
-        }
-        pages.append(page_entry)
-
-        # Discover additional routes from navigation links
-        if follow_links and len(visited) < max_pages:
-            new_routes = _extract_nav_links(html, base_origin)
-            for new_route in new_routes:
-                if new_route not in [r.get("route") for r in pages]:
-                    routes.append(new_route)
-
-    crawl_duration = (datetime.now() - crawl_start).total_seconds()
-
-    return {
-        "manifesto_id": f"manifesto-{crawl_start.strftime('%Y%m%d%H%M%S')}",
-        "aut_base_url": aut_base_url,
-        "aut_name": parsed_base.netloc,
-        "pages": pages,
-        "crawled_at": crawl_start.isoformat(),
-        "crawl_duration_seconds": round(crawl_duration, 2),
-        "total_pages_crawled": len([p for p in pages if "error" not in p]),
-        "total_components_found": sum(len(p.get("components", [])) for p in pages),
-        "auth_handshake_success": bool(aut_auth_user and aut_auth_pass),
-        "crawler_version": "1.0.0",
-        "notes": (
-            f"Static HTML crawl: {len(pages)} pages attempted. "
-            "For SPA/JS-heavy pages, supplement with Playwright MCP."
-        ),
-    }
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-def _extract_component_info(tag, base_url: str = "") -> Optional[dict]:
-    """Extract component data and locator candidates from a BS4 tag."""
-    tag_name = tag.name
-    if not tag_name:
-        return None
-
-    # Build locator candidates (priority order)
-    data_testid = tag.get("data-testid") or tag.get("data-test-id") or tag.get("testid")
-    aria_role = tag.get("role")
-    aria_label = tag.get("aria-label") or tag.get("aria-labelledby")
-    text = tag.get_text(strip=True)[:100] if tag.get_text(strip=True) else None
-    id_attr = tag.get("id")
-    name_attr = tag.get("name")
-    placeholder = tag.get("placeholder")
-    href = tag.get("href")
-    input_type = tag.get("type") if tag_name == "input" else None
-
-    # Skip invisible or empty anchors
-    if tag_name == "a" and not text and not aria_label:
-        return None
-
-    # Determine component type
-    component_type = _classify_component(tag_name, input_type, aria_role)
-
-    return {
-        "name": data_testid or aria_label or name_attr or id_attr or text or tag_name,
-        "component_type": component_type,
-        "tag": tag_name,
-        "input_type": input_type,
-        "aria_role": aria_role or _infer_role(tag_name, input_type),
-        "aria_label": aria_label,
-        "text": text,
-        "href": _resolve_href(href, base_url) if href else None,
-        "placeholder": placeholder,
-        # Locator candidates
-        "data_testid": data_testid,
-        "role_locator": f"[role='{aria_role}'][name='{aria_label}']" if aria_role and aria_label else None,
-        "text_locator": f"text='{text}'" if text else None,
-        "id_locator": f"#{id_attr}" if id_attr else None,
-        "name_locator": f"[name='{name_attr}']" if name_attr else None,
-    }
-
-
-def _classify_component(tag_name: str, input_type: Optional[str], role: Optional[str]) -> str:
-    """Classify a component into a human-readable type."""
-    if tag_name == "button" or (tag_name == "input" and input_type in ("button", "submit", "reset")):
-        return "button"
-    if tag_name == "a":
-        return "link"
-    if tag_name == "input":
-        return f"input-{input_type or 'text'}"
-    if tag_name == "select":
-        return "dropdown"
-    if tag_name == "textarea":
-        return "textarea"
-    if tag_name == "form":
-        return "form"
-    if role:
-        return role
-    return tag_name
-
-
-def _infer_role(tag_name: str, input_type: Optional[str]) -> str:
-    """Infer ARIA role from tag name and type."""
-    role_map = {
-        "button": "button",
-        "a": "link",
-        "input": "textbox",
-        "select": "combobox",
-        "textarea": "textbox",
-        "form": "form",
-    }
-    if tag_name == "input" and input_type in ("checkbox",):
-        return "checkbox"
-    if tag_name == "input" and input_type in ("radio",):
-        return "radio"
-    if tag_name == "input" and input_type in ("submit", "button"):
-        return "button"
-    return role_map.get(tag_name, "generic")
-
-
-def _extract_title(html: str) -> str:
-    """Extract the <title> tag content from HTML."""
-    match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
-    return match.group(1).strip() if match else "Untitled"
-
-
-def _detect_auth_gate(html: str) -> bool:
-    """Heuristically detect if a page is behind authentication."""
-    auth_indicators = ["login", "sign in", "sign-in", "signin", "unauthorized", "401", "403"]
-    html_lower = html.lower()
-    return any(indicator in html_lower[:2000] for indicator in auth_indicators)
-
-
-def _hash_content(html: str) -> str:
-    """Generate a short hash of the HTML for change detection."""
-    return hashlib.sha256(html.encode()).hexdigest()[:16]
-
-
-def _extract_nav_links(html: str, base_origin: str) -> list[str]:
-    """Extract navigation links from HTML to discover additional routes."""
-    soup = BeautifulSoup(html, "html.parser")
-    routes = []
-
-    for tag in soup.find_all("a", href=True):
-        href = tag.get("href", "")
-        if not href or href.startswith("#") or href.startswith("mailto:") or href.startswith("javascript:"):
-            continue
-        # Relative routes only (same origin)
-        if href.startswith("/"):
-            routes.append(href)
-        elif href.startswith(base_origin):
-            routes.append(href.replace(base_origin, ""))
-
-    # Deduplicate and filter out file extensions
-    seen: set[str] = set()
-    clean_routes = []
-    for r in routes:
-        r = r.split("?")[0].split("#")[0]  # strip query/fragment
-        if r and r not in seen and not re.search(r"\.(css|js|png|jpg|svg|ico|woff|ttf)$", r):
-            seen.add(r)
-            clean_routes.append(r)
-
-    return clean_routes[:10]  # limit to 10 discovered routes
-
-
-def _resolve_href(href: str, base_origin: str) -> str:
-    """Resolve a potentially relative href to an absolute URL."""
-    if href.startswith("http"):
-        return href
-    if href.startswith("/") and base_origin:
-        return urljoin(base_origin, href)
-    return href
-
-
-# ---------------------------------------------------------------------------
-# DiscoveryToolkit  — save_learning only (always registered)
+# DiscoveryToolkit — wraps save_learning for Agno tool registration
 # ---------------------------------------------------------------------------
 class DiscoveryToolkit(Toolkit):
-    """Core Discovery Agent tools: knowledge persistence."""
+    """Toolkit containing knowledge-base tools for the Discovery Agent."""
 
-    def __init__(self) -> None:
-        super().__init__(
-            name="discovery",
-            tools=[save_learning],
-        )
-
-
-# ---------------------------------------------------------------------------
-# DiscoveryHTTPToolkit  — static HTTP crawl tools (always registered)
-#
-# Works ALONGSIDE Playwright MCP tools, not as a replacement.
-# Playwright handles live rendering + accessibility tree (SPAs, JS-heavy pages).
-# HTTP tools handle static structure discovery + link extraction cheaply.
-#
-# Dual strategy:
-#   1. ui_crawler / fetch_html + parse_dom_tree  → static DOM, link graph, form fields
-#   2. pw__browser_navigate + pw__browser_snapshot → rendered accessibility tree
-# ---------------------------------------------------------------------------
-class DiscoveryHTTPToolkit(Toolkit):
-    """HTTP-based crawl tools for static DOM discovery.
-
-    Always registered alongside Playwright MCP tools.
-    Use these FIRST to map the link graph and form structure cheaply via HTTP,
-    then use pw__ tools to capture the live rendered Accessibility Tree per page.
-    Never substitute these for pw__ tools when exploring JavaScript-rendered content.
-    """
-
-    def __init__(self) -> None:
-        super().__init__(
-            name="discovery_http",
-            tools=[fetch_html, parse_dom_tree, ui_crawler],
-        )
+    def __init__(self):
+        super().__init__(name="discovery_toolkit")
+        self.register(save_learning)

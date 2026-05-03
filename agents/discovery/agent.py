@@ -13,7 +13,7 @@ from agno.run import RunContext
 from app.guardrails import prompt_injection_guardrail
 
 from agents.discovery.instructions import INSTRUCTIONS, INSTRUCTIONS_HTTP_ONLY
-from agents.discovery.tools import DiscoveryHTTPToolkit, DiscoveryToolkit
+from agents.discovery.tools import Crawl4AIToolkit, DiscoveryToolkit
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_culture_manager
 
@@ -75,17 +75,18 @@ discovery = Agent(
     search_knowledge=True,
     # Capabilities
     # Dual strategy — both toolkits are ALWAYS registered:
-    #   1. DiscoveryHTTPToolkit (fetch_html, parse_dom_tree, ui_crawler):
-    #      Static DOM crawl — cheaply maps link graph, form fields, page structure.
-    #      Use FIRST on each URL for a fast structural overview.
+    #   1. Crawl4AIToolkit (ui_crawler, fetch_page):
+    #      BFS deep crawl via Crawl4AI — Playwright-rendered pages, fit_markdown
+    #      output, internal link graph. Replaces the old requests+BeautifulSoup
+    #      DiscoveryHTTPToolkit. Use FIRST to map the full link graph.
     #   2. pw__* Playwright MCP tools (registered when playwright-mcp is reachable):
     #      Live browser rendering — captures the real Accessibility Tree for SPAs.
-    #      Use AFTER HTTP crawl to capture what JS actually renders.
+    #      Use AFTER ui_crawler to snapshot components per page.
     #   3. DiscoveryToolkit (save_learning): always registered for KB persistence.
     # NOTE: KnowledgeTools removed — search_knowledge=True already registers
     # search_knowledge_base natively, avoiding a duplicate tool definition.
     tools=[
-        DiscoveryHTTPToolkit(),
+        Crawl4AIToolkit(),
         *_playwright_tools,
         DiscoveryToolkit(),
     ],
