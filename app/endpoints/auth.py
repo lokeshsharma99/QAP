@@ -47,12 +47,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # ---------------------------------------------------------------------------
 _SESSION_TTL_DAYS = int(os.getenv("SESSION_TTL_DAYS", "30"))
 _INVITE_TTL_HOURS = int(os.getenv("INVITE_TTL_HOURS", "72"))
+_RESET_TTL_HOURS = int(os.getenv("RESET_TTL_HOURS", "24"))
 _APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:3000")
 _SMTP_HOST = os.getenv("SMTP_HOST", "")
 _SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 _SMTP_USER = os.getenv("SMTP_USER", "")
 _SMTP_PASS = os.getenv("SMTP_PASS", "")
 _FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@quality-autopilot.local")
+_SUPERUSER_EMAIL = os.getenv("SUPERUSER_EMAIL", "admin@quality-autopilot.dev")
+_SUPERUSER_INITIAL_PASSWORD = os.getenv("SUPERUSER_INITIAL_PASSWORD", "Admin@QAP123!")
+_SUPERUSER_ORG_ID = "system"
 
 
 # ---------------------------------------------------------------------------
@@ -113,8 +117,38 @@ _ensure_tables()
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Superuser seed
 # ---------------------------------------------------------------------------
+
+def _ensure_superuser() -> None:
+    """Seed the superuser account from environment variables on first startup."""
+    if not _SUPERUSER_EMAIL:
+        return
+    try:
+        import psycopg
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                # Ensure system org exists
+                cur.execute("""
+                    INSERT INTO agno_organizations (id, name, owner_id, members, plan, kb_namespace)
+                    VALUES (%s, 'System', 'superuser', '[]'::jsonb, 'enterprise', 'system')
+                    ON CONFLICT (id) DO NOTHING
+                """, (_SUPERUSER_ORG_ID,))
+                # Create superuser account if not already present
+                cur.execute("SELECT id FROM qap_users WHERE email = %s", (_SUPERUSER_EMAIL,))
+                if not cur.fetchone():
+                    pw_hash = _hash_password(_SUPERUSER_INITIAL_PASSWORD)
+                    cur.execute("""
+                        INSERT INTO qap_users (email, name, password_hash, org_id, role)
+                        VALUES (%s, 'Super Admin', %s, %s, 'superuser')
+                    """, (_SUPERUSER_EMAIL, pw_hash, _SUPERUSER_ORG_ID))
+                    logger.info("Superuser account seeded: %s", _SUPERUSER_EMAIL)
+            conn.commit()
+    except Exception as e:
+        logger.warning("Could not seed superuser: %s", e)
+
+
+_ensure_superuser()
 
 def _hash_password(password: str) -> str:
     """SHA-256 hash with per-user random salt (stored as 'salt$hash')."""
@@ -232,6 +266,21 @@ _ROLE_PERMISSIONS: dict[str, set[str]] = {
         "delete_org",
         "transfer_ownership",
     },
+    # superuser is a system-level admin that can create orgs and act across all tenants
+    "superuser": {
+        "invite_member",
+        "list_users",
+        "deactivate_user",
+        "change_role",
+        "view_all_sessions",
+        "revoke_session",
+        "trigger_automation_sync",
+        "manage_kb",
+        "delete_org",
+        "transfer_ownership",
+        "create_org",
+        "manage_all_orgs",
+    },
 }
 
 
@@ -263,6 +312,10 @@ class RegisterRequest(BaseModel):
     name: str
     email: EmailStr
     password: str
+
+
+class CreateOrgRequest(BaseModel):
+    org_name: str
 
 
 class LoginRequest(BaseModel):
@@ -329,54 +382,122 @@ class ChangeRoleRequest(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.post("/register", response_model=AuthResponse, summary="Register first org + admin account")
-def register(body: RegisterRequest):
-    """Create the first organisation and an admin user.
+@router.get("/org-lookup", summary="Look up an organisation by name (public)")
+def org_lookup(name: str):
+    """Return org id + name if an organisation with that (case-insensitive) name exists.
 
-    Can only be called once (if no users exist) or when the org name is new.
-    Subsequent users must be invited.
+    Used by the signup form to validate that the org the user wants to join
+    actually exists before submitting the registration form.
     """
     import psycopg
     try:
         with psycopg.connect(_psycopg_url) as conn:
             with conn.cursor() as cur:
-                # Block re-registration if users already exist for this email
+                cur.execute(
+                    "SELECT id, name FROM agno_organizations WHERE LOWER(name) = LOWER(%s) AND id != %s",
+                    (name.strip(), _SUPERUSER_ORG_ID)
+                )
+                row = cur.fetchone()
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    if not row:
+        raise HTTPException(404, "Organisation not found. Contact your admin to create one.")
+    return {"org_id": row[0], "org_name": row[1]}
+
+
+@router.post("/register", response_model=AuthResponse, summary="Join an existing organisation")
+def register(body: RegisterRequest):
+    """Sign up as a member of an **existing** organisation.
+
+    The organisation name must already exist in the database.
+    Only a superuser can create new organisations (POST /auth/org).
+    Subsequent users may also be invited via the invite flow.
+    """
+    import psycopg
+    try:
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                # Block re-registration with the same email
                 cur.execute("SELECT id FROM qap_users WHERE email = %s", (body.email,))
                 if cur.fetchone():
                     raise HTTPException(400, "Email already registered. Use login.")
 
-                # Create org
-                org_id = secrets.token_hex(8)
-                cur.execute("""
-                    INSERT INTO agno_organizations (id, name, owner_id, members, plan, kb_namespace)
-                    VALUES (%s, %s, %s, %s::jsonb, 'free', %s)
-                    ON CONFLICT (id) DO NOTHING
-                """, (org_id, body.org_name, "pending", "[]", org_id))
+                # Organisation must already exist — superuser cannot be joined via signup
+                cur.execute(
+                    "SELECT id, name FROM agno_organizations WHERE LOWER(name) = LOWER(%s) AND id != %s",
+                    (body.org_name.strip(), _SUPERUSER_ORG_ID)
+                )
+                org_row = cur.fetchone()
+                if not org_row:
+                    raise HTTPException(
+                        404,
+                        "Organisation not found. Ask your admin to create it first, "
+                        "or use an invite link to join.",
+                    )
+                org_id, org_name = org_row
 
-                # Create user
+                # Create user as member (not admin — admins are created by superuser or promoted)
                 pw_hash = _hash_password(body.password)
                 cur.execute("""
                     INSERT INTO qap_users (email, name, password_hash, org_id, role)
-                    VALUES (%s, %s, %s, %s, 'admin')
+                    VALUES (%s, %s, %s, %s, 'member')
                     RETURNING id
                 """, (body.email, body.name, pw_hash, org_id))
                 user_id = cur.fetchone()[0]
 
-                # Update org owner
-                cur.execute(
-                    "UPDATE agno_organizations SET owner_id = %s WHERE id = %s",
-                    (user_id, org_id)
-                )
+                # Add to org members JSONB array
+                cur.execute("""
+                    UPDATE agno_organizations
+                    SET members = members || %s::jsonb
+                    WHERE id = %s
+                """, (f'[{{"id":"{user_id}","email":"{body.email}","role":"member"}}]', org_id))
             conn.commit()
 
         token = _create_session(user_id, org_id)
         return AuthResponse(session_token=token, user_id=user_id, email=body.email,
-                            name=body.name, org_id=org_id, role="admin")
+                            name=body.name, org_id=org_id, role="member")
     except HTTPException:
         raise
     except Exception as e:
         logger.error("Register error: %s", e)
         raise HTTPException(500, "Registration failed. See server logs.")
+
+
+@router.post("/org", response_model=dict, summary="Create a new organisation (superuser only)")
+def create_org(body: CreateOrgRequest, authorization: Optional[str] = Header(None)):
+    """Create a new organisation. Only the superuser can call this endpoint."""
+    import psycopg
+    raw = (authorization or "").removeprefix("Bearer ").strip()
+    caller = _require_permission(_validate_session(raw), "create_org")
+
+    org_name = body.org_name.strip()
+    if not org_name:
+        raise HTTPException(400, "Organisation name cannot be empty.")
+
+    try:
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                # Ensure name is unique (case-insensitive)
+                cur.execute(
+                    "SELECT id FROM agno_organizations WHERE LOWER(name) = LOWER(%s)",
+                    (org_name,)
+                )
+                if cur.fetchone():
+                    raise HTTPException(409, f"Organisation '{org_name}' already exists.")
+
+                org_id = secrets.token_hex(8)
+                cur.execute("""
+                    INSERT INTO agno_organizations (id, name, owner_id, members, plan, kb_namespace)
+                    VALUES (%s, %s, %s, '[]'::jsonb, 'free', %s)
+                """, (org_id, org_name, caller["id"], org_id))
+            conn.commit()
+        logger.info("Organisation '%s' (%s) created by superuser %s", org_name, org_id, caller["email"])
+        return {"org_id": org_id, "org_name": org_name, "created_by": caller["email"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Create org error: %s", e)
+        raise HTTPException(500, "Failed to create organisation.")
 
 
 @router.post("/login", response_model=AuthResponse, summary="Sign in with email + password")
@@ -449,6 +570,15 @@ def invite_member(
         pass
 
     email_sent = _send_invite_email(body.email, invite_token, caller["name"], org_name)
+    accept_url = f"{_APP_BASE_URL}/accept-invite?token={invite_token}"
+
+    return InviteResponse(
+        invite_token=invite_token,
+        email=body.email,
+        expires_at=expires.isoformat(),
+        email_sent=email_sent,
+        accept_url=accept_url,
+    )
 
 
 def _send_reset_email(to_email: str, name: str, reset_token: str) -> bool:
@@ -480,15 +610,6 @@ def _send_reset_email(to_email: str, name: str, reset_token: str) -> bool:
     except Exception as e:
         logger.warning("Failed to send reset email: %s", e)
         return False
-    accept_url = f"{_APP_BASE_URL}/accept-invite?token={invite_token}"
-
-    return InviteResponse(
-        invite_token=invite_token,
-        email=body.email,
-        expires_at=expires.isoformat(),
-        email_sent=email_sent,
-        accept_url=accept_url,
-    )
 
 
 @router.get("/invite/{token}", summary="Validate an invite token")
@@ -839,4 +960,83 @@ def test_email(authorization: Optional[str] = Header(None)):
         "smtp_port": _SMTP_PORT,
         "error": None if sent else "Send failed — check server logs for details.",
     }
+
+
+# ---------------------------------------------------------------------------
+# Invite management (admin/owner/superuser)
+# ---------------------------------------------------------------------------
+
+@router.get("/invites", summary="List pending invites for the caller's org")
+def list_invites(authorization: Optional[str] = Header(None)):
+    """Return all active (unused, non-expired) invites for the caller's organisation.
+    Admin, owner, or superuser only.
+    """
+    import psycopg
+    raw = (authorization or "").removeprefix("Bearer ").strip()
+    caller = _require_permission(_validate_session(raw), "invite_member")
+
+    # Superuser sees all orgs; others see their own org only
+    try:
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                if caller["role"] == "superuser":
+                    cur.execute("""
+                        SELECT token, email, org_id, role, expires_at, created_at
+                        FROM qap_invites
+                        WHERE used = FALSE AND expires_at > NOW()
+                        ORDER BY created_at DESC
+                    """)
+                else:
+                    cur.execute("""
+                        SELECT token, email, org_id, role, expires_at, created_at
+                        FROM qap_invites
+                        WHERE org_id = %s AND used = FALSE AND expires_at > NOW()
+                        ORDER BY created_at DESC
+                    """, (caller["org_id"],))
+                rows = cur.fetchall()
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+    return [
+        {
+            "id": r[0],
+            "email": r[1],
+            "org_id": r[2],
+            "role": r[3],
+            "expires_at": r[4].isoformat(),
+            "created_at": r[5].isoformat(),
+        }
+        for r in rows
+    ]
+
+
+@router.delete("/invites/{token}", summary="Cancel a pending invite")
+def cancel_invite(token: str, authorization: Optional[str] = Header(None)):
+    """Mark a pending invite as used (cancelled). Admin/owner/superuser only."""
+    import psycopg
+    raw = (authorization or "").removeprefix("Bearer ").strip()
+    caller = _require_permission(_validate_session(raw), "invite_member")
+
+    try:
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                # Verify the invite belongs to caller's org (unless superuser)
+                if caller["role"] == "superuser":
+                    cur.execute(
+                        "UPDATE qap_invites SET used = TRUE WHERE token = %s AND used = FALSE",
+                        (token,)
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE qap_invites SET used = TRUE WHERE token = %s AND org_id = %s AND used = FALSE",
+                        (token, caller["org_id"])
+                    )
+                if cur.rowcount == 0:
+                    raise HTTPException(404, "Invite not found or already cancelled.")
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    return {"ok": True, "token": token}
 
