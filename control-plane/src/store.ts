@@ -209,6 +209,7 @@ export const useStore = create<Store>()(
       partialize: (state) => ({
         selectedEndpoint: state.selectedEndpoint,
         authToken: state.authToken,
+        currentUser: state.currentUser,
         mode: state.mode,
         navCollapsed: state.navCollapsed,
         rightPanelOpen: state.rightPanelOpen,
