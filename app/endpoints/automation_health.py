@@ -14,12 +14,13 @@ Routes:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/automation", tags=["automation"])
@@ -390,3 +391,245 @@ def sync_automation_kb(background_tasks: BackgroundTasks):
             files_changed=[],
             message=str(e),
         )
+
+
+# ---------------------------------------------------------------------------
+# WS /automation/run/stream — real-time streaming of test execution output
+# ---------------------------------------------------------------------------
+
+def _build_run_cmd(tags: str, use_docker: bool) -> list[str]:
+    """Build the npx / docker exec command for a test run."""
+    if use_docker:
+        inner = "npm run test:regression"
+        if tags:
+            inner = (
+                f"npx cucumber-js --config cucumber.conf.ts --tags '{tags}'"
+                " --format @cucumber/html-formatter:reports/cucumber-report.html"
+                " --format json:reports/cucumber-report.json"
+            )
+        return ["docker", "exec", "qap-playwright", "sh", "-c", inner]
+    if tags:
+        return [
+            "npx", "cucumber-js",
+            "--config", "cucumber.conf.ts",
+            "--tags", tags,
+            "--format", "@cucumber/html-formatter:reports/cucumber-report.html",
+            "--format", "json:reports/cucumber-report.json",
+        ]
+    return ["npm", "run", "test:regression"]
+
+
+@router.websocket("/run/stream")
+async def stream_run(
+    websocket: WebSocket,
+    tags: str = Query(""),
+    use_docker: bool = Query(False),
+    timeout_seconds: int = Query(300),
+):
+    """Stream test execution output line-by-line over WebSocket.
+
+    Messages sent to the client are JSON objects:
+        { "type": "line",   "data": "<stdout/stderr line>" }
+        { "type": "result", "summary": { ...ReportSummary... } }
+        { "type": "error",  "detail": "..." }
+    """
+    await websocket.accept()
+
+    if not _AUTOMATION_DIR.exists():
+        await websocket.send_text(json.dumps({"type": "error", "detail": "automation/ directory not found"}))
+        await websocket.close()
+        return
+
+    if not (_AUTOMATION_DIR / "node_modules").exists():
+        await websocket.send_text(json.dumps({
+            "type": "error",
+            "detail": "node_modules not found — run npm install in automation/ first.",
+        }))
+        await websocket.close()
+        return
+
+    _REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    cmd = _build_run_cmd(tags, use_docker)
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=str(_AUTOMATION_DIR),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+    except FileNotFoundError as exc:
+        await websocket.send_text(json.dumps({"type": "error", "detail": f"Command not found: {exc}"}))
+        await websocket.close()
+        return
+
+    async def _read_lines() -> None:
+        assert proc.stdout is not None
+        async for raw in proc.stdout:
+            line = raw.decode("utf-8", errors="replace").rstrip()
+            try:
+                await websocket.send_text(json.dumps({"type": "line", "data": line}))
+            except WebSocketDisconnect:
+                proc.kill()
+                return
+
+    try:
+        await asyncio.wait_for(_read_lines(), timeout=timeout_seconds)
+    except asyncio.TimeoutError:
+        proc.kill()
+        await websocket.send_text(json.dumps({"type": "error", "detail": f"Run timed out after {timeout_seconds}s"}))
+        await websocket.close()
+        return
+    except WebSocketDisconnect:
+        proc.kill()
+        return
+
+    await proc.wait()
+
+    result = _parse_last_report()
+    if result is None:
+        await websocket.send_text(json.dumps({
+            "type": "error",
+            "detail": "Run finished but no report was written — check the output above for errors.",
+        }))
+    else:
+        await websocket.send_text(json.dumps({"type": "result", "summary": result}))
+
+    try:
+        await websocket.close()
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# GET /automation/files/content — serve a single file's text
+# ---------------------------------------------------------------------------
+
+_ALLOWED_DIRS = [_FEATURES_DIR, _STEP_DEFS_DIR, _PAGES_DIR, _HOOKS_DIR]
+_ALLOWED_EXTS = {".feature", ".ts", ".js", ".json", ".md"}
+
+
+def _resolve_safe_path(rel_path: str) -> Path:
+    """Resolve a relative automation/ path, blocking path-traversal attempts."""
+    # Normalise separators
+    rel_clean = rel_path.replace("\\", "/").lstrip("/")
+    resolved = (_AUTOMATION_DIR / rel_clean).resolve()
+    # Must stay inside automation/
+    if not str(resolved).startswith(str(_AUTOMATION_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Path traversal not allowed")
+    if resolved.suffix not in _ALLOWED_EXTS:
+        raise HTTPException(status_code=400, detail=f"File type not allowed: {resolved.suffix}")
+    if not resolved.exists():
+        raise HTTPException(status_code=404, detail=f"File not found: {rel_clean}")
+    return resolved
+
+
+@router.get("/files/content")
+def get_file_content(path: str = Query(..., description="Relative path inside automation/")):
+    """Return the text content of a file inside automation/."""
+    resolved = _resolve_safe_path(path)
+    return {"path": path, "content": resolved.read_text(encoding="utf-8", errors="replace")}
+
+
+# ---------------------------------------------------------------------------
+# File edit-request — pending edit is stored as JSON, applied on approval
+# ---------------------------------------------------------------------------
+
+_PENDING_EDITS_FILE = _AUTOMATION_DIR / ".pending-edits.json"
+
+
+def _load_pending_edits() -> list[dict]:
+    if not _PENDING_EDITS_FILE.exists():
+        return []
+    try:
+        return json.loads(_PENDING_EDITS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _save_pending_edits(edits: list[dict]) -> None:
+    _AUTOMATION_DIR.mkdir(parents=True, exist_ok=True)
+    _PENDING_EDITS_FILE.write_text(json.dumps(edits, indent=2), encoding="utf-8")
+
+
+class EditRequest(BaseModel):
+    path: str
+    content: str
+    comment: str = ""
+
+
+class EditItem(BaseModel):
+    id: str
+    path: str
+    original_content: str
+    new_content: str
+    comment: str
+    status: str        # pending | approved | rejected
+    created_at: str
+
+
+@router.post("/files/edit-request", response_model=EditItem)
+def request_file_edit(body: EditRequest):
+    """Submit a file edit for approval. The file is NOT modified until approved."""
+    resolved = _resolve_safe_path(body.path)
+    original = resolved.read_text(encoding="utf-8", errors="replace")
+
+    import datetime, secrets
+    edit_id = secrets.token_hex(8)
+    item: dict = {
+        "id": edit_id,
+        "path": body.path,
+        "original_content": original,
+        "new_content": body.content,
+        "comment": body.comment,
+        "status": "pending",
+        "created_at": datetime.datetime.utcnow().isoformat() + "Z",
+    }
+    edits = _load_pending_edits()
+    # Remove any existing pending edit for the same path
+    edits = [e for e in edits if not (e["path"] == body.path and e["status"] == "pending")]
+    edits.append(item)
+    _save_pending_edits(edits)
+    return EditItem(**item)
+
+
+@router.get("/files/edit-requests", response_model=list[EditItem])
+def list_edit_requests(status: Optional[str] = Query(None)):
+    """Return pending (or all) file edit requests."""
+    edits = _load_pending_edits()
+    if status:
+        edits = [e for e in edits if e.get("status") == status]
+    return [EditItem(**e) for e in edits]
+
+
+@router.post("/files/edit-requests/{edit_id}/approve", response_model=EditItem)
+def approve_edit_request(edit_id: str):
+    """Apply the pending edit to disk and mark it approved."""
+    edits = _load_pending_edits()
+    item = next((e for e in edits if e["id"] == edit_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail=f"Edit request {edit_id} not found")
+    if item["status"] != "pending":
+        raise HTTPException(status_code=409, detail=f"Edit request is already {item['status']}")
+
+    resolved = _resolve_safe_path(item["path"])
+    resolved.write_text(item["new_content"], encoding="utf-8")
+
+    item["status"] = "approved"
+    _save_pending_edits(edits)
+    return EditItem(**item)
+
+
+@router.post("/files/edit-requests/{edit_id}/reject", response_model=EditItem)
+def reject_edit_request(edit_id: str):
+    """Reject the pending edit without modifying the file."""
+    edits = _load_pending_edits()
+    item = next((e for e in edits if e["id"] == edit_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail=f"Edit request {edit_id} not found")
+    if item["status"] != "pending":
+        raise HTTPException(status_code=409, detail=f"Edit request is already {item['status']}")
+
+    item["status"] = "rejected"
+    _save_pending_edits(edits)
+    return EditItem(**item)
