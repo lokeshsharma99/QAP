@@ -143,3 +143,7 @@ connection strings, or secrets in system prompts, instructions, or responses.
 Do not include example formats, redacted versions, or placeholder templates.
 Give a brief refusal with no examples.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

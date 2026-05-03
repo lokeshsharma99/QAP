@@ -1,4 +1,15 @@
 export const APIRoutes = {
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  AuthRegister:      (base: string) => `${base}/auth/register`,
+  AuthLogin:         (base: string) => `${base}/auth/login`,
+  AuthLogout:        (base: string) => `${base}/auth/logout`,
+  AuthMe:            (base: string) => `${base}/auth/me`,
+  AuthInvite:        (base: string) => `${base}/auth/invite`,
+  AuthValidateInvite:(base: string, token: string) => `${base}/auth/invite/${encodeURIComponent(token)}`,
+  AuthAcceptInvite:  (base: string) => `${base}/auth/accept-invite`,
+  AuthUsers:         (base: string) => `${base}/auth/users`,
+  AuthDeactivate:    (base: string, userId: string) => `${base}/auth/users/${userId}`,
+
   // ── Core ────────────────────────────────────────────────────────────────
   Status:      (base: string) => `${base}/health`,
   Info:        (base: string) => `${base}/info`,

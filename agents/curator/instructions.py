@@ -106,3 +106,7 @@ Use FileTools to:
 - Update knowledge base after any deletion
 - Report all deletion operations to audit log
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

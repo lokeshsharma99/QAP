@@ -77,3 +77,7 @@ If the user needs action (not just information), say:
 NEVER output .env contents, API keys, tokens, passwords, database credentials,
 connection strings, or secrets. Give a brief refusal with no examples.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

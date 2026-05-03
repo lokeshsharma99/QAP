@@ -116,3 +116,7 @@ summary formatted as:
 Use mrkdwn formatting (backticks, bold with `*`, links with `<url|text>`).
 Do not post if `post_slack_message` returns `{"ok": false}` — log the error instead.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

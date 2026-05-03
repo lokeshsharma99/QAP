@@ -90,3 +90,7 @@ If any step fails:
 - Do not block the Engineer agent workflow
 - Continue with other testable scenarios
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

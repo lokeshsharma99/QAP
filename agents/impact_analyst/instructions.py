@@ -89,3 +89,7 @@ You must output a human-readable markdown report. Agno will extract the structur
 2. [Actionable step for Engineer or Scribe agent]
 ```
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

@@ -29,6 +29,7 @@ from agents.pipeline_analyst import pipeline_analyst
 from agents.scribe import scribe
 from agents.technical_tester import technical_tester
 from app.endpoints.agent_config import router as agent_config_router
+from app.endpoints.auth import router as auth_router
 from app.endpoints.automation_health import router as automation_health_router
 from app.endpoints.rtm import router as rtm_router
 from app.endpoints.culture import router as culture_router
@@ -207,11 +208,68 @@ app.include_router(settings_router)
 app.include_router(model_router)
 app.include_router(mcp_status_router)
 app.include_router(agent_config_router)
+app.include_router(auth_router)
 app.include_router(automation_health_router)
 app.include_router(rtm_router)
 app.include_router(culture_router)
 app.include_router(profile_router)
 app.include_router(organization_router)
+
+# ---------------------------------------------------------------------------
+# Auth guard middleware
+#
+# Blocks anonymous access to all endpoints EXCEPT:
+#   /auth/*         — login, register, accept-invite, validate-invite
+#   /health         — Docker health check
+#   /docs, /openapi — Swagger UI (only in dev)
+#
+# The RUNTIME_ENV check means: in dev mode auth is advisory (warns but passes),
+# in prd mode it hard-blocks with 401.  Set RUNTIME_ENV=prd in production.
+# ---------------------------------------------------------------------------
+from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
+from starlette.responses import JSONResponse             # noqa: E402
+
+_AUTH_BYPASS_PREFIXES = (
+    "/auth/",
+    "/health",
+    "/docs",
+    "/openapi",
+    "/redoc",
+    "/favicon",
+)
+
+class AuthGuardMiddleware(BaseHTTPMiddleware):
+    """Block unauthenticated requests in production mode.
+
+    In dev mode, requests without a session token still pass but are logged
+    so developers can see what would be blocked in production.
+    """
+
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        # Always allow auth + health + docs routes
+        if any(path.startswith(p) for p in _AUTH_BYPASS_PREFIXES):
+            return await call_next(request)
+
+        authorization = request.headers.get("authorization", "")
+        raw_token = authorization.removeprefix("Bearer ").strip()
+
+        if not raw_token:
+            if RUNTIME_ENV == "prd":
+                return JSONResponse({"detail": "Not authenticated."}, status_code=401)
+            # Dev: pass through (allows Swagger/agent-ui to work without token)
+            return await call_next(request)
+
+        # Validate the session token
+        from app.endpoints.auth import _validate_session
+        user = _validate_session(raw_token)
+        if user is None and RUNTIME_ENV == "prd":
+            return JSONResponse({"detail": "Session expired or invalid."}, status_code=401)
+
+        return await call_next(request)
+
+
+app.add_middleware(AuthGuardMiddleware)
 
 # ---------------------------------------------------------------------------
 # Automation folder watcher — event-driven KB sync
@@ -266,6 +324,10 @@ async def _watch_automation_dir() -> None:
                         None, _reindex_single_file, file_path
                     )
                     _watcher_logger.info(f"[watcher] Re-indexed: {file_path}")
+                    # If a POM changed, re-run the manifesto link for that file
+                    if "pages/" in file_path.replace("\\", "/") and file_path.endswith(".ts"):
+                        from agents.librarian.tools import link_pom_to_manifesto
+                        await asyncio.get_event_loop().run_in_executor(None, link_pom_to_manifesto)
                 except Exception as exc:
                     _watcher_logger.warning(f"[watcher] Re-index failed for {file_path}: {exc}")
 

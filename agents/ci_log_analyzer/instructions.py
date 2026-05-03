@@ -58,3 +58,7 @@ If any step fails:
 - Provide specific error messages and recommendations
 - Do not create work item without HITL approval
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

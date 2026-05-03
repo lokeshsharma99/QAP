@@ -85,3 +85,7 @@ or placeholder templates. Give a brief refusal with no examples.
 - [ ] Semantic query for a ticket ID returns the matching feature file
 - [ ] `file_statistics` updated in session_state
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

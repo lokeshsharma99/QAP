@@ -59,6 +59,8 @@ interface Store {
   setSelectedEndpoint: (selectedEndpoint: string) => void
   authToken: string
   setAuthToken: (authToken: string) => void
+  currentUser: { user_id: string; email: string; name: string; org_id: string; role: string } | null
+  setCurrentUser: (user: { user_id: string; email: string; name: string; org_id: string; role: string } | null) => void
   agents: AgentDetails[]
   setAgents: (agents: AgentDetails[]) => void
   teams: TeamDetails[]
@@ -130,6 +132,8 @@ export const useStore = create<Store>()(
       setSelectedEndpoint: (selectedEndpoint) => set(() => ({ selectedEndpoint })),
       authToken: '',
       setAuthToken: (authToken) => set(() => ({ authToken })),
+      currentUser: null,
+      setCurrentUser: (currentUser) => set(() => ({ currentUser })),
       agents: [],
       setAgents: (agents) => set({ agents }),
       teams: [],
