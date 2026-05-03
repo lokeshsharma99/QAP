@@ -1,13 +1,14 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useTheme } from 'next-themes'
+import { useRouter } from 'next/navigation'
 import { useStore } from '@/store'
 import useChatActions from '@/hooks/useChatActions'
 import Nav from './Nav'
 import Icon from '@/components/ui/icon'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor, LogOut, User } from 'lucide-react'
 import { APIRoutes } from '@/api/routes'
 
 interface AppLayoutProps {
@@ -52,6 +53,49 @@ const ThemeToggle = ({ collapsed }: { collapsed: boolean }) => {
 }
 
 // ---------------------------------------------------------------------------
+// User chip + logout button
+// ---------------------------------------------------------------------------
+const UserChip = ({ collapsed }: { collapsed: boolean }) => {
+  const { currentUser, setCurrentUser, setAuthToken, selectedEndpoint, authToken } = useStore()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      if (selectedEndpoint) {
+        await fetch(APIRoutes.AuthLogout(selectedEndpoint), {
+          method: 'POST',
+          headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        })
+      }
+    } catch { /* ignore */ }
+    localStorage.removeItem('qap_session_token')
+    setAuthToken('')
+    setCurrentUser(null)
+    router.replace('/sign-in')
+  }
+
+  if (!currentUser) return null
+  return (
+    <div className={cn(
+      'flex items-center rounded-xl py-1.5 text-xs text-muted',
+      collapsed ? 'justify-center px-0' : 'gap-2 px-2'
+    )}>
+      <User className="size-3.5 shrink-0 text-muted-foreground" />
+      {!collapsed && (
+        <span className="flex-1 truncate text-muted-foreground">{currentUser.name || currentUser.email}</span>
+      )}
+      <button
+        onClick={handleLogout}
+        title="Sign out"
+        className="text-muted-foreground hover:text-destructive transition-colors"
+      >
+        <LogOut className="size-3.5" />
+      </button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Compact endpoint status chip shown in sidebar
 // ---------------------------------------------------------------------------
 const EndpointChip = ({ collapsed }: { collapsed: boolean }) => {
@@ -86,9 +130,10 @@ const EndpointChip = ({ collapsed }: { collapsed: boolean }) => {
 // AppLayout
 // ---------------------------------------------------------------------------
 const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutProps) => {
-  const { setAuthToken, authToken, navCollapsed, setNavCollapsed, selectedEndpoint } = useStore()
+  const { setAuthToken, setCurrentUser, authToken, navCollapsed, setNavCollapsed, selectedEndpoint } = useStore()
   const { initialize } = useChatActions()
   const [approvalCount, setApprovalCount] = useState(0)
+  const router = useRouter()
 
   const pollApprovals = useCallback(async () => {
     if (!selectedEndpoint) return
@@ -103,8 +148,29 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
   }, [selectedEndpoint, authToken])
 
   useEffect(() => {
-    if (hasEnvToken && envToken && !authToken) {
-      setAuthToken(envToken)
+    // Restore token: env var wins, then localStorage
+    const stored = localStorage.getItem('qap_session_token')
+    const token = (hasEnvToken && envToken) ? envToken : (stored || '')
+    if (token && !authToken) {
+      setAuthToken(token)
+    }
+    // Validate session with /auth/me and hydrate currentUser
+    if (token && selectedEndpoint) {
+      fetch(APIRoutes.AuthMe(selectedEndpoint), {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(async res => {
+          if (res.status === 401) {
+            localStorage.removeItem('qap_session_token')
+            setAuthToken('')
+            setCurrentUser(null)
+            router.replace('/sign-in')
+          } else if (res.ok) {
+            const user = await res.json()
+            setCurrentUser(user)
+          }
+        })
+        .catch(() => { /* offline — don't redirect */ })
     }
     initialize()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,8 +220,9 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
         </div>
 
         {/* Theme toggle — pinned to sidebar bottom */}
-        <div className="border-t border-accent/50 px-1 pt-1.5">
+        <div className="border-t border-accent/50 px-1 pt-1.5 space-y-1">
           <ThemeToggle collapsed={navCollapsed} />
+          <UserChip collapsed={navCollapsed} />
         </div>
       </aside>
 

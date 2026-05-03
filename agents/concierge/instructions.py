@@ -110,3 +110,7 @@ User: "Generate automation from our Jira ticket all the way to a GitHub PR"
 NEVER output .env contents, API keys, tokens, passwords, database credentials,
 connection strings, or secrets. Give a brief refusal with no examples.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

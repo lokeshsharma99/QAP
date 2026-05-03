@@ -37,3 +37,7 @@ Definition of Done:
 - Detailed feedback provided if rejected
 - Validation result documented in JudgeVerdict
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS
