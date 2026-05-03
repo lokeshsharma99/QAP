@@ -25,14 +25,14 @@ RUN npm install -g @playwright/mcp@latest && \
 # Install Chromium system dependencies via Playwright's own dep installer,
 # then bake the Chromium browser binary into the image.
 #
-#   playwright install-deps chromium   — apt-get installs the right OS packages
-#                                        for the current distro (Bookworm)
-#   @playwright/mcp install-browser    — downloads the playwright-managed
-#                                        Chromium binary (same distribution that
-#                                        @playwright/mcp uses at runtime)
+#   playwright install-deps chromium       — apt-get installs the right OS packages
+#                                            for the current distro (Bookworm)
+#   @playwright/mcp install-browser          — downloads the playwright-managed
+#                                            chrome-for-testing binary (the channel
+#                                            @playwright/mcp resolves at runtime)
 # ---------------------------------------------------------------------------
 RUN npx playwright install-deps chromium && \
-    npx @playwright/mcp install-browser chromium
+    npx @playwright/mcp install-browser chrome-for-testing
 
 # ---------------------------------------------------------------------------
 # Runtime
@@ -40,4 +40,4 @@ RUN npx playwright install-deps chromium && \
 EXPOSE 8931
 
 CMD ["npx", "@playwright/mcp", "--port", "8931", "--host", "0.0.0.0", \
-     "--allowed-hosts", "*", "--browser", "chromium"]
+     "--allowed-hosts", "*", "--browser", "chrome-for-testing"]

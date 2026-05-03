@@ -1542,9 +1542,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
           </div>
           {/* Full sessions list */}
           <div className="flex-1 overflow-y-auto px-2 py-2">
-            {mode === 'workflow' ? (
-              <p className="py-8 text-center text-xs text-muted/40">Workflows don&apos;t use sessions</p>
-            ) : isSessionsLoading ? (
+            {isSessionsLoading ? (
               <div className="space-y-1">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 rounded-lg" />)}</div>
             ) : !sessionsData || sessionsData.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
@@ -1559,7 +1557,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
                     key={s.session_id}
                     session={s}
                     isSelected={sessionId === s.session_id}
-                    onClick={() => { setSessionId(s.session_id); setPanelView('details') }}
+                    onClick={() => setSessionId(s.session_id)}
                   />
                 ))}
               </div>
@@ -2077,14 +2075,14 @@ export default function ChatPage() {
   }, [])
 
   useEffect(() => {
-    if (!agentId && !teamId) return
-    getSessions({ entityType: mode === 'workflow' ? null : mode, agentId, teamId, dbId })
+    if (!agentId && !teamId && !workflowId) return
+    getSessions({ entityType: mode === 'workflow' ? 'workflow' : mode as 'agent' | 'team', agentId, teamId, workflowId, dbId })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agentId, teamId, mode, dbId])
+  }, [agentId, teamId, workflowId, mode, dbId])
 
   useEffect(() => {
-    if (sessionId && (agentId || teamId)) {
-      getSession({ entityType: mode === 'workflow' ? null : mode, agentId, teamId, dbId }, sessionId)
+    if (sessionId && (agentId || teamId || workflowId)) {
+      getSession({ entityType: mode === 'workflow' ? 'workflow' : mode as 'agent' | 'team', agentId, teamId, workflowId, dbId }, sessionId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])

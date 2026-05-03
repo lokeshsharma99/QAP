@@ -137,7 +137,7 @@ export const getStatusAPI = async (
 
 export const getAllSessionsAPI = async (
   base: string,
-  type: 'agent' | 'team',
+  type: 'agent' | 'team' | 'workflow',
   componentId: string,
   dbId: string,
   authToken?: string
@@ -165,7 +165,7 @@ export const getAllSessionsAPI = async (
 
 export const getSessionAPI = async (
   base: string,
-  type: 'agent' | 'team',
+  type: 'agent' | 'team' | 'workflow',
   sessionId: string,
   dbId?: string,
   authToken?: string
