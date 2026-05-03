@@ -129,7 +129,7 @@ export default function SpecReview() {
   const agentId = searchParams.get('agent') ?? 'scribe'
   const dbId    = searchParams.get('db_id') ?? 'quality-autopilot-db'
 
-  const { selectedEndpoint, authToken } = useStore()
+  const { selectedEndpoint, authToken, setPendingCounts } = useStore()
 
   const [specs,   setSpecs]   = useState<GherkinSpec[]>([])
   const [loading, setLoading] = useState(false)
@@ -174,6 +174,8 @@ export default function SpecReview() {
       }
 
       setSpecs(found)
+      // Update sidebar badge with actual pending count
+      setPendingCounts({ specReview: found.filter(s => s.status === 'pending').length })
     } catch {
       toast.error('Failed to load Gherkin specs')
     } finally {
@@ -184,11 +186,19 @@ export default function SpecReview() {
   useEffect(() => { fetchSpecs() }, [fetchSpecs])
 
   const handleApprove = (id: string) => {
-    setSpecs((prev) => prev.map((s) => s.id === id ? { ...s, status: 'approved' as const } : s))
+    setSpecs((prev) => {
+      const next = prev.map((s) => s.id === id ? { ...s, status: 'approved' as const } : s)
+      setPendingCounts({ specReview: next.filter(s => s.status === 'pending').length })
+      return next
+    })
     toast.success('Spec approved — Judge confidence met')
   }
   const handleReject = (id: string) => {
-    setSpecs((prev) => prev.map((s) => s.id === id ? { ...s, status: 'rejected' as const } : s))
+    setSpecs((prev) => {
+      const next = prev.map((s) => s.id === id ? { ...s, status: 'rejected' as const } : s)
+      setPendingCounts({ specReview: next.filter(s => s.status === 'pending').length })
+      return next
+    })
     toast.error('Spec rejected — Sent back to Scribe agent')
   }
 

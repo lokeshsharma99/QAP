@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@/store'
@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { PanelLeftClose, PanelLeftOpen, Sun, Moon, Monitor, LogOut, User } from 'lucide-react'
 import { APIRoutes } from '@/api/routes'
+import { usePendingCounts } from '@/hooks/usePendingCounts'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -130,22 +131,12 @@ const EndpointChip = ({ collapsed }: { collapsed: boolean }) => {
 // AppLayout
 // ---------------------------------------------------------------------------
 const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutProps) => {
-  const { setAuthToken, setCurrentUser, authToken, navCollapsed, setNavCollapsed, selectedEndpoint } = useStore()
+  const { setAuthToken, setCurrentUser, authToken, navCollapsed, setNavCollapsed, selectedEndpoint, pendingCounts } = useStore()
   const { initialize } = useChatActions()
-  const [approvalCount, setApprovalCount] = useState(0)
   const router = useRouter()
 
-  const pollApprovals = useCallback(async () => {
-    if (!selectedEndpoint) return
-    try {
-      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {}
-      const res = await fetch(APIRoutes.ApprovalCount(selectedEndpoint), { headers })
-      if (res.ok) {
-        const data = await res.json()
-        setApprovalCount(data?.pending ?? data?.count ?? 0)
-      }
-    } catch { /* silent */ }
-  }, [selectedEndpoint, authToken])
+  // Live badge counts for Approvals, Spec Review, Healing
+  usePendingCounts()
 
   useEffect(() => {
     // Restore token: env var wins, then localStorage
@@ -176,11 +167,11 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    pollApprovals()
-    const timer = setInterval(pollApprovals, 30_000)
-    return () => clearInterval(timer)
-  }, [pollApprovals])
+  // Build badge map for Nav
+  const navBadges: Record<string, number> = {}
+  if (pendingCounts.approvals  > 0) navBadges['/approvals']   = pendingCounts.approvals
+  if (pendingCounts.specReview > 0) navBadges['/spec-review'] = pendingCounts.specReview
+  if (pendingCounts.healing    > 0) navBadges['/healing']     = pendingCounts.healing
 
   return (
     <div className="flex h-screen overflow-hidden bg-background/80">
@@ -216,7 +207,7 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
 
         {/* Navigation — flex-1 pushes theme toggle to bottom */}
         <div className="flex-1 overflow-y-auto">
-          <Nav collapsed={navCollapsed} approvalCount={approvalCount} />
+          <Nav collapsed={navCollapsed} pendingCounts={navBadges} />
         </div>
 
         {/* Theme toggle — pinned to sidebar bottom */}
