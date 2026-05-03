@@ -266,7 +266,7 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str  # plain str — just a DB lookup key, no external delivery needed
     password: str
 
 

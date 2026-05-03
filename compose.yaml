@@ -103,6 +103,16 @@ services:
       - SONAR_TOKEN=${SONAR_TOKEN:-}
       - SONAR_PROJECT_KEY=${SONAR_PROJECT_KEY:-quality-autopilot-automation}
       - SONAR_MCP_URL=${SONAR_MCP_URL:-http://sonarqube-mcp:9001/mcp}
+      # Auth / SMTP (invite emails, password reset)
+      - SESSION_TTL_DAYS=${SESSION_TTL_DAYS:-30}
+      - INVITE_TTL_HOURS=${INVITE_TTL_HOURS:-72}
+      - RESET_TTL_HOURS=${RESET_TTL_HOURS:-2}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:3000}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - FROM_EMAIL=${FROM_EMAIL:-}
       # Optional
       - EXA_API_KEY=${EXA_API_KEY:-}
       - PARALLEL_API_KEY=${PARALLEL_API_KEY:-}

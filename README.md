@@ -359,7 +359,7 @@ docker compose exec qap-api python scripts/seed_superuser.py
 | Field | Value |
 |-------|-------|
 | **URL** | http://localhost:3000/sign-in |
-| **Email** | `admin@qap.local` |
+| **Email** | `admin@quality-autopilot.dev` |
 | **Password** | `Admin@QAP123!` |
 | **Role** | `admin` |
 | **Org** | Quality Autopilot |
@@ -429,12 +429,12 @@ User clicks link → /reset-password?token=<t>
 
 To configure email, set these in `.env` (see full options in `example.env`):
 ```bash
-# Gmail example (requires an App Password, not your regular password)
-SMTP_HOST=smtp.gmail.com
+# Brevo (free tier — 300 emails/day — recommended for dev/staging)
+SMTP_HOST=smtp-relay.brevo.com
 SMTP_PORT=587
-SMTP_USER=you@gmail.com
-SMTP_PASS=your-16-char-app-password
-FROM_EMAIL=you@gmail.com
+SMTP_USER=your-login@smtp-brevo.com   # from Brevo SMTP & API page
+SMTP_PASS=xsmtpsib-...                # your Brevo SMTP key
+FROM_EMAIL=your-verified-sender@yourdomain.com
 APP_BASE_URL=http://localhost:3000
 ```
 
