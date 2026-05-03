@@ -7,12 +7,15 @@ Full pipeline: Jira ticket → Architect → Scribe → [Gherkin Judge Gate]
 
 Pipeline:
   1. Fetch Jira Ticket   (Architect → RequirementContext)
-  2. Author Gherkin Spec (Scribe    → GherkinSpec)
-  3. Gherkin Judge Gate  (Judge     → JudgeVerdict)  ⚖️  ≥90% auto / <90% human
+  2. Author Gherkin Spec (Scribe    → GherkinSpec + Jira sub-tasks)
+     ↳ create_jira_issue / add_jira_comment require human confirmation
+       Approval surfaces simultaneously in /approvals AND pauses the chat run.
+       Approve from either — both sync to the same DB record.
+  3. Gherkin Judge Gate  (Judge     → JudgeVerdict)        ⚖️  ≥99% auto / <99% human
   4. Provision Test Data (Data Agent → RunContext)
   5. Generate Code       (Engineer  → POM + StepDefs)
-  6. Code Judge Gate     (Judge     → JudgeVerdict)  ⚖️  ≥90% auto / <90% human
-  7. Submit GitHub PR    (Engineer  → PR URL)        ✅  auto on approval
+  6. Code Judge Gate     (Judge     → JudgeVerdict)        ⚖️  ≥99% auto / <99% human
+  7. Submit GitHub PR    (Engineer  → PR URL)              ✅  auto on approval
 """
 
 import re
@@ -36,17 +39,17 @@ def _confidence(content: str) -> float:
 
 
 def gherkin_verdict_passes(step_input) -> bool:  # type: ignore[no-untyped-def]
-    """Gate: auto-approve Gherkin spec when Judge confidence >= 0.90."""
+    """Gate: auto-approve Gherkin spec when Judge confidence >= 0.99."""
     content = str(getattr(step_input, "previous_step_content", "") or "")
     explicit_pass = bool(re.search(r'"passed":\s*true', content, re.IGNORECASE))
-    return explicit_pass or _confidence(content) >= 0.90
+    return explicit_pass or _confidence(content) >= 0.99
 
 
 def code_verdict_passes(step_input) -> bool:  # type: ignore[no-untyped-def]
-    """Gate: auto-approve automation code when Judge confidence >= 0.90."""
+    """Gate: auto-approve automation code when Judge confidence >= 0.99."""
     content = str(getattr(step_input, "previous_step_content", "") or "")
     explicit_pass = bool(re.search(r'"passed":\s*true', content, re.IGNORECASE))
-    return explicit_pass or _confidence(content) >= 0.90
+    return explicit_pass or _confidence(content) >= 0.99
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +81,10 @@ Output: RequirementContext — ticket_id, title, description, acceptance_criteri
 priority, component, source_url, affected_page_objects, is_new_feature.""",
         ),
         # -------------------------------------------------------------------
-        # Step 2 — Scribe: RequirementContext → GherkinSpec (.feature file)
+        # Step 2 — Scribe: RequirementContext → GherkinSpec + Jira sub-tasks
+        # create_jira_issue and add_jira_comment have requires_confirmation=True
+        # so each call pauses and surfaces an approval in /approvals AND the
+        # chat simultaneously — backed by the same DB record.
         # -------------------------------------------------------------------
         Step(
             name="Author Gherkin Spec",
@@ -93,6 +99,10 @@ Your task:
 3. Identify test data requirements (fields, types, constraints, PII masking).
 4. Populate traceability: each Scenario name must reference its AC ID.
 5. Set feature_file to the canonical path: automation/features/<component>/<ticket_id>.feature
+6. After writing the spec, call create_jira_issue once per Scenario and add_jira_comment
+   on the parent ticket. Each call will pause for Human Lead confirmation — the Human Lead
+   can approve from the /approvals page OR directly in this chat. Both surfaces sync
+   automatically to the same approval record.
 
 Output: GherkinSpec — feature_name, feature_content (full .feature text),
 data_requirements, traceability map, feature_file path.""",
@@ -117,15 +127,15 @@ Run the full DoD checklist:
 - feature_file path matches the pattern automation/features/<component>/<ticket_id>.feature
 
 Score confidence 0.0–1.0:
-  ≥ 0.90 → set passed=true, requires_human=false  (pipeline continues automatically)
-  < 0.90 → set passed=false, requires_human=true   (pipeline pauses for Human Lead)
-  < 0.50 → set passed=false, requires_human=true   (auto-reject, list all blocking issues)
+  ≥ 0.99 → set passed=true, requires_human=false  (pipeline continues automatically)
+  < 0.99 → set passed=false, requires_human=true   (pipeline pauses for Human Lead)
+  < 0.80 → set passed=false, requires_human=true   (auto-reject, list all blocking issues)
 
 Output: JudgeVerdict — artifact_type="gherkin", confidence, passed, checklist_results,
 rejection_reasons, requires_human.""",
         ),
         # -------------------------------------------------------------------
-        # Condition: only continue if Judge approved (confidence >= 0.90)
+        # Condition: only continue if Judge approved (confidence >= 0.99)
         # -------------------------------------------------------------------
         Condition(
             name="Gherkin Approved",
@@ -200,9 +210,9 @@ Read each generated file and run the full DoD checklist:
 - No duplicate class definitions with existing POMs in the knowledge base.
 
 Score confidence 0.0–1.0:
-  ≥ 0.90 → set passed=true, requires_human=false  (PR auto-submitted)
-  < 0.90 → set passed=false, requires_human=true   (pipeline pauses for Human Lead)
-  < 0.50 → set passed=false, requires_human=true   (auto-reject, list all blocking issues)
+  ≥ 0.99 → set passed=true, requires_human=false  (PR auto-submitted)
+  < 0.99 → set passed=false, requires_human=true   (pipeline pauses for Human Lead)
+  < 0.80 → set passed=false, requires_human=true   (auto-reject, list all blocking issues)
 
 Output: JudgeVerdict — artifact_type="code", confidence, passed, checklist_results,
 rejection_reasons, requires_human.""",

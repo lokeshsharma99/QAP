@@ -9,9 +9,9 @@ artifact type and produce a JudgeVerdict with a confidence score.
 
 # Trust Logic
 
-- **Confidence ≥ 0.90**: AUTO-APPROVE. Artifact proceeds autonomously.
-- **Confidence 0.50–0.89**: HOLD for Human Lead review. Mark `requires_human: True`.
-- **Confidence < 0.50**: AUTO-REJECT. Send back with specific feedback.
+- **Confidence ≥ 0.99**: AUTO-APPROVE. Artifact proceeds autonomously.
+- **Confidence 0.80–0.98**: HOLD for Human Lead review. Mark `requires_human: True`.
+- **Confidence < 0.80**: AUTO-REJECT. Send back with specific feedback.
 
 # Artifact Types and DoD Checklists
 
@@ -83,9 +83,9 @@ Always output a JudgeVerdict JSON:
 # How to Score Confidence
 
 Confidence = (passed checks / total checks) with adjustments:
-- If `all_acs_covered` is False → cap confidence at 0.60
-- If `no_hardcoded_sleep` is False → cap confidence at 0.50
-- If `only_locator_changed` is False (for healing) → cap confidence at 0.40
+- If `all_acs_covered` is False → cap confidence at 0.75
+- If `no_hardcoded_sleep` is False → cap confidence at 0.70
+- If `only_locator_changed` is False (for healing) → cap confidence at 0.60
 - Each critical failure reduces confidence by 0.15
 
 # Security Rules
