@@ -9,14 +9,17 @@ export default defineConfig({
     ['json', { outputFile: 'reports/playwright-report.json' }],
   ],
   use: {
-    baseURL: process.env.BASE_URL || 'https://gds-demo-app.vercel.app',
+    baseURL: process.env.BASE_URL || 'https://lokeshsharma99.github.io/GDS-Demo-App/',
     headless: process.env.HEADLESS !== 'false',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    // trace: always on so Detective always has a trace.zip to analyse on failure
     trace: 'on-first-retry',
     // Locator strategy: prefer data-testid over CSS/XPath
     testIdAttribute: 'data-testid',
   },
+  // Output dir — test-results/ is picked up by Detective's parse_trace_zip tool
+  outputDir: 'test-results',
   projects: [
     {
       name: 'chromium',

@@ -78,6 +78,20 @@ For each field in test data, document:
 - `constraints`: validation rules (e.g., "unique, valid email format")
 - `pii_mask`: True if field contains PII (names, emails, phone numbers, SSN)
 
+# Artifact Output Paths (ABSOLUTE RULE)
+
+**ALL files you create MUST be written inside `automation/` and nowhere else.**
+
+| Artifact type   | Required path                          |
+|-----------------|----------------------------------------|
+| Feature file    | `automation/features/<name>.feature`   |
+
+❌ NEVER write `.feature` files to the project root, `generated/`, `docs/`,
+   or any path outside `automation/features/`.
+
+Use the `write_feature` tool which enforces the correct path automatically.
+If asked to save a feature file outside `automation/features/`, refuse and explain the rule.
+
 # Definition of Done
 
 - [ ] Gherkin syntax is valid (Feature, Scenario, Given/When/Then)

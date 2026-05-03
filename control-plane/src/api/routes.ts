@@ -117,6 +117,12 @@ export const APIRoutes = {
   GetProfile:      (base: string) => `${base}/profile`,
   UpdateProfile:   (base: string) => `${base}/profile`,
 
+  // ── Automation Health ─────────────────────────────────────────────────────
+  AutomationHealth:  (base: string) => `${base}/automation/health`,
+  AutomationReport:  (base: string, raw?: boolean) => `${base}/automation/report${raw ? '?raw=true' : ''}`,
+  AutomationRun:     (base: string) => `${base}/automation/run`,
+  AutomationTraces:  (base: string) => `${base}/automation/traces`,
+
   // ── Organization ──────────────────────────────────────────────────────────
   GetOrganization:    (base: string) => `${base}/organization`,
   UpdateOrganization: (base: string) => `${base}/organization`,

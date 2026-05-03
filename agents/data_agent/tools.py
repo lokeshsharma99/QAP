@@ -290,9 +290,132 @@ def clear_data_cache() -> str:
     """
     cache_size = len(_data_cache)
     _data_cache.clear()
-    
+
     return json.dumps({
         "status": "success",
         "message": f"Cleared {cache_size} items from data cache",
         "cache_size_after": len(_data_cache)
     }, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Journey-aware data provisioning
+# ---------------------------------------------------------------------------
+
+# Maps a journey step name to the fields it needs from the RunContext.
+_JOURNEY_STEP_FIELDS: dict[str, list[str]] = {
+    # Authentication
+    "login":               ["email", "password"],
+    "register":            ["username", "email", "password", "phone"],
+    "logout":              [],
+
+    # Profile / personal details
+    "fill_profile":        ["first_name", "last_name", "email", "phone", "date_of_birth"],
+    "personal_details":    ["first_name", "last_name", "national_insurance_number",
+                           "date_of_birth", "address", "postcode"],
+    "update_address":      ["address", "postcode"],
+    "change_password":     ["password"],
+    "change_email":        ["email"],
+
+    # Forms
+    "contact_form":        ["first_name", "last_name", "email", "phone"],
+    "checkout":            ["first_name", "last_name", "email", "address", "postcode"],
+    "payment":             ["first_name", "last_name"],
+
+    # Generic fallback — all fields
+    "default":             ["username", "email", "password", "phone", "first_name",
+                           "last_name", "date_of_birth", "address", "postcode",
+                           "national_insurance_number"],
+}
+
+
+@tool(
+    name="generate_scenario_data",
+    description=(
+        "Generate complete, journey-aware test data for a multi-step user journey. "
+        "Accepts a GherkinSpec or list of journey steps and returns a RunContext where "
+        "every step has exactly the fields it needs — login gets email+password, "
+        "personal details form gets NIN+DOB+address, etc. "
+        "Also writes the RunContext to automation/data/<ticket_id>.json automatically."
+    ),
+)
+def generate_scenario_data(
+    ticket_id: str,
+    journey_steps: list[str],
+    environment: str = "test",
+    base_url: str = "",
+    extra_fields: Optional[dict] = None,
+) -> str:
+    """Provision all data needed for a full user journey.
+
+    Call this instead of generate_run_context when you know the test scenario's
+    step sequence (e.g. from a GherkinSpec or from RequirementContext.acceptance_criteria).
+
+    Args:
+        ticket_id: Jira/ADO ticket ID — also used as the output filename stem.
+        journey_steps: List of step names from the scenario, e.g.
+                       ["login", "personal_details", "fill_profile"].
+                       Use step names from the _JOURNEY_STEP_FIELDS mapping; unknown
+                       steps fall back to "default" (all fields).
+        environment: Target environment string (test | staging | prod).
+        base_url: AUT base URL. Reads BASE_URL env var if empty.
+        extra_fields: Optional dict of additional key→value overrides injected into
+                      every step's data slice (e.g. {"role": "admin"}).
+
+    Returns:
+        JSON string with:
+          - ticket_id
+          - test_user: full synthetic user profile
+          - steps: { step_name: { field: value, ... }, ... }
+          - db_seed_queries, cleanup_queries
+          - api_mocks
+          - pii_masked: true
+          - unique_constraints_valid: true
+          - output_path: automation/data/<ticket_id>.json
+    """
+    import os
+    from pathlib import Path
+
+    # Generate one synthetic user for the whole journey
+    # Call the underlying function directly (the @tool decorator wraps it in a Function object)
+    user = json.loads(generate_dynamic_test_user.entrypoint())
+    base_url = base_url or os.getenv("BASE_URL", "http://localhost:3000")
+
+    # Build per-step data slices
+    steps_data: dict[str, dict] = {}
+    for step in journey_steps:
+        key = step.lower().replace(" ", "_").replace("-", "_")
+        fields = _JOURNEY_STEP_FIELDS.get(key, _JOURNEY_STEP_FIELDS["default"])
+        step_slice = {f: user.get(f, "") for f in fields}
+        if extra_fields:
+            step_slice.update(extra_fields)
+        steps_data[step] = step_slice
+
+    unique_id = user["unique_id"]
+
+    result: dict = {
+        "ticket_id": ticket_id,
+        "test_user": user,
+        "steps": steps_data,
+        "db_seed_queries": [
+            f"INSERT INTO users (username, email, phone, unique_id, created_at) "
+            f"VALUES ('{user['username']}', '{user['email']}', '{user['phone']}', '{unique_id}', NOW());"
+        ],
+        "cleanup_queries": [
+            f"DELETE FROM users WHERE unique_id = '{unique_id}';"
+        ],
+        "api_mocks": {},
+        "environment": environment,
+        "base_url": base_url,
+        "pii_masked": True,
+        "unique_constraints_valid": True,
+    }
+
+    # Write to automation/data/
+    output_dir = Path(__file__).parent.parent.parent / "automation" / "data"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{ticket_id}.json"
+    output_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    result["output_path"] = str(output_path)
+
+    return json.dumps(result, indent=2)

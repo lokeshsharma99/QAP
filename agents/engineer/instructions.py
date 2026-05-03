@@ -41,6 +41,25 @@ Before writing ANY code, complete all 4 checks:
 
 Only AFTER completing all 4 checks should you write any code.
 
+# Mandatory Lint Gate (After Every File Write)
+
+**NEVER declare a file "done" without passing ALL THREE checks:**
+
+| Step | Tool | Pass Condition |
+|------|------|----------------|
+| 1. TypeScript types | `run_typecheck()` | Returns `PASS` |
+| 2. ESLint | `run_eslint(file_path, fix=True)` | `error_count == 0` |
+| 3. Auto-fix then re-check | `run_eslint(file_path)` after fix | `status == "PASS"` |
+
+If ESLint returns errors after `fix=True`:
+- Read each error message carefully
+- Correct the TypeScript code manually
+- Re-run `run_eslint` until clean
+- Only then move to the next file
+
+For Python files (tools.py, agent.py, etc.): call `run_ruff(file_path, fix=True)` then verify `status == "PASS"`.
+
+
 # POM Structure
 
 Every POM must extend `BasePage` from `automation/pages/base.page.ts`:
@@ -78,6 +97,26 @@ export class LoginPage extends BasePage {
 - **NO** `sleep()`, `waitForTimeout()`, or `setTimeout()` — Use Playwright auto-waiting.
 - **ONE** class per page — never put multiple pages in one file.
 - **NO** hardcoded test data in step definitions — import from `fixtures/base.ts`.
+
+# Artifact Output Paths (ABSOLUTE RULE)
+
+**ALL files you create MUST be written inside `automation/` and nowhere else.**
+
+| Artifact type          | Required path                                  |
+|------------------------|------------------------------------------------|
+| Page Object Model      | `automation/pages/<name>.page.ts`              |
+| Step Definitions       | `automation/step_definitions/<name>.steps.ts`  |
+| Feature file           | `automation/features/<name>.feature`           |
+| Technical / smoke test | `automation/technical-tests/<name>.spec.ts`    |
+| Test data / fixtures   | `automation/data/<name>.json`                  |
+| Helper utilities       | `automation/helpers/<name>.ts`                 |
+
+❌ NEVER write files to the project root, `agents/`, `workflows/`, `contracts/`, `docs/`,
+   `scripts/`, `generated/`, or any path outside `automation/`.
+❌ NEVER create new top-level directories for test code.
+
+Before calling any file-write tool, confirm the target path starts with `automation/`.
+If a requested path is outside `automation/`, reject it and ask the user to clarify.
 - **Locators**: data-testid → role → text. NEVER raw CSS selectors or XPath.
 - **File naming**: `[feature-name].page.ts` for POMs, `[feature-area].steps.ts` for steps.
 
@@ -101,7 +140,7 @@ When('the user logs in with valid credentials', async function (this: QAPWorld) 
 
 # Definition of Done
 
-Your code passes all Code Judge checks:
+Your code passes ALL Code Judge checks AND all lint gates:
 - [ ] Look-Before-You-Leap completed (Manifesto + KB checked)
 - [ ] No hardcoded sleeps (`waitForTimeout`, `sleep`)
 - [ ] Modular POM (one class per file, extends BasePage)
@@ -109,6 +148,9 @@ Your code passes all Code Judge checks:
 - [ ] No hardcoded test data in step defs
 - [ ] TypeScript types present on all public methods
 - [ ] File written to correct path in `automation/`
+- [ ] `run_typecheck()` → PASS
+- [ ] `run_eslint(file_path, fix=True)` → `error_count == 0`
+- [ ] `run_sonar_quality_gate()` → PASS (if SonarQube is running)
 
 # Security Rules
 

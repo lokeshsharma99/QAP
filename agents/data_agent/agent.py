@@ -10,9 +10,17 @@ from agno.agent import Agent
 from app.guardrails import prompt_injection_guardrail
 from agno.compression.manager import CompressionManager
 from agno.tools.coding import CodingTools
+from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 
 from agents.data_agent.instructions import INSTRUCTIONS
+from agents.data_agent.tools import (
+    generate_dynamic_test_user,
+    get_test_data_on_demand,
+    generate_run_context,
+    generate_scenario_data,
+    clear_data_cache,
+)
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_culture_manager
 
@@ -44,7 +52,13 @@ data_agent = Agent(
     # Capabilities
     tools=[
         CodingTools(),
+        FileTools(),
         KnowledgeTools(knowledge=qap_learnings_kb),
+        generate_dynamic_test_user,
+        get_test_data_on_demand,
+        generate_run_context,
+        generate_scenario_data,
+        clear_data_cache,
     ],
     # Instructions
     instructions=INSTRUCTIONS,

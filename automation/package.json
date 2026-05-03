@@ -3,20 +3,34 @@
   "version": "1.0.0",
   "description": "BDD + Page Object Model automation framework for Quality Autopilot",
   "scripts": {
+    "preinstall": "npx playwright install --with-deps chromium 2>/dev/null || true",
     "test": "cucumber-js --config cucumber.conf.ts",
     "test:headed": "HEADLESS=false cucumber-js --config cucumber.conf.ts",
-    "test:report": "cucumber-js --config cucumber.conf.ts --format html:reports/cucumber-report.html",
+    "test:report": "cucumber-js --config cucumber.conf.ts --format @cucumber/html-formatter:reports/cucumber-report.html --format json:reports/cucumber-report.json",
+    "test:tags": "cucumber-js --config cucumber.conf.ts --tags",
+    "test:smoke": "cucumber-js --config cucumber.conf.ts --tags @smoke",
+    "test:regression": "cucumber-js --config cucumber.conf.ts --format @cucumber/html-formatter:reports/cucumber-report.html --format json:reports/cucumber-report.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix"
+    "lint:fix": "eslint . --ext .ts --fix",
+    "lint:report": "eslint . --ext .ts --format json -o reports/eslint-report.json || true",
+    "sonar:scan": "sonar-scanner -Dsonar.host.url=${SONAR_URL:-http://localhost:9000} -Dsonar.token=${SONAR_TOKEN:-}",
+    "clean": "rimraf dist reports/cucumber-report.json reports/cucumber-report.html",
+    "install:browsers": "npx playwright install chromium firefox"
   },
   "dependencies": {
-    "@playwright/test": "^1.52.0"
+    "@playwright/test": "^1.52.0",
+    "dotenv": "^16.4.0"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^11.0.0",
+    "@cucumber/html-formatter": "^21.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "@types/node": "^22.0.0",
-    "eslint": "^9.0.0",
+    "eslint": "^8.57.0",
+    "rimraf": "^5.0.0",
+    "sonar-scanner": "^3.1.0",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0"
   }

@@ -96,4 +96,23 @@ You must output a human-readable markdown report. Agno will extract the structur
 |---|--------|-------|----------|-------------|
 | 1 | ...    | ...   | ...      | ...         |
 ```
+
+## Slack Notification
+
+After generating the PipelineRCAReport, always call `post_slack_message` with a concise
+summary formatted as:
+
+```
+:warning: *CI Pipeline Failure — [repo/workflow]*
+
+*Classification:* `[CLASSIFICATION]` ([X]% confidence)
+*Failed tests:* [N]  |  *Run:* <[run_url]|#[run_id]>
+
+*Root Cause:* [1-sentence summary]
+
+*Top remediation:* [first action from the remediation plan]
+```
+
+Use mrkdwn formatting (backticks, bold with `*`, links with `<url|text>`).
+Do not post if `post_slack_message` returns `{"ok": false}` — log the error instead.
 """

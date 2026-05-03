@@ -98,6 +98,11 @@ services:
       # Slack (Pipeline Analyst — post RCA report notifications)
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
       - SLACK_CHANNEL_ID=${SLACK_CHANNEL_ID:-}
+      # SonarQube (optional — activated with --profile sonar)
+      - SONAR_URL=${SONAR_URL:-http://sonarqube:9000}
+      - SONAR_TOKEN=${SONAR_TOKEN:-}
+      - SONAR_PROJECT_KEY=${SONAR_PROJECT_KEY:-quality-autopilot-automation}
+      - SONAR_MCP_URL=${SONAR_MCP_URL:-http://sonarqube-mcp:9001/mcp}
       # Optional
       - EXA_API_KEY=${EXA_API_KEY:-}
       - PARALLEL_API_KEY=${PARALLEL_API_KEY:-}
@@ -224,18 +229,128 @@ services:
       - qap-net
 
   # ---------------------------------------------------------------------------
-  # Playwright Test Runner  (sandboxed execution for automation/ tests)
-  # Start with: docker compose --profile runner up -d
+  # Playwright Test Runner  (sandboxed Cucumber+Playwright execution)
+  #
+  # Usage:
+  #   docker compose --profile runner up -d            # start the runner
+  #   docker exec qap-playwright npm run test:regression # run all tests
+  #   docker exec qap-playwright npm run test:smoke      # smoke only
+  #
+  # The container:
+  #   - Mounts ./automation as /tests (read-write: agents write POMs/steps here)
+  #   - Runs `npm install` on start so new packages are always available
+  #   - Writes reports to /tests/reports/ (visible at ./automation/reports/ on host)
+  #   - Writes trace ZIPs to /tests/test-results/ for the Detective agent
+  #   - network_mode host allows access to the AUT URL (internal or external)
   # ---------------------------------------------------------------------------
   qap-playwright:
     image: mcr.microsoft.com/playwright:v1.52.0-noble
     container_name: qap-playwright
     working_dir: /tests
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo '=== Installing npm packages ===' && npm install --prefer-offline 2>&1 | tail -5
+        echo '=== Playwright browsers ready ==='
+        npx playwright install chromium --with-deps 2>/dev/null || true
+        echo '=== Runner ready. Waiting for exec commands ==='
+        tail -f /dev/null
     volumes:
-      - ./test-output:/tests
-    network_mode: "none"
+      - ./automation:/tests        # agents write here; runner reads and executes
+    environment:
+      - BASE_URL=${AUT_BASE_URL:-https://lokeshsharma99.github.io/GDS-Demo-App/}
+      - HEADLESS=${HEADLESS:-true}
+      - BROWSER=${BROWSER:-chromium}
+      - CI=true
+      - DEMO_EMAIL=${DEMO_EMAIL:-}
+      - DEMO_PASSWORD=${DEMO_PASSWORD:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - qap-net
     profiles:
       - runner
+
+  # ---------------------------------------------------------------------------
+  # SonarQube Community Edition  (static analysis + quality gate)
+  #
+  # Usage:
+  #   docker compose --profile sonar up -d          # start SonarQube
+  #   open http://localhost:9000                     # admin / admin (change on first login)
+  #   docker exec qap-api npm run sonar:scan --prefix /app/automation   # run scanner
+  #
+  # First-run setup (one time):
+  #   1. Log in at http://localhost:9000 → admin/admin → change password
+  #   2. Create a project key "quality-autopilot-automation"
+  #   3. Generate a project token → set as SONAR_TOKEN in .env
+  #   4. Run `npm run sonar:scan` from automation/ to push first analysis
+  #
+  # After the first scan the Judge agent's check_sonar_quality_gate() tool
+  # will start returning real quality gate results.
+  #
+  # NOTE: SonarQube requires ≥4 GB RAM. It is optional (profiles: [sonar]).
+  # ---------------------------------------------------------------------------
+  sonarqube:
+    image: sonarqube:community
+    container_name: qap-sonarqube
+    restart: unless-stopped
+    environment:
+      # Use the existing qap-db PostgreSQL instance to store Sonar data
+      - SONAR_JDBC_URL=jdbc:postgresql://qap-db:5432/${SONAR_DB:-sonarqube}
+      - SONAR_JDBC_USERNAME=${DB_USER:-ai}
+      - SONAR_JDBC_PASSWORD=${DB_PASS:-ai}
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    ports:
+      - "9000:9000"
+    depends_on:
+      - qap-db
+    networks:
+      - qap-net
+    profiles:
+      - sonar
+
+  # ---------------------------------------------------------------------------
+  # SonarQube MCP Server  (MCP tools for Judge agent to query quality gate)
+  #
+  # Uses @sonarsource/mcp-server-sonarqube wrapped via supergateway (SSE transport).
+  # Exposes SonarQube API as MCP tools on port 9001.
+  #
+  # Tools available to the Judge:
+  #   sonarqube_list_projects      — list all projects
+  #   sonarqube_get_quality_gate   — quality gate status for a project
+  #   sonarqube_get_issues         — list open bugs/vulnerabilities/code smells
+  #   sonarqube_get_metrics        — coverage, duplication, complexity scores
+  # ---------------------------------------------------------------------------
+  sonarqube-mcp:
+    image: node:22-alpine
+    container_name: qap-sonarqube-mcp
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        exec npx -y supergateway \
+          --stdio "npx -y @sonarsource/mcp-server-sonarqube" \
+          --outputTransport streamableHttp \
+          --streamableHttpPath /mcp \
+          --port 9001
+    environment:
+      - SONAR_URL=${SONAR_URL:-http://sonarqube:9000}
+      - SONAR_TOKEN=${SONAR_TOKEN:-}
+    ports:
+      - "9001:9001"
+    depends_on:
+      - sonarqube
+    networks:
+      - qap-net
+    profiles:
+      - sonar
 
 networks:
   qap-net:
@@ -244,3 +359,6 @@ volumes:
   pgdata:
   generated_code:
   playwright-mcp-browsers:  # caches chrome-for-testing download across container restarts
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:

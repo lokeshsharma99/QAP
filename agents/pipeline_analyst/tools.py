@@ -445,3 +445,56 @@ def parse_allure_results(results_dir: str) -> dict:
         "skipped": counts.get("skipped", 0),
         "failures": failures,
     }
+
+
+# ---------------------------------------------------------------------------
+# Tool 4 — post_slack_message
+# ---------------------------------------------------------------------------
+
+def post_slack_message(message: str, channel: str = "") -> dict:
+    """Post a plain-text message to a Slack channel using the Bot API.
+
+    Uses SLACK_BOT_TOKEN and SLACK_CHANNEL_ID from environment variables.
+    The ``channel`` argument overrides SLACK_CHANNEL_ID when provided.
+
+    Args:
+        message:  Text to post (markdown supported via Slack mrkdwn).
+        channel:  Slack channel ID (e.g. ``C0B12TFRR7V``).  Falls back to
+                  the SLACK_CHANNEL_ID environment variable when omitted.
+
+    Returns:
+        dict with keys:
+          ok        — True on success
+          ts        — Slack message timestamp (float string) on success
+          error     — error string on failure
+    """
+    import json as _json
+    import urllib.request as _req
+
+    token = os.environ.get("SLACK_BOT_TOKEN", "")
+    if not token:
+        return {"ok": False, "error": "SLACK_BOT_TOKEN is not set"}
+
+    target_channel = channel or os.environ.get("SLACK_CHANNEL_ID", "")
+    if not target_channel:
+        return {"ok": False, "error": "No channel provided and SLACK_CHANNEL_ID is not set"}
+
+    payload = _json.dumps({"channel": target_channel, "text": message}).encode()
+    request = _req.Request(
+        "https://slack.com/api/chat.postMessage",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+        method="POST",
+    )
+    try:
+        with _req.urlopen(request, timeout=15) as resp:
+            data = _json.loads(resp.read().decode())
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+    if data.get("ok"):
+        return {"ok": True, "ts": data.get("ts", "")}
+    return {"ok": False, "error": data.get("error", "unknown_error")}
