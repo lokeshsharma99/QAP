@@ -12,7 +12,6 @@ from agno.learn import LearningMachine, LearningMode, SessionContextConfig, User
 from agno.memory import MemoryManager
 from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
-from agno.tools.user_control_flow import UserControlFlowTools
 
 from agents.architect.instructions import INSTRUCTIONS
 from agents.architect.tools import fetch_jira_ticket, fetch_linked_issues, add_jira_comment, create_jira_issue, index_ticket_to_document_library
@@ -108,7 +107,6 @@ architect = Agent(
     # affected by the requirement, search, then analyze whether found pages are truly in scope.
     tools=[
         ReasoningTools(add_instructions=True),
-        UserControlFlowTools(),
         KnowledgeTools(knowledge=site_manifesto_kb, enable_think=True, enable_search=True, enable_analyze=True),
         fetch_jira_ticket,
         fetch_linked_issues,
