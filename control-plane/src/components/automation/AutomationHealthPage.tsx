@@ -674,8 +674,8 @@ export default function AutomationHealthPage() {
                 className="rounded border-input"
               />
               <label htmlFor="use-docker" className="text-sm text-primary">
-                Run in <code>qap-playwright</code> container
-                <span className="text-muted ml-1 text-xs">(requires <code>--profile runner</code>)</span>
+                Run via <code>docker exec qap-api</code>
+                <span className="text-muted ml-1 text-xs">(isolated exec context)</span>
               </label>
             </div>
 

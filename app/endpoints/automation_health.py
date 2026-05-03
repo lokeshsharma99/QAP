@@ -276,15 +276,16 @@ def trigger_run(body: RunRequest, background_tasks: BackgroundTasks):
         inner_cmd = "npm run test:regression"
         if body.tags:
             inner_cmd = (
-                f"npx cucumber-js --config cucumber.conf.ts --tags '{body.tags}'"
+                f"npx cucumber-js --require-module ts-node/register --config cucumber.conf.ts --tags '{body.tags}'"
                 " --format @cucumber/html-formatter:reports/cucumber-report.html"
                 " --format json:reports/cucumber-report.json"
             )
-        cmd = ["docker", "exec", "playwright-mcp", "sh", "-c", inner_cmd]
+        cmd = ["docker", "exec", "--workdir", "/app/automation", "qap-api", "sh", "-c", inner_cmd]
     else:
         if body.tags:
             cmd = [
                 "npx", "cucumber-js",
+                "--require-module", "ts-node/register",
                 "--config", "cucumber.conf.ts",
                 "--tags", body.tags,
                 "--format", "@cucumber/html-formatter:reports/cucumber-report.html",
@@ -403,14 +404,15 @@ def _build_run_cmd(tags: str, use_docker: bool) -> list[str]:
         inner = "npm run test:regression"
         if tags:
             inner = (
-                f"npx cucumber-js --config cucumber.conf.ts --tags '{tags}'"
+                f"npx cucumber-js --require-module ts-node/register --config cucumber.conf.ts --tags '{tags}'"
                 " --format @cucumber/html-formatter:reports/cucumber-report.html"
                 " --format json:reports/cucumber-report.json"
             )
-        return ["docker", "exec", "playwright-mcp", "sh", "-c", inner]
+        return ["docker", "exec", "--workdir", "/app/automation", "qap-api", "sh", "-c", inner]
     if tags:
         return [
             "npx", "cucumber-js",
+            "--require-module", "ts-node/register",
             "--config", "cucumber.conf.ts",
             "--tags", tags,
             "--format", "@cucumber/html-formatter:reports/cucumber-report.html",
