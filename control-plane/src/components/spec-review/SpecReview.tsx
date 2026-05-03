@@ -126,7 +126,8 @@ const SpecCard = ({
 
 export default function SpecReview() {
   const searchParams = useSearchParams()
-  const agentId = searchParams.get('agent') ?? 'scribe'
+  // Only allow 'scribe' — ignore any other ?agent= param to prevent wrong display
+  const agentId = 'scribe'
   const dbId    = searchParams.get('db_id') ?? 'quality-autopilot-db'
 
   const { selectedEndpoint, authToken, setPendingCounts } = useStore()

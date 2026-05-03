@@ -145,6 +145,13 @@ const AppLayout = ({ children, hasEnvToken = false, envToken = '' }: AppLayoutPr
     if (token && !authToken) {
       setAuthToken(token)
     }
+
+    // No token at all → redirect to sign-in immediately
+    if (!token) {
+      router.replace('/sign-in')
+      return
+    }
+
     // Validate session with /auth/me and hydrate currentUser
     if (token && selectedEndpoint) {
       fetch(APIRoutes.AuthMe(selectedEndpoint), {
