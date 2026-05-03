@@ -202,14 +202,15 @@ services:
   # ---------------------------------------------------------------------------
   # Playwright MCP Server  (browser automation for Discovery + Medic agents)
   # ---------------------------------------------------------------------------
+  # Uses Dockerfile.playwright-mcp (node:22-slim + Chromium only).
+  # Estimated ~750 MB–1.0 GB vs 3.59 GB for mcr.microsoft.com/playwright:noble.
+  # @playwright/mcp and Chromium are baked in at build time — no npx download
+  # at startup, instant container start.
   playwright-mcp:
-    image: mcr.microsoft.com/playwright:v1.52.0-noble
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright-mcp
     container_name: playwright-mcp
-    # Install playwright-managed Chromium (the --browser chromium distribution),
-    # then start the MCP server. Both must use the same distribution name.
-    command: >-
-      sh -c "npx -y @playwright/mcp@latest install-browser chromium;
-             npx -y @playwright/mcp@latest --port 8931 --host 0.0.0.0 --allowed-hosts '*' --browser chromium"
     restart: unless-stopped
     ports:
       - "8931:8931"
