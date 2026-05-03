@@ -38,7 +38,7 @@ _psycopg_url = db_url.replace("postgresql+psycopg://", "postgresql://", 1)
 # ── Default credentials (override via env vars) ──────────────────────────────
 DEFAULT_ORG = os.getenv("QAP_ADMIN_ORG", "Quality Autopilot")
 DEFAULT_NAME = os.getenv("QAP_ADMIN_NAME", "Super Admin")
-DEFAULT_EMAIL = os.getenv("QAP_ADMIN_EMAIL", "admin@qap.local")
+DEFAULT_EMAIL = os.getenv("QAP_ADMIN_EMAIL", "admin@quality-autopilot.dev")
 DEFAULT_PASS = os.getenv("QAP_ADMIN_PASS", "Admin@QAP123!")
 
 
