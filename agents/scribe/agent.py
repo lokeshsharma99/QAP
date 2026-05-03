@@ -17,6 +17,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agents.architect.tools import create_jira_issue, add_jira_comment
 from agents.scribe.instructions import INSTRUCTIONS
 from app.atlassian_mcp import get_atlassian_mcp_for_scribe
+from agno.tools.user_control_flow import UserControlFlowTools
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_culture_manager
 
@@ -56,6 +57,7 @@ scribe = Agent(
         CodingTools(requires_confirmation_tools=["run_shell"]),
         FileTools(),
         KnowledgeTools(knowledge=qap_learnings_kb),
+        UserControlFlowTools(),
         create_jira_issue,
         add_jira_comment,
         *_atlassian_tools,

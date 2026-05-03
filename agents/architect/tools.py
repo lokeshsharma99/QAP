@@ -142,7 +142,8 @@ def fetch_jira_ticket(ticket_key: str) -> dict:
 
 @tool(
     name="add_jira_comment",
-    description="Add a comment to a Jira ticket"
+    description="Add a comment to a Jira ticket",
+    requires_confirmation=True,
 )
 def add_jira_comment(ticket_id: str, comment: str, requirement_context_id: str = "") -> dict:
     """Add a comment to a Jira ticket.
@@ -227,7 +228,8 @@ def add_jira_comment(ticket_id: str, comment: str, requirement_context_id: str =
 
 @tool(
     name="create_jira_issue",
-    description="Create a new Jira issue (story, bug, task, or sub-task) in a given project"
+    description="Create a new Jira issue (story, bug, task, or sub-task) in a given project",
+    requires_confirmation=True,
 )
 def create_jira_issue(
     project_key: str,

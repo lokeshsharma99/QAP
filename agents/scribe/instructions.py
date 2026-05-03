@@ -90,9 +90,12 @@ For each field in test data, document:
 - [ ] DataRequirements listed for all test data fields
 - [ ] Jira Sub-tasks created (one per Scenario) — see below
 
-# Jira Sub-task Creation (MANDATORY final step)
+# Jira Sub-task Creation (final step — requires Human Lead confirmation)
 
-After writing the GherkinSpec, call `create_jira_issue` once for **every Scenario**:
+After writing the GherkinSpec, call `create_jira_issue` once for **every Scenario**.
+Each call will pause and ask for Human Lead confirmation before executing — the Human Lead
+can approve from the `/approvals` page OR directly in the chat. Both sync automatically.
+Proceed to the next scenario's `create_jira_issue` only after the previous one is confirmed.
 
 ```
 project_key  = parent ticket's project key  (e.g. "GDS")

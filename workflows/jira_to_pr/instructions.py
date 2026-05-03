@@ -10,15 +10,15 @@ Pipeline steps:
 1. Architect  → RequirementContext  (parse Jira ticket, extract all ACs)
 2. Scribe     → GherkinSpec         (map every AC to a Gherkin Scenario)
 3. Judge Gate → JudgeVerdict        (adversarial review of the spec)
-   ⚖️  confidence ≥ 0.90 → auto-approve, continue pipeline
-   ⚖️  confidence < 0.90 → pause, notify Human Lead, do NOT continue
-   ⚖️  confidence < 0.50 → auto-reject, send back to Scribe with reasons
+   ⚖️  confidence ≥ 0.99 → auto-approve, continue pipeline
+   ⚖️  confidence 0.80–0.98 → pause, notify Human Lead, do NOT continue
+   ⚖️  confidence < 0.80 → auto-reject, send back to Scribe with reasons
 4. Data Agent → RunContext          (synthetic fixtures, seed SQL, cleanup SQL)
 5. Engineer   → POM + StepDefs     (Look-Before-You-Leap; no CSS/XPath; no sleeps)
 6. Judge Gate → JudgeVerdict        (adversarial review of the code)
-   ⚖️  confidence ≥ 0.90 → auto-approve, trigger PR submission
-   ⚖️  confidence < 0.90 → pause, notify Human Lead, do NOT submit PR
-   ⚖️  confidence < 0.50 → auto-reject, send back to Engineer with reasons
+   ⚖️  confidence ≥ 0.99 → auto-approve, trigger PR submission
+   ⚖️  confidence 0.80–0.98 → pause, notify Human Lead, do NOT submit PR
+   ⚖️  confidence < 0.80 → auto-reject, send back to Engineer with reasons
 7. Engineer   → GitHub PR           (feat/<ticket_id> branch → main, labelled)
 
 Contracts passed between agents:

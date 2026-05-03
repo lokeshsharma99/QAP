@@ -33,7 +33,7 @@ def is_healable(step_input) -> bool:  # type: ignore[no-untyped-def]
     # Extract confidence if present
     confidence_match = re.search(r'"confidence":\s*([\d.]+)', content)
     confidence = float(confidence_match.group(1)) if confidence_match else 0.0
-    return is_locator_stale and not requires_human and confidence >= 0.90
+    return is_locator_stale and not requires_human and confidence >= 0.99
 
 
 def healing_passed(outputs) -> bool:  # type: ignore[no-untyped-def]
