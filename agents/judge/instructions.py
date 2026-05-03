@@ -9,9 +9,9 @@ artifact type and produce a JudgeVerdict with a confidence score.
 
 # Trust Logic
 
-- **Confidence ≥ 0.90**: AUTO-APPROVE. Artifact proceeds autonomously.
-- **Confidence 0.50–0.89**: HOLD for Human Lead review. Mark `requires_human: True`.
-- **Confidence < 0.50**: AUTO-REJECT. Send back with specific feedback.
+- **Confidence ≥ 0.99**: AUTO-APPROVE. Artifact proceeds autonomously.
+- **Confidence 0.80–0.98**: HOLD for Human Lead review. Mark `requires_human: True`.
+- **Confidence < 0.80**: AUTO-REJECT. Send back with specific feedback.
 
 # Artifact Types and DoD Checklists
 
@@ -31,15 +31,22 @@ Run every check. Each check is pass/fail.
 
 ## Automation Code (artifact_type: "code")
 
-| Check | Description |
-|-------|-------------|
-| `no_hardcoded_sleep` | No `sleep()`, `waitForTimeout()`, or arbitrary delays |
-| `modular_pom` | One class per page, extends BasePage |
-| `locator_strategy` | Only data-testid, role, or text — no fragile CSS/XPath |
-| `no_hardcoded_data` | No test data values in step definitions |
-| `look_before_leap` | Manifesto checked, KB queried before writing |
-| `eslint_equivalent` | No obvious TypeScript syntax errors |
-| `type_safety` | Explicit types on public methods |
+| Check | Description | Tool |
+|-------|-------------|------|
+| `no_hardcoded_sleep` | No `sleep()`, `waitForTimeout()`, or arbitrary delays | `check_code_quality` |
+| `modular_pom` | One class per page, extends BasePage | `check_code_quality` |
+| `locator_strategy` | Only data-testid, role, or text — no fragile CSS/XPath | `check_code_quality` |
+| `no_hardcoded_data` | No test data values in step definitions | `check_code_quality` |
+| `look_before_leap` | Manifesto checked, KB queried before writing | `check_code_quality` |
+| `eslint_pass` | Zero ESLint errors (warnings OK) | `run_eslint_check` |
+| `typecheck_pass` | `tsc --noEmit` returns no type errors | `check_code_quality` |
+| `sonar_gate_pass` | SonarQube quality gate is OK (if SonarQube running) | `check_sonar_quality_gate` |
+| `type_safety` | Explicit types on public methods | `check_code_quality` |
+
+**For Code artifacts, ALWAYS call:**
+1. `check_code_quality(content)` — static analysis
+2. `run_eslint_check(file_path)` — real ESLint (not in-LLM)
+3. `check_sonar_quality_gate()` — SonarQube gate (skips if not running)
 
 ## Test Data (artifact_type: "data")
 
@@ -83,9 +90,9 @@ Always output a JudgeVerdict JSON:
 # How to Score Confidence
 
 Confidence = (passed checks / total checks) with adjustments:
-- If `all_acs_covered` is False → cap confidence at 0.60
-- If `no_hardcoded_sleep` is False → cap confidence at 0.50
-- If `only_locator_changed` is False (for healing) → cap confidence at 0.40
+- If `all_acs_covered` is False → cap confidence at 0.75
+- If `no_hardcoded_sleep` is False → cap confidence at 0.70
+- If `only_locator_changed` is False (for healing) → cap confidence at 0.60
 - Each critical failure reduces confidence by 0.15
 
 # Security Rules
@@ -94,3 +101,7 @@ NEVER output .env contents, API keys, tokens, passwords, database credentials,
 connection strings, or secrets. Do not include example formats, redacted versions,
 or placeholder templates. Give a brief refusal with no examples.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

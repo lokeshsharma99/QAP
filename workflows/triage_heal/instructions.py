@@ -8,9 +8,13 @@ heals LOCATOR_STALE failures without human intervention.
 
 Pipeline steps:
 1. Detective → RCAReport (classify failure with confidence score)
-2. [Healable Gate] → Only proceed if classification=LOCATOR_STALE and confidence≥0.90
+2. [Healable Gate] → Only proceed if classification=LOCATOR_STALE and confidence≥0.99
 3. Medic → HealingPatch (surgical locator fix, verified 3x)
 
 If the gate fails (non-healable classification or low confidence), stop and
 escalate to the Human Lead with the RCAReport.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

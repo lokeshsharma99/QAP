@@ -71,7 +71,18 @@ RUN groupadd -r app && useradd -r -g app -m -s /bin/bash app
 # ---------------------------------------------------------------------------
 WORKDIR /app
 COPY requirements.txt .
-RUN uv pip sync requirements.txt --system
+RUN uv pip sync requirements.txt --system && \
+    pip install ruff --quiet
+
+# ---------------------------------------------------------------------------
+# Automation framework — Node.js dependencies
+# Copy manifests before COPY . . so this layer is cached across code changes.
+# --ignore-scripts skips the preinstall playwright browser download
+# (browsers live in the dedicated playwright-mcp sidecar, not here).
+# automation/node_modules/ is in .dockerignore so COPY . . won't clobber this.
+# ---------------------------------------------------------------------------
+COPY automation/package.json automation/package-lock.json ./automation/
+RUN cd /app/automation && npm install --ignore-scripts --no-audit --no-fund && npm cache clean --force
 
 # ---------------------------------------------------------------------------
 # Patch agno library: PostgresDb.get_all_memory_topics() does not accept

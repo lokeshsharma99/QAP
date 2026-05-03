@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -126,10 +127,11 @@ const SpecCard = ({
 
 export default function SpecReview() {
   const searchParams = useSearchParams()
-  const agentId = searchParams.get('agent') ?? 'scribe'
+  // Only allow 'scribe' — ignore any other ?agent= param to prevent wrong display
+  const agentId = 'scribe'
   const dbId    = searchParams.get('db_id') ?? 'quality-autopilot-db'
 
-  const { selectedEndpoint, authToken } = useStore()
+  const { selectedEndpoint, authToken, setPendingCounts } = useStore()
 
   const [specs,   setSpecs]   = useState<GherkinSpec[]>([])
   const [loading, setLoading] = useState(false)
@@ -174,6 +176,8 @@ export default function SpecReview() {
       }
 
       setSpecs(found)
+      // Update sidebar badge with actual pending count
+      setPendingCounts({ specReview: found.filter(s => s.status === 'pending').length })
     } catch {
       toast.error('Failed to load Gherkin specs')
     } finally {
@@ -184,11 +188,19 @@ export default function SpecReview() {
   useEffect(() => { fetchSpecs() }, [fetchSpecs])
 
   const handleApprove = (id: string) => {
-    setSpecs((prev) => prev.map((s) => s.id === id ? { ...s, status: 'approved' as const } : s))
+    setSpecs((prev) => {
+      const next = prev.map((s) => s.id === id ? { ...s, status: 'approved' as const } : s)
+      setPendingCounts({ specReview: next.filter(s => s.status === 'pending').length })
+      return next
+    })
     toast.success('Spec approved — Judge confidence met')
   }
   const handleReject = (id: string) => {
-    setSpecs((prev) => prev.map((s) => s.id === id ? { ...s, status: 'rejected' as const } : s))
+    setSpecs((prev) => {
+      const next = prev.map((s) => s.id === id ? { ...s, status: 'rejected' as const } : s)
+      setPendingCounts({ specReview: next.filter(s => s.status === 'pending').length })
+      return next
+    })
     toast.error('Spec rejected — Sent back to Scribe agent')
   }
 
@@ -201,7 +213,7 @@ export default function SpecReview() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       <div className="mx-auto max-w-4xl space-y-6">
 
         {/* Header */}
@@ -260,6 +272,6 @@ export default function SpecReview() {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

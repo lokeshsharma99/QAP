@@ -48,3 +48,7 @@ The workflow produces:
 - Audit trail maintained
 - Maintenance report generated and saved
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

@@ -15,7 +15,7 @@ const config: Partial<IConfiguration> = {
     snippetInterface: 'async-await',
   },
   worldParameters: {
-    baseUrl: process.env.BASE_URL || 'https://gds-demo-app.vercel.app',
+    baseUrl: process.env.BASE_URL || 'https://lokeshsharma99.github.io/GDS-Demo-App/',
     headless: process.env.HEADLESS !== 'false',
     browser: process.env.BROWSER || 'chromium',
   },

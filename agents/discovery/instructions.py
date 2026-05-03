@@ -228,3 +228,7 @@ Your crawl is complete when:
 - [ ] All interactable elements have at least one locator strategy
 - [ ] SiteManifesto JSON is valid and complete
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

@@ -1,4 +1,24 @@
 export const APIRoutes = {
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  AuthRegister:      (base: string) => `${base}/auth/register`,
+  AuthLogin:         (base: string) => `${base}/auth/login`,
+  AuthLogout:        (base: string) => `${base}/auth/logout`,
+  AuthMe:            (base: string) => `${base}/auth/me`,
+  AuthInvite:        (base: string) => `${base}/auth/invite`,
+  AuthValidateInvite:(base: string, token: string) => `${base}/auth/invite/${encodeURIComponent(token)}`,
+  AuthAcceptInvite:  (base: string) => `${base}/auth/accept-invite`,
+  AuthUsers:         (base: string) => `${base}/auth/users`,
+  AuthDeactivate:    (base: string, userId: string) => `${base}/auth/users/${userId}`,
+  AuthChangeRole:    (base: string, userId: string) => `${base}/auth/users/${userId}/role`,
+  AuthForgotPassword:(base: string) => `${base}/auth/forgot-password`,
+  AuthResetPassword: (base: string) => `${base}/auth/reset-password`,
+  AuthChangePassword:(base: string) => `${base}/auth/change-password`,
+  AuthPermissions:   (base: string) => `${base}/auth/permissions`,
+  AuthOrgLookup:     (base: string, name: string) => `${base}/auth/org-lookup?name=${encodeURIComponent(name)}`,
+  AuthCreateOrg:     (base: string) => `${base}/auth/org`,
+  AuthInvites:       (base: string) => `${base}/auth/invites`,
+  AuthCancelInvite:  (base: string, token: string) => `${base}/auth/invites/${encodeURIComponent(token)}`,
+
   // ── Core ────────────────────────────────────────────────────────────────
   Status:      (base: string) => `${base}/health`,
   Info:        (base: string) => `${base}/info`,
@@ -116,6 +136,35 @@ export const APIRoutes = {
   // ── Profile ───────────────────────────────────────────────────────────────
   GetProfile:      (base: string) => `${base}/profile`,
   UpdateProfile:   (base: string) => `${base}/profile`,
+
+  // ── Automation Health ─────────────────────────────────────────────────────
+  AutomationHealth:  (base: string) => `${base}/automation/health`,
+  AutomationReport:  (base: string, raw?: boolean) => `${base}/automation/report${raw ? '?raw=true' : ''}`,
+  AutomationRun:     (base: string) => `${base}/automation/run`,
+  AutomationTraces:  (base: string) => `${base}/automation/traces`,
+  AutomationSync:    (base: string) => `${base}/automation/sync`,
+  AutomationRunStream: (base: string, tags: string, useDocker: boolean, timeoutSecs: number) => {
+    const wsBase = base.replace(/^http/, 'ws')
+    const p = new URLSearchParams()
+    if (tags) p.set('tags', tags)
+    if (useDocker) p.set('use_docker', 'true')
+    if (timeoutSecs) p.set('timeout_seconds', String(timeoutSecs))
+    const qs = p.toString()
+    return qs ? `${wsBase}/automation/run/stream?${qs}` : `${wsBase}/automation/run/stream`
+  },
+  AutomationFileContent:    (base: string, path: string) => `${base}/automation/files/content?path=${encodeURIComponent(path)}`,
+  AutomationEditRequests:   (base: string, status?: string) => `${base}/automation/files/edit-requests${status ? `?status=${status}` : ''}`,
+  AutomationEditRequest:    (base: string) => `${base}/automation/files/edit-request`,
+  AutomationApproveEdit:    (base: string, id: string) => `${base}/automation/files/edit-requests/${id}/approve`,
+  AutomationRejectEdit:     (base: string, id: string) => `${base}/automation/files/edit-requests/${id}/reject`,
+
+  // ── RTM ──────────────────────────────────────────────────────────────────
+  RTM:               (base: string, ticket?: string, tag?: string) =>
+    `${base}/rtm${ticket ? `?ticket=${encodeURIComponent(ticket)}` : tag ? `?tag=${encodeURIComponent(tag)}` : ''}`,
+  RTMSearch:         (base: string, q: string, limit?: number) =>
+    `${base}/rtm/search?q=${encodeURIComponent(q)}${limit ? `&limit=${limit}` : ''}`,
+  RTMByTicket:       (base: string, key: string) => `${base}/rtm/ticket/${encodeURIComponent(key)}`,
+  RTMExplain:        (base: string) => `${base}/rtm/explain`,
 
   // ── Organization ──────────────────────────────────────────────────────────
   GetOrganization:    (base: string) => `${base}/organization`,

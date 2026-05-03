@@ -47,3 +47,7 @@ Critical Rules:
 - Focus on rapid iteration and exploration
 - If tests cannot be healed, escalate to human with clear context
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

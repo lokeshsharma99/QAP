@@ -17,9 +17,14 @@ __pycache__
 # Reference repos (not needed in container)
 reference/
 
+# Control Plane (Next.js UI — served by qap-ui container, not needed in API)
+control-plane/
+
 # Node (automation framework — not needed in API container)
 automation/node_modules/
 automation/.playwright/
+automation/test-results/
+automation/reports/
 
 # Test output
 test-output/

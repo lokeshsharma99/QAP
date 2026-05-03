@@ -13,6 +13,7 @@ from db.session import (
     get_postgres_db,
     get_qap_learnings_kb,
     get_rca_kb,
+    get_rtm_kb,
     get_site_manifesto_kb,
     get_test_results_kb,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "get_postgres_db",
     "get_qap_learnings_kb",
     "get_rca_kb",
+    "get_rtm_kb",
     "get_site_manifesto_kb",
     "get_test_results_kb",
 ]

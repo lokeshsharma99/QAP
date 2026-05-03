@@ -37,6 +37,34 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/organization", tags=["organization"])
 
+
+# ---------------------------------------------------------------------------
+# Session-based caller resolution
+# ---------------------------------------------------------------------------
+
+def _resolve_caller(authorization: Optional[str]) -> dict | None:
+    """Validate a qap_sessions bearer token and return the user dict, or None."""
+    raw = (authorization or "").removeprefix("Bearer ").strip()
+    if not raw:
+        return None
+    try:
+        import psycopg
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT u.id, u.email, u.name, u.org_id, u.role
+                    FROM qap_sessions s
+                    JOIN qap_users u ON u.id = s.user_id
+                    WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active = TRUE
+                """, (raw,))
+                row = cur.fetchone()
+                if row:
+                    return {"id": row[0], "email": row[1], "name": row[2],
+                            "org_id": row[3], "role": row[4]}
+    except Exception as e:
+        logger.warning("Session resolve error: %s", e)
+    return None
+
 # ---------------------------------------------------------------------------
 # PostgreSQL helpers
 # ---------------------------------------------------------------------------
@@ -256,17 +284,29 @@ async def invite_member(
     body: MemberInvite,
     authorization: Optional[str] = Header(default=None),
 ) -> dict:
-    """Invite a new member. Owner-only."""
-    org_id = get_org_id(authorization)
-    user_id = get_user_id(authorization)
+    """Invite a new member. Admin or owner only."""
+    # Prefer session-based auth (qap_users table); fall back to JWT tenancy
+    caller = _resolve_caller(authorization)
+    if caller:
+        org_id = caller["org_id"]
+        user_id = caller["id"]
+        caller_role = caller["role"]
+    else:
+        org_id = get_org_id(authorization)
+        user_id = get_user_id(authorization)
+        caller_role = "owner"  # JWT path — trust the token
+
+    if caller_role not in ("admin", "owner", "superuser"):
+        raise HTTPException(status_code=403, detail="Only admin or owner can invite members")
+
     org = _get_or_create_org(org_id, user_id)
-    if org["owner_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Only the owner can invite members")
+    if caller and org["owner_id"] not in (user_id, "pending") and caller_role == "admin":
+        pass  # admin is allowed to invite even if not the owner
     if any(m["email"] == body.email for m in org["members"]):
         raise HTTPException(status_code=409, detail="Member already in organization")
     org["members"].append({"email": body.email, "role": body.role})
     _save_org(org)
-    logger.info("Member %s invited to org %s by %s", body.email, org_id, user_id)
+    logger.info("Member %s invited to org %s by %s (%s)", body.email, org_id, user_id, caller_role)
     # Send invite email (non-blocking, fire-and-forget — errors are logged, not raised)
     _send_invite_email(body.email, org["name"], user_id)
     return org
@@ -307,3 +347,72 @@ async def delete_org(authorization: Optional[str] = Header(default=None)) -> dic
     _orgs.pop(org_id, None)
     logger.info("Organization %s deleted by %s", org_id, user_id)
     return {"deleted": True, "org_id": org_id}
+
+
+# ---------------------------------------------------------------------------
+# Invite management (admin / owner)
+# ---------------------------------------------------------------------------
+
+@router.get("/invites", summary="List pending invites for this organisation")
+async def list_org_invites(authorization: Optional[str] = Header(default=None)):
+    """Return all active (unused, non-expired) invites for the caller's organisation.
+    Admin or owner only.
+    """
+    caller = _resolve_caller(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+    if caller["role"] not in ("admin", "owner", "superuser"):
+        raise HTTPException(status_code=403, detail="Only admin or owner can view invites.")
+
+    org_id = caller["org_id"]
+    try:
+        import psycopg
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT token, email, role, expires_at, created_at
+                    FROM qap_invites
+                    WHERE org_id = %s AND used = FALSE AND expires_at > NOW()
+                    ORDER BY created_at DESC
+                """, (org_id,))
+                rows = cur.fetchall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return [
+        {
+            "id": r[0],
+            "email": r[1],
+            "role": r[2],
+            "expires_at": r[3].isoformat(),
+            "created_at": r[4].isoformat(),
+        }
+        for r in rows
+    ]
+
+
+@router.delete("/invites/{invite_id}", summary="Cancel a pending invite")
+async def cancel_org_invite(invite_id: str, authorization: Optional[str] = Header(default=None)):
+    """Mark an invite as used (cancelled). Admin or owner only."""
+    caller = _resolve_caller(authorization)
+    if not caller:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+    if caller["role"] not in ("admin", "owner", "superuser"):
+        raise HTTPException(status_code=403, detail="Only admin or owner can cancel invites.")
+
+    try:
+        import psycopg
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE qap_invites SET used = TRUE WHERE token = %s AND org_id = %s AND used = FALSE",
+                    (invite_id, caller["org_id"])
+                )
+                if cur.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Invite not found or already cancelled.")
+            conn.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True, "invite_id": invite_id}

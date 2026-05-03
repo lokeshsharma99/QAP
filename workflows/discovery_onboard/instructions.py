@@ -12,3 +12,7 @@ Steps:
 3. Verify the Site Manifesto contains at least 3 pages.
 4. Report the onboarding summary to the user.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

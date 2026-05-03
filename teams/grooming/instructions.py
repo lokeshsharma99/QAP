@@ -50,3 +50,7 @@ full assessment as a Jira comment so the BA can update the ticket accordingly.
 - Assessment posted as Jira comment via add_jira_comment tool
 - Comment includes: scorecard tables, enhancement recommendations, rewritten story, BA action required
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

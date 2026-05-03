@@ -5,6 +5,7 @@ Librarian Agent Tools
 Tools for the Librarian agent including file watching, re-indexing, and obsolescence detection capabilities.
 """
 
+import json
 import os
 import re
 import time
@@ -26,6 +27,7 @@ from contracts.test_deletion_approval import (
     TestDeletionRequest,
 )
 from db.session import get_automation_kb as get_automation_knowledge
+from db.session import get_site_manifesto_kb as _get_site_manifesto_kb
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +125,11 @@ class AutomationFileWatcher:
         - .json      → FixedSizeChunking(2000) — structured data, no overlap needed
         - other      → FixedSizeChunking(5000) — default
 
+        For .feature files, scenario names, tags, and ticket IDs are extracted
+        and stored as metadata so RTM/traceability queries can surface them.
+        For .ts Page Object files, the AUT page URL is extracted from the class
+        and stored so the Site Manifesto → Automation KB link is queryable.
+
         Args:
             file_path: Path to the file to re-index
         """
@@ -138,15 +145,26 @@ class AutomationFileWatcher:
             else:
                 chunking = FixedSizeChunking(chunk_size=5000, overlap=0)
 
+            # ---------------------------------------------------------------------------
+            # Build rich metadata depending on file type
+            # ---------------------------------------------------------------------------
+            metadata: dict = {
+                "file_path": file_path,
+                "file_type": extension,
+                "last_modified": self.get_file_modification_time(file_path),
+            }
+
+            if extension == '.feature':
+                metadata.update(_extract_feature_metadata(file_path))
+
+            elif extension == '.ts' and 'pages/' in file_path.replace("\\", "/"):
+                metadata.update(_extract_pom_metadata(file_path))
+
             logger.info(f"Re-indexing {file_path} with {type(chunking).__name__}")
             self.knowledge.insert(
                 path=file_path,
                 reader=TextReader(chunking_strategy=chunking),
-                metadata={
-                    "file_path": file_path,
-                    "file_type": extension,
-                    "last_modified": self.get_file_modification_time(file_path),
-                },
+                metadata=metadata,
             )
             logger.info(f"Successfully re-indexed: {file_path}")
         except Exception as e:
@@ -172,6 +190,87 @@ class AutomationFileWatcher:
             self.last_modified[file_path] = self.get_file_modification_time(file_path)
 
         logger.info("Full re-index complete")
+
+
+# ---------------------------------------------------------------------------
+# Metadata Extractors
+# ---------------------------------------------------------------------------
+
+def _extract_feature_metadata(file_path: str) -> dict:
+    """Parse a .feature file and return structured metadata.
+
+    Extracts:
+    - ``ticket_ids``     : list of Jira/ADO keys found in tags (@GDS-42) or Feature line
+    - ``tags``           : all @-tags on the Feature and each Scenario
+    - ``scenario_names`` : list of Scenario / Scenario Outline titles
+    - ``feature_title``  : the Feature: line text
+    - ``file_type_label``: "feature"
+
+    Returns:
+        dict of metadata fields
+    """
+    try:
+        content = Path(file_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {"file_type_label": "feature"}
+
+    ticket_pattern = re.compile(r"@([A-Z][A-Z0-9]+-\d+)", re.IGNORECASE)
+    tag_pattern    = re.compile(r"@(\w[\w-]*)")
+    scenario_re    = re.compile(r"^\s*(?:Scenario(?:\s+Outline)?)\s*:\s*(.+)", re.MULTILINE)
+    feature_re     = re.compile(r"^\s*Feature\s*:\s*(.+)", re.MULTILINE)
+
+    ticket_ids  = list(dict.fromkeys(ticket_pattern.findall(content)))
+    all_tags    = list(dict.fromkeys(tag_pattern.findall(content)))
+    scenarios   = [m.strip() for m in scenario_re.findall(content)]
+    feature_m   = feature_re.search(content)
+    feature_title = feature_m.group(1).strip() if feature_m else ""
+
+    return {
+        "file_type_label": "feature",
+        "feature_title": feature_title,
+        "ticket_ids": ticket_ids,
+        "tags": all_tags,
+        "scenario_names": scenarios,
+        "scenario_count": len(scenarios),
+    }
+
+
+def _extract_pom_metadata(file_path: str) -> dict:
+    """Parse a Page Object .ts file and extract the AUT page URL if present.
+
+    Looks for:
+    - ``protected readonly path = '/some/url'``
+    - ``static readonly url = 'https://...'``
+    - ``navigate(url: string = '/some/url')``
+
+    Returns:
+        dict with ``page_url`` and ``file_type_label``
+    """
+    try:
+        content = Path(file_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return {"file_type_label": "page_object"}
+
+    url_patterns = [
+        re.compile(r"""(?:readonly\s+)?(?:path|url|PAGE_URL|pageUrl)\s*[:=]\s*['"`]([^'"`]+)['"`]"""),
+        re.compile(r"""navigate\s*\([^)]*=\s*['"`]([^'"`]+)['"`]"""),
+    ]
+
+    page_url = ""
+    for pat in url_patterns:
+        m = pat.search(content)
+        if m:
+            page_url = m.group(1).strip()
+            break
+
+    class_m = re.search(r"class\s+(\w+)", content)
+    class_name = class_m.group(1) if class_m else Path(file_path).stem
+
+    return {
+        "file_type_label": "page_object",
+        "page_url": page_url,
+        "class_name": class_name,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +348,190 @@ def get_file_statistics(watch_path: str = "automation") -> str:
         stats += f"  {ext}: {count}\n"
 
     return stats
+
+
+# ---------------------------------------------------------------------------
+# RTM Persistence Tool
+# ---------------------------------------------------------------------------
+
+@tool(
+    name="persist_traceability_to_rtm",
+    description=(
+        "Persist the AC-ID → Scenario traceability map from a GherkinSpec into the RTM "
+        "knowledge base so any agent or the /rtm endpoint can query it later. "
+        "Call this immediately after Scribe finalises a feature file."
+    ),
+)
+def persist_traceability_to_rtm(
+    ticket_id: str,
+    feature_file: str,
+    traceability: str,
+    feature_title: str = "",
+    tags: str = "",
+) -> str:
+    """Write AC-ID → Scenario links into the RTM vector KB.
+
+    Each row stored in the RTM KB is a plain-text document of the form::
+
+        Ticket: GDS-42
+        Feature: Personal Details Form
+        Feature file: automation/features/personal_details.feature
+        AC-ID: GDS-42-AC-001
+        Scenario: Verify personal details form submits successfully
+        Tags: @GDS-42 @smoke @regression
+
+    This schema is chosen so hybrid search on 'GDS-42 personal details' or
+    'AC-001 smoke' surfaces the right rows quickly.
+
+    Args:
+        ticket_id:     Jira/ADO ticket key, e.g. "GDS-42"
+        feature_file:  Relative path to the .feature file
+        traceability:  JSON string of {AC-ID: scenario_name, ...} mapping
+        feature_title: Human-readable Feature: title
+        tags:          Space/comma-separated tags for this feature
+
+    Returns:
+        Status message describing how many RTM rows were written.
+    """
+    from db.session import get_rtm_kb
+
+    try:
+        mapping: dict = json.loads(traceability) if isinstance(traceability, str) else traceability
+    except (json.JSONDecodeError, TypeError):
+        return f"ERROR: traceability must be a JSON object string, got: {traceability!r}"
+
+    if not mapping:
+        return "No traceability entries to persist (empty mapping)."
+
+    rtm_kb = get_rtm_kb()
+    rows_written = 0
+
+    for ac_id, scenario_name in mapping.items():
+        doc_text = (
+            f"Ticket: {ticket_id}\n"
+            f"Feature: {feature_title}\n"
+            f"Feature file: {feature_file}\n"
+            f"AC-ID: {ac_id}\n"
+            f"Scenario: {scenario_name}\n"
+            f"Tags: {tags}\n"
+        )
+        try:
+            rtm_kb.load_text(
+                text=doc_text,
+                metadata={
+                    "ticket_id": ticket_id,
+                    "ac_id": ac_id,
+                    "scenario_name": scenario_name,
+                    "feature_file": feature_file,
+                    "feature_title": feature_title,
+                    "tags": tags,
+                    "source": "scribe",
+                },
+            )
+            rows_written += 1
+        except Exception as e:
+            logger.error(f"Failed to persist RTM row for {ac_id}: {e}")
+
+    return f"Persisted {rows_written}/{len(mapping)} RTM traceability rows for ticket {ticket_id}."
+
+
+# ---------------------------------------------------------------------------
+# Site Manifesto ↔ Automation KB cross-link tool
+# ---------------------------------------------------------------------------
+
+@tool(
+    name="link_pom_to_manifesto",
+    description=(
+        "Scan every Page Object in automation/pages/ and enrich its KB entry with the "
+        "matching Site Manifesto page URL and component list. "
+        "Call this after index_automation_codebase to complete the Digital Twin link."
+    ),
+)
+def link_pom_to_manifesto(watch_path: str = "automation") -> str:
+    """Enrich Page Object KB entries with Site Manifesto page URLs.
+
+    For every .ts file in automation/pages/:
+    1. Extract its ``page_url`` via ``_extract_pom_metadata``.
+    2. Query the Site Manifesto KB: "page {page_url} components locators".
+    3. Re-insert the POM into the Automation KB with ``manifesto_page_url`` and
+       ``manifesto_components`` added to its metadata.
+
+    This creates the bidirectional link:
+
+        Site Manifesto: /personal-details → PersonalDetailsPage.ts
+        Automation KB:  PersonalDetailsPage.ts → /personal-details (+ component list)
+
+    Args:
+        watch_path: Path to the automation directory (default: "automation")
+
+    Returns:
+        Status string listing how many POMs were linked.
+    """
+    pages_dir = Path(watch_path) / "pages"
+    if not pages_dir.exists():
+        return "No pages/ directory found — nothing to link."
+
+    automation_kb = get_automation_knowledge()
+    site_manifesto_kb = _get_site_manifesto_kb()
+
+    linked = 0
+    skipped = 0
+    errors = 0
+
+    for pom_path in pages_dir.rglob("*.ts"):
+        try:
+            pom_meta = _extract_pom_metadata(str(pom_path))
+            page_url = pom_meta.get("page_url", "")
+            class_name = pom_meta.get("class_name", pom_path.stem)
+
+            # Query the Site Manifesto for this page URL
+            query = f"page {page_url} components locators" if page_url else f"{class_name} components"
+            manifesto_docs = site_manifesto_kb.search(query=query, num_documents=3)
+
+            manifesto_components: list[str] = []
+            manifesto_page_url = page_url
+
+            for doc in manifesto_docs:
+                # Extract component names from manifesto content (heuristic: lines with locator_value)
+                if doc.content:
+                    for line in doc.content.split("\n"):
+                        if "locator_value" in line or "name:" in line:
+                            part = line.split(":")[-1].strip().strip('"').strip("'")
+                            if part and part not in manifesto_components:
+                                manifesto_components.append(part)
+                if doc.meta_data and doc.meta_data.get("url"):
+                    manifesto_page_url = doc.meta_data["url"]
+
+            if not manifesto_docs:
+                skipped += 1
+                continue
+
+            # Re-index the POM with enriched metadata (manifesto link)
+            automation_kb.insert(
+                path=str(pom_path),
+                reader=TextReader(chunking_strategy=RecursiveChunking(chunk_size=1000, overlap=100)),
+                metadata={
+                    "file_path": str(pom_path),
+                    "file_type": ".ts",
+                    "file_type_label": "page_object",
+                    "class_name": class_name,
+                    "page_url": page_url,
+                    "manifesto_page_url": manifesto_page_url,
+                    "manifesto_components": ", ".join(manifesto_components[:10]),
+                    "last_modified": pom_path.stat().st_mtime,
+                },
+            )
+            linked += 1
+            logger.info(f"Linked {pom_path.name} → manifesto page: {manifesto_page_url}")
+
+        except Exception as e:
+            logger.error(f"Failed to link {pom_path}: {e}")
+            errors += 1
+
+    return (
+        f"Site Manifesto ↔ Automation KB link complete: "
+        f"{linked} POMs linked, {skipped} skipped (no manifesto match), {errors} errors."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -412,6 +695,28 @@ def generate_obsolescence_report(watch_path: str = "automation") -> str:
 
 
 # ---------------------------------------------------------------------------
+# Module-level helper used by the app/main.py background file watcher.
+# Thin wrapper over AutomationFileWatcher.re_index_file() so it can be
+# called without instantiating the full Librarian agent.
+# ---------------------------------------------------------------------------
+
+_watcher_instance: AutomationFileWatcher | None = None
+
+
+def _reindex_single_file(file_path: str) -> None:
+    """Re-index a single automation/ file into the Knowledge Base.
+
+    Called by the background watchfiles task in app/main.py whenever a file
+    is created, modified, or deleted. Uses a module-level singleton watcher
+    to avoid re-creating the Knowledge DB connection on every file event.
+    """
+    global _watcher_instance
+    if _watcher_instance is None:
+        _watcher_instance = AutomationFileWatcher()
+    _watcher_instance.re_index_file(file_path)
+
+
+# ---------------------------------------------------------------------------
 # LibrarianToolkit
 # ---------------------------------------------------------------------------
 class LibrarianToolkit(Toolkit):
@@ -424,6 +729,8 @@ class LibrarianToolkit(Toolkit):
                 index_automation_codebase,
                 check_and_re_index_changes,
                 get_file_statistics,
+                persist_traceability_to_rtm,
+                link_pom_to_manifesto,
                 detect_obsolete_scenarios,
                 detect_unused_steps,
                 detect_orphaned_pages,

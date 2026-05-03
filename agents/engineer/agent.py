@@ -16,7 +16,7 @@ from agno.tools.file import FileTools
 from agno.tools.knowledge import KnowledgeTools
 
 from agents.engineer.instructions import INSTRUCTIONS
-from agents.engineer.tools import run_typecheck, write_feature, write_pom, write_step_def
+from agents.engineer.tools import run_typecheck, write_feature, write_pom, write_step_def, run_tests, parse_test_report, write_run_context, run_eslint, run_ruff
 from agents.librarian.agent import automation_knowledge
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
 from db import get_qap_learnings_kb, get_site_manifesto_kb, get_culture_manager
@@ -85,7 +85,12 @@ engineer = Agent(
         write_pom,
         write_step_def,
         write_feature,
+        write_run_context,
         run_typecheck,
+        run_eslint,
+        run_ruff,
+        run_tests,
+        parse_test_report,
     ],
     # Instructions
     instructions=INSTRUCTIONS,

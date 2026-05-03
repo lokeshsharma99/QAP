@@ -48,11 +48,12 @@ Workflow:
 6. **Heal Failures**: If tests fail, run run_healer() to repair them
 7. **List Tests**: Use list_generated_tests() to see all generated tests
 
-Test Storage:
-- Generated tests are stored in automation/technical-tests/
-- Markdown plans in automation/technical-tests/specs/
-- Playwright tests in automation/technical-tests/tests/
-- Seed test at automation/technical-tests/seed.spec.ts
+Test Storage — Artifact Output Paths (ABSOLUTE RULE):
+- ALL generated artifacts MUST be inside `automation/` and nowhere else.
+- Generated tests: `automation/technical-tests/tests/<name>.spec.ts`
+- Markdown plans: `automation/technical-tests/specs/<name>.md`
+- Seed test: `automation/technical-tests/seed.spec.ts`
+- ❌ NEVER write outside `automation/` — not to project root, `generated/`, `docs/`, or elsewhere.
 
 Relationship with Engineer Agent:
 - Complementary, not competitive
@@ -89,3 +90,7 @@ If any step fails:
 - Do not block the Engineer agent workflow
 - Continue with other testable scenarios
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+INSTRUCTIONS = INSTRUCTIONS + ROUTING_INSTRUCTIONS

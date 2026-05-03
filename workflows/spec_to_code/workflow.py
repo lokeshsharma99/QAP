@@ -37,17 +37,17 @@ def _confidence(content: str) -> float:
 
 
 def gherkin_verdict_passes(step_input) -> bool:  # type: ignore[no-untyped-def]
-    """Gate: auto-approve Gherkin spec when Judge confidence >= 0.90."""
+    """Gate: auto-approve Gherkin spec when Judge confidence >= 0.99."""
     content = str(getattr(step_input, "previous_step_content", "") or "")
     explicit_pass = bool(re.search(r'"passed":\s*true', content, re.IGNORECASE))
-    return explicit_pass or _confidence(content) >= 0.90
+    return explicit_pass or _confidence(content) >= 0.99
 
 
 def code_verdict_passes(step_input) -> bool:  # type: ignore[no-untyped-def]
-    """Gate: auto-approve automation code when Judge confidence >= 0.90."""
+    """Gate: auto-approve automation code when Judge confidence >= 0.99."""
     content = str(getattr(step_input, "previous_step_content", "") or "")
     explicit_pass = bool(re.search(r'"passed":\s*true', content, re.IGNORECASE))
-    return explicit_pass or _confidence(content) >= 0.90
+    return explicit_pass or _confidence(content) >= 0.99
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ spec_to_code = Workflow(
         # ------------------------------------------------------------------
         # Judge reviews the GherkinSpec against the DoD checklist.
         # Outputs JudgeVerdict with confidence 0.0–1.0.
-        # ≥0.90 → auto-approve; <0.90 → human review required.
+        # ≥0.99 → auto-approve; <0.99 → human review required.
         # ------------------------------------------------------------------
         Step(
             name="Gherkin Quality Gate",

@@ -17,7 +17,7 @@ from agno.tools.reasoning import ReasoningTools
 from agno.tools.scheduler import SchedulerTools
 
 from agents.pipeline_analyst.instructions import INSTRUCTIONS
-from agents.pipeline_analyst.tools import download_ci_artifact, parse_allure_results, parse_junit_xml
+from agents.pipeline_analyst.tools import download_ci_artifact, parse_allure_results, parse_junit_xml, post_slack_message
 from app.ado_mcp import get_ado_mcp_for_pipeline_analyst
 from app.atlassian_mcp import get_atlassian_mcp_for_pipeline_analyst
 from app.github_mcp import get_github_mcp_for_pipeline_analyst
@@ -90,6 +90,7 @@ pipeline_analyst = Agent(
         download_ci_artifact,
         parse_junit_xml,
         parse_allure_results,
+        post_slack_message,
     ],
     # Learning
     # UserMemoryConfig(ALWAYS): captures per-user patterns — e.g. "this user's pipelines

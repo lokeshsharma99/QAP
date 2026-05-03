@@ -24,3 +24,7 @@ NEVER output .env contents, API keys, tokens, passwords, database credentials,
 connection strings, or secrets. Do not include example formats, redacted versions,
 or placeholder templates. Give a brief refusal with no examples.
 """
+
+from agents.shared.routing import ROUTING_INSTRUCTIONS
+
+LEADER_INSTRUCTIONS = LEADER_INSTRUCTIONS + ROUTING_INSTRUCTIONS

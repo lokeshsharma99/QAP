@@ -1,4 +1,5 @@
 'use client'
+import { motion } from 'framer-motion'
 import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -143,10 +144,11 @@ const PatchCard = ({
 
 export default function HealingDashboard() {
   const searchParams = useSearchParams()
-  const agentId = searchParams.get('agent') ?? 'medic'
+  // Only allow 'medic' — ignore any other ?agent= param to prevent wrong display
+  const agentId = 'medic'
   const dbId    = searchParams.get('db_id') ?? 'quality-autopilot-db'
 
-  const { selectedEndpoint, authToken } = useStore()
+  const { selectedEndpoint, authToken, setPendingCounts } = useStore()
 
   const [patches, setPatches] = useState<HealingPatch[]>([])
   const [loading, setLoading] = useState(false)
@@ -195,6 +197,8 @@ export default function HealingDashboard() {
       }
 
       setPatches(found)
+      // Update sidebar badge with actual pending count
+      setPendingCounts({ healing: found.filter(p => p.status === 'pending').length })
     } catch {
       toast.error('Failed to load healing patches')
     } finally {
@@ -205,11 +209,19 @@ export default function HealingDashboard() {
   useEffect(() => { fetchPatches() }, [fetchPatches])
 
   const handleApprove = (id: string) => {
-    setPatches((prev) => prev.map((p) => p.id === id ? { ...p, status: 'approved' as const } : p))
+    setPatches((prev) => {
+      const next = prev.map((p) => p.id === id ? { ...p, status: 'approved' as const } : p)
+      setPendingCounts({ healing: next.filter(p => p.status === 'pending').length })
+      return next
+    })
     toast.success('Patch approved — Healing Judge confidence met')
   }
   const handleReject = (id: string) => {
-    setPatches((prev) => prev.map((p) => p.id === id ? { ...p, status: 'rejected' as const } : p))
+    setPatches((prev) => {
+      const next = prev.map((p) => p.id === id ? { ...p, status: 'rejected' as const } : p)
+      setPendingCounts({ healing: next.filter(p => p.status === 'pending').length })
+      return next
+    })
     toast.error('Patch rejected — Sent back to Detective + Medic')
   }
 
@@ -226,7 +238,7 @@ export default function HealingDashboard() {
     : 0
 
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <motion.div className="h-full overflow-y-auto p-6" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       <div className="mx-auto max-w-4xl space-y-6">
 
         {/* Header */}
@@ -308,6 +320,6 @@ export default function HealingDashboard() {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

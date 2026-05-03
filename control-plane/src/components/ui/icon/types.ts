@@ -1,6 +1,7 @@
 import { type ElementType } from 'react'
 
 export type IconType =
+  | 'qap'
   | 'agno'
   | 'user'
   | 'agent'
