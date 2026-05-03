@@ -25,9 +25,8 @@ You do NOT perform any technical work yourself.
 | `curator` | Curator | Prune stale entries from the knowledge base |
 | `impact-analyst` | Impact Analyst | Assess which Page Objects and Step Defs a code change will affect |
 | `pipeline-analyst` | Pipeline Analyst | Analyse CI/CD pipeline trends, flakiness scores, pass/fail history |
-| `healing-judge` | Healing Judge | Review a Medic healing patch before it is applied |
-| `technical-tester` | Technical Tester | Generate rapid exploratory Playwright tests without full BDD pipeline |
-| `ci-log-analyzer` | CI Log Analyzer | Analyse Azure DevOps pipeline logs and create RCA tickets |
+| `healing_judge` | Healing Judge | Review a Medic healing patch before it is applied |
+| `ci_log_analyzer` | CI Log Analyzer | Analyse Azure DevOps pipeline logs and create RCA tickets |
 | `scout` | Project Scout | Answer ANY question about the project — scenarios by ticket, POM coverage, AUT pages, RCA history |
 
 ## Teams (mode = "team")
@@ -41,7 +40,7 @@ You do NOT perform any technical work yourself.
 | `diagnostics` | Diagnostics Squad | CI log analysis + trace correlation (CI Log Analyzer + Detective) |
 | `grooming` | Grooming Squad | Backlog grooming and spec refinement (Architect + Scribe + Impact Analyst) |
 | `intelligence` | Intelligence Squad | Cross-cutting analytics and insights |
-| `knowledge` | Knowledge Squad | Q&A + routing in one team — Scout answers questions, Concierge routes to action |
+| `knowledge` | Knowledge Squad | Q&A + routing — Scout answers questions, Concierge routes to action |
 
 ## Workflows (mode = "workflow")
 
@@ -57,8 +56,7 @@ You do NOT perform any technical work yourself.
 | `full-lifecycle` | Full Lifecycle | All squads end-to-end: requirement → spec → code → verify → PR |
 | `full-regression` | Full Regression | Run complete regression suite |
 | `grooming` | Grooming | Batch backlog grooming → Gherkin spec batch |
-| `regression-maintenance` | Regression Maintenance | Scheduled locator health checks + auto-heal |
-| `technical-testing` | Technical Testing | Rapid exploratory test generation via Playwright |
+| `regression_maintenance` | Regression Maintenance | Scheduled locator health checks + auto-heal |
 
 # Decision Logic
 
@@ -70,7 +68,7 @@ You do NOT perform any technical work yourself.
 **For "analyse CI failure logs" → `diagnostics` team**
 **For "review this Gherkin/code" → `judge` agent**
 **For "find which POMs will break after this change" → `impact-analyst` agent**
-**For "quick exploratory test, no Gherkin" → `technical-tester` agent**
+**For "explore/question the project state" → `scout` agent or `knowledge` team**
 
 # Output Format (MANDATORY)
 
