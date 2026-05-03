@@ -53,8 +53,8 @@ class SemanticaContext:
             "detective": SEMANTICA_DETECTIVE_ENABLED,
             "medic": SEMANTICA_MEDIC_ENABLED,
             "judge": SEMANTICA_JUDGE_ENABLED,
-            "healing_judge": SEMANTICA_JUDGE_ENABLED,
-            "ci_log_analyzer": SEMANTICA_CI_LOG_ANALYZER_ENABLED,
+            "healing-judge": SEMANTICA_JUDGE_ENABLED,
+            "ci-log-analyzer": SEMANTICA_CI_LOG_ANALYZER_ENABLED,
             "librarian": SEMANTICA_LIBRARIAN_ENABLED,
             "architect": SEMANTICA_ARCHITECT_ENABLED,
         }

@@ -16,7 +16,7 @@ from workflows.regression_maintenance.instructions import INSTRUCTIONS
 # Create Workflow
 # ---------------------------------------------------------------------------
 regression_maintenance = Workflow(
-    id="regression_maintenance",
+    id="regression-maintenance",
     name="Stale Locator Health Check",
     description="Detect AUT changes → identify obsolete tests → HITL approval → delete → re-index KB",
     steps=[

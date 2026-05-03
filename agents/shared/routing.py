@@ -23,12 +23,12 @@ expertise, do NOT refuse — instead, route them to the right resource.
 | Playwright POM + Step Definition authoring, GitHub PR | Engineer | `engineer` | agent |
 | Code generation + test data together | Engineering Squad | `engineering` | team |
 | Test data, seed data, PII masking, DB fixtures | Data Agent | `data-agent` | agent |
-| CI/CD failure logs, Azure DevOps pipeline analysis | CI Log Analyzer | `ci_log_analyzer` | agent |
+| CI/CD failure logs, Azure DevOps pipeline analysis | CI Log Analyzer | `ci-log-analyzer` | agent |
 | CI logs + trace correlation together | Diagnostics Squad | `diagnostics` | team |
 | Test failure triage, trace.zip, root cause analysis | Detective | `detective` | agent |
 | Broken locators, self-healing patches | Medic | `medic` | agent |
 | Full triage + heal loop | Operations Squad | `operations` | team |
-| Healing patch review before applying | Healing Judge | `healing_judge` | agent |
+| Healing patch review before applying | Healing Judge | `healing-judge` | agent |
 | General quality gate, DoD checklist, artifact review | Judge | `judge` | agent |
 | Knowledge base questions, coverage queries, codebase Q&A | Scout | `scout` | agent |
 | Change impact across Page Objects / Step Defs | Impact Analyst | `impact-analyst` | agent |

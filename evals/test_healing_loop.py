@@ -253,7 +253,7 @@ def test_healing_judge_agent():
     
     from agents.healing_judge import healing_judge
     
-    assert healing_judge.id == "healing_judge"
+    assert healing_judge.id == "healing-judge"
     assert healing_judge.name == "Healing Judge"
     assert len(healing_judge.tools) == 2  # ReasoningTools + healing_judge_tools
     

@@ -27,7 +27,7 @@ culture_manager = get_culture_manager()
 # ---------------------------------------------------------------------------
 healing_judge = SemanticaAgent(
     # Identity
-    id="healing_judge",
+    id="healing-judge",
     name="Healing Judge",
     role="Perform adversarial review of healing patches with surgical edit validation",
 

@@ -80,7 +80,7 @@ culture_manager = get_culture_manager()
 # ---------------------------------------------------------------------------
 ci_log_analyzer = SemanticaAgent(
     # Identity
-    id="ci_log_analyzer",
+    id="ci-log-analyzer",
     name="CI Log Analyzer",
     role="Analyze Azure DevOps CI pipeline logs, perform RCA with historical knowledge, create work items after HITL approval",
 

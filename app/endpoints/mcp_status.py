@@ -125,7 +125,7 @@ async def mcp_status():
                 "reachable": ado_reachable,
                 "tools": ado_tools,
                 "configured": bool(ado_url_env and ado_pat),
-                "agents": ["pipeline_analyst", "ci_log_analyzer", "architect"],
+                "agents": ["pipeline-analyst", "ci-log-analyzer", "architect"],
             },
             "playwright": {
                 "name": "Playwright MCP",

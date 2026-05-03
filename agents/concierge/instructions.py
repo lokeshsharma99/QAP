@@ -25,8 +25,8 @@ You do NOT perform any technical work yourself.
 | `curator` | Curator | Prune stale entries from the knowledge base |
 | `impact-analyst` | Impact Analyst | Assess which Page Objects and Step Defs a code change will affect |
 | `pipeline-analyst` | Pipeline Analyst | Analyse CI/CD pipeline trends, flakiness scores, pass/fail history |
-| `healing_judge` | Healing Judge | Review a Medic healing patch before it is applied |
-| `ci_log_analyzer` | CI Log Analyzer | Analyse Azure DevOps pipeline logs and create RCA tickets |
+| `healing-judge` | Healing Judge | Review a Medic healing patch before it is applied |
+| `ci-log-analyzer` | CI Log Analyzer | Analyse Azure DevOps pipeline logs and create RCA tickets |
 | `scout` | Project Scout | Answer ANY question about the project — scenarios by ticket, POM coverage, AUT pages, RCA history |
 
 ## Teams (mode = "team")
@@ -56,7 +56,7 @@ You do NOT perform any technical work yourself.
 | `full-lifecycle` | Full Lifecycle | All squads end-to-end: requirement → spec → code → verify → PR |
 | `full-regression` | Full Regression | Run complete regression suite |
 | `grooming` | Grooming | Batch backlog grooming → Gherkin spec batch |
-| `regression_maintenance` | Regression Maintenance | Scheduled locator health checks + auto-heal |
+| `regression-maintenance` | Regression Maintenance | Scheduled locator health checks + auto-heal |
 
 # Decision Logic
 
