@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import {
   MessageSquare, RefreshCw, Trash2, ChevronLeft, ChevronRight,
   Search, Bot, Users, GitBranch, Clock, Coins, X, ChevronDown,
-  Copy, Cpu, Wrench, Brain, PanelRightClose,
+  Copy, Cpu, Wrench, Brain, PanelRightClose, Layers,
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -538,10 +538,16 @@ const SkeletonRows = ({ count = 8 }: { count?: number }) => (
 const SessionsPage = () => {
   const selectedEndpoint = useStore((s) => s.selectedEndpoint)
   const authToken = useStore((s) => s.authToken)
+  const agents = useStore((s) => s.agents)
+  const teams  = useStore((s) => s.teams)
 
   const [data, setData] = useState<PaginatedSessions | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Entity picker — null = "All"
+  const [entityId,   setEntityId]   = useState<string | null>(null)
+  const [entityType, setEntityType] = useState<'agent' | 'team' | null>(null)
 
   const [typeFilter, setTypeFilter] = useState<SessionTypeFilter>('all')
   const [sortOption, setSortOption] = useState<SortOption>('updated_at_desc')
@@ -554,6 +560,12 @@ const SessionsPage = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [selectedSession, setSelectedSession] = useState<SessionSchema | null>(null)
 
+  // When an entity is selected, lock the type filter automatically
+  const effectiveType: SessionTypeFilter =
+    entityType === 'agent' ? 'agent'
+    : entityType === 'team' ? 'team'
+    : typeFilter
+
   const load = useCallback(async () => {
     if (!selectedEndpoint) return
     setLoading(true)
@@ -562,7 +574,8 @@ const SessionsPage = () => {
       const { sortBy, sortOrder } = parseSortOption(sortOption)
       const result = await fetchSessionsPageAPI({
         base: selectedEndpoint,
-        sessionType: typeFilter === 'all' ? undefined : typeFilter,
+        sessionType: effectiveType === 'all' ? undefined : effectiveType,
+        componentId: entityId ?? undefined,
         sortBy,
         sortOrder,
         limit,
@@ -576,16 +589,12 @@ const SessionsPage = () => {
     } finally {
       setLoading(false)
     }
-  }, [selectedEndpoint, authToken, typeFilter, sortOption, page, limit, search])
+  }, [selectedEndpoint, authToken, effectiveType, sortOption, page, limit, search, entityId])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useEffect(() => { load() }, [load])
 
   // Reset page when filters change
-  useEffect(() => {
-    setPage(1)
-  }, [typeFilter, sortOption, search])
+  useEffect(() => { setPage(1) }, [typeFilter, sortOption, search, entityId])
 
   const handleSearchChange = (val: string) => {
     setSearchInput(val)
@@ -593,7 +602,7 @@ const SessionsPage = () => {
     searchDebounce.current = setTimeout(() => setSearch(val), 400)
   }
 
-  const handleDelete = async (sessionId: string, type?: string) => {
+  const handleDelete = async (sessionId: string) => {
     if (!selectedEndpoint) return
     setDeletingId(sessionId)
     try {
@@ -615,167 +624,285 @@ const SessionsPage = () => {
     }
   }
 
-  const sessions = data?.data ?? []
-  const meta = data?.meta
+  const selectEntity = (id: string, type: 'agent' | 'team') => {
+    if (entityId === id) {
+      // deselect
+      setEntityId(null)
+      setEntityType(null)
+      setTypeFilter('all')
+    } else {
+      setEntityId(id)
+      setEntityType(type)
+      setTypeFilter(type)
+    }
+    setSelectedSession(null)
+  }
+
+  const clearEntity = () => {
+    setEntityId(null)
+    setEntityType(null)
+    setTypeFilter('all')
+    setSelectedSession(null)
+  }
+
+  const sessions   = data?.data ?? []
+  const meta       = data?.meta
   const totalPages = meta?.total_pages ?? 1
+
+  const selectedEntityName =
+    entityType === 'agent'
+      ? (agents.find(a => a.agent_id === entityId)?.name ?? entityId)
+      : entityType === 'team'
+      ? (teams.find(t => t.team_id === entityId)?.name ?? entityId)
+      : null
 
   return (
     <motion.div className="flex h-full overflow-hidden bg-background" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
-      {/* ── Left: list ── */}
-      <div className={cn('flex flex-col overflow-hidden transition-all duration-200', selectedSession ? 'w-[55%]' : 'flex-1')}>
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <MessageSquare className="size-5 text-brand" />
-          <div>
-            <h1 className="text-sm font-semibold text-primary">Sessions</h1>
-            <p className="text-xs text-muted">
-              {meta ? `${meta.total_count.toLocaleString()} total` : 'Conversation histories'}
-            </p>
-          </div>
+
+      {/* ── Entity Picker Sidebar ── */}
+      <div className="flex w-44 shrink-0 flex-col border-r border-white/5 overflow-hidden">
+        <div className="shrink-0 border-b border-white/5 px-3 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted/60">Filter by</p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={load}
-          disabled={loading}
-          className="gap-1.5 text-xs text-muted hover:text-primary"
-        >
-          <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
-          Refresh
-        </Button>
-      </div>
+        <div className="flex-1 overflow-y-auto py-1">
+          {/* All */}
+          <button
+            onClick={clearEntity}
+            className={cn(
+              'flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors',
+              !entityId ? 'bg-accent text-primary font-medium' : 'text-muted hover:bg-accent/50 hover:text-primary',
+            )}
+          >
+            <Layers className="size-3.5 shrink-0" />
+            All Sessions
+          </button>
 
-      {/* Filters bar */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-white/5 px-6 py-3">
-        {/* Type tabs */}
-        <div className="flex rounded-lg bg-white/[0.04] p-0.5">
-          {TYPE_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setTypeFilter(f.value)}
-              className={cn(
-                'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                typeFilter === f.value
-                  ? 'bg-accent text-primary shadow-sm'
-                  : 'text-muted hover:text-primary',
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+          {/* Agents */}
+          {agents.length > 0 && (
+            <>
+              <div className="mt-2 mb-0.5 px-3">
+                <p className="text-[9px] font-semibold uppercase tracking-widest text-muted/40">Agents</p>
+              </div>
+              {agents.map((a) => (
+                <button
+                  key={a.agent_id}
+                  onClick={() => selectEntity(a.agent_id, 'agent')}
+                  title={a.name}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors',
+                    entityId === a.agent_id
+                      ? 'bg-blue-500/10 text-blue-400 font-medium'
+                      : 'text-muted hover:bg-accent/50 hover:text-primary',
+                  )}
+                >
+                  <Bot className="size-3.5 shrink-0 text-blue-400/60" />
+                  <span className="truncate">{a.name}</span>
+                </button>
+              ))}
+            </>
+          )}
 
-        {/* Sort */}
-        <select
-          value={sortOption}
-          onChange={(e) => setSortOption(e.target.value as SortOption)}
-          className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-brand/50"
-        >
-          {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
-            <option key={opt} value={opt} className="bg-[#111113]">
-              {SORT_LABELS[opt]}
-            </option>
-          ))}
-        </select>
+          {/* Teams */}
+          {teams.length > 0 && (
+            <>
+              <div className="mt-2 mb-0.5 px-3">
+                <p className="text-[9px] font-semibold uppercase tracking-widest text-muted/40">Teams</p>
+              </div>
+              {teams.map((t) => (
+                <button
+                  key={t.team_id}
+                  onClick={() => selectEntity(t.team_id, 'team')}
+                  title={t.name}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors',
+                    entityId === t.team_id
+                      ? 'bg-purple-500/10 text-purple-400 font-medium'
+                      : 'text-muted hover:bg-accent/50 hover:text-primary',
+                  )}
+                >
+                  <Users className="size-3.5 shrink-0 text-purple-400/60" />
+                  <span className="truncate">{t.name}</span>
+                </button>
+              ))}
+            </>
+          )}
 
-        {/* Search */}
-        <div className="relative ml-auto">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
-          <input
-            value={searchInput}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search sessions…"
-            className="w-52 rounded-lg border border-white/10 bg-white/[0.04] py-1.5 pl-8 pr-8 text-xs text-primary placeholder:text-muted/50 focus:border-brand/50 focus:outline-none focus:ring-1 focus:ring-brand/30"
-          />
-          {searchInput && (
-            <button
-              onClick={() => { setSearchInput(''); setSearch('') }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
-            >
-              <X className="size-3" />
-            </button>
+          {agents.length === 0 && teams.length === 0 && (
+            <p className="px-3 py-4 text-[10px] text-muted/40">No agents registered</p>
           )}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-        {error ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-            <MessageSquare className="size-10 text-muted/30" />
-            <p className="text-sm text-red-400">{error}</p>
-            <Button variant="ghost" size="sm" onClick={load} className="text-xs">
-              Retry
+      {/* ── Main panel (list + detail) ── */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* ── Left: list ── */}
+        <div className={cn('flex flex-col overflow-hidden transition-all duration-200', selectedSession ? 'w-[55%]' : 'flex-1')}>
+          {/* Header */}
+          <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <MessageSquare className="size-5 text-brand" />
+              <div>
+                <h1 className="flex items-center gap-2 text-sm font-semibold text-primary">
+                  Sessions
+                  {selectedEntityName && (
+                    <span className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                      entityType === 'agent' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400',
+                    )}>
+                      {entityType === 'agent' ? <Bot className="size-2.5" /> : <Users className="size-2.5" />}
+                      {selectedEntityName}
+                      <button onClick={clearEntity} className="ml-0.5 opacity-60 hover:opacity-100">
+                        <X className="size-2.5" />
+                      </button>
+                    </span>
+                  )}
+                </h1>
+                <p className="text-xs text-muted">
+                  {meta ? `${meta.total_count.toLocaleString()} total` : 'Conversation histories'}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={load}
+              disabled={loading}
+              className="gap-1.5 text-xs text-muted hover:text-primary"
+            >
+              <RefreshCw className={cn('size-3.5', loading && 'animate-spin')} />
+              Refresh
             </Button>
           </div>
-        ) : loading ? (
-          <div className="flex flex-col gap-2">
-            <SkeletonRows count={8} />
+
+          {/* Filters bar */}
+          <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-white/5 px-6 py-3">
+            {/* Type tabs — hidden when entity locked */}
+            {!entityId && (
+              <div className="flex rounded-lg bg-white/[0.04] p-0.5">
+                {TYPE_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => setTypeFilter(f.value)}
+                    className={cn(
+                      'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                      typeFilter === f.value
+                        ? 'bg-accent text-primary shadow-sm'
+                        : 'text-muted hover:text-primary',
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Sort */}
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as SortOption)}
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-primary focus:outline-none focus:ring-1 focus:ring-brand/50"
+            >
+              {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
+                <option key={opt} value={opt} className="bg-[#111113]">
+                  {SORT_LABELS[opt]}
+                </option>
+              ))}
+            </select>
+
+            {/* Search */}
+            <div className="relative ml-auto">
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
+              <input
+                value={searchInput}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search sessions…"
+                className="w-52 rounded-lg border border-white/10 bg-white/[0.04] py-1.5 pl-8 pr-8 text-xs text-primary placeholder:text-muted/50 focus:border-brand/50 focus:outline-none focus:ring-1 focus:ring-brand/30"
+              />
+              {searchInput && (
+                <button
+                  onClick={() => { setSearchInput(''); setSearch('') }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-primary"
+                >
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
           </div>
-        ) : sessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-            <MessageSquare className="size-12 text-muted/20" />
-            <p className="text-sm font-medium text-muted">No sessions found</p>
-            {(typeFilter !== 'all' || search) && (
-              <p className="text-xs text-muted/60">Try changing the filter or search query</p>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {error ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                <MessageSquare className="size-10 text-muted/30" />
+                <p className="text-sm text-red-400">{error}</p>
+                <Button variant="ghost" size="sm" onClick={load} className="text-xs">Retry</Button>
+              </div>
+            ) : loading ? (
+              <div className="flex flex-col gap-2"><SkeletonRows count={8} /></div>
+            ) : sessions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                <MessageSquare className="size-12 text-muted/20" />
+                <p className="text-sm font-medium text-muted">No sessions found</p>
+                {(entityId || typeFilter !== 'all' || search) && (
+                  <p className="text-xs text-muted/60">Try selecting a different entity or clearing filters</p>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {sessions.map((session) => (
+                  <SessionRow
+                    key={session.session_id}
+                    session={session}
+                    isSelected={selectedSession?.session_id === session.session_id}
+                    onSelect={setSelectedSession}
+                    onDelete={handleDelete}
+                    deleting={deletingId === session.session_id}
+                  />
+                ))}
+              </div>
             )}
           </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {sessions.map((session) => (
-              <SessionRow
-                key={session.session_id}
-                session={session}
-                isSelected={selectedSession?.session_id === session.session_id}
-                onSelect={setSelectedSession}
-                onDelete={handleDelete}
-                deleting={deletingId === session.session_id}
-              />
-            ))}
-          </div>
+
+          {/* Pagination */}
+          {!loading && sessions.length > 0 && (
+            <div className="flex shrink-0 items-center justify-between border-t border-white/5 px-6 py-3">
+              <p className="text-xs text-muted">
+                Page {page} of {totalPages}{meta ? ` · ${meta.total_count.toLocaleString()} sessions` : ''}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1 || loading}
+                  className="h-7 gap-1 px-2 text-xs text-muted hover:text-primary disabled:opacity-30"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  Prev
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || loading}
+                  className="h-7 gap-1 px-2 text-xs text-muted hover:text-primary disabled:opacity-30"
+                >
+                  Next
+                  <ChevronRight className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>{/* end left panel */}
+
+        {/* ── Right: detail panel ── */}
+        {selectedSession && (
+          <SessionDetailPanel
+            session={selectedSession}
+            onClose={() => setSelectedSession(null)}
+          />
         )}
       </div>
-
-      {/* Pagination */}
-      {!loading && sessions.length > 0 && (
-        <div className="flex shrink-0 items-center justify-between border-t border-white/5 px-6 py-3">
-          <p className="text-xs text-muted">
-            Page {page} of {totalPages}{meta ? ` · ${meta.total_count.toLocaleString()} sessions` : ''}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1 || loading}
-              className="h-7 gap-1 px-2 text-xs text-muted hover:text-primary disabled:opacity-30"
-            >
-              <ChevronLeft className="size-3.5" />
-              Prev
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages || loading}
-              className="h-7 gap-1 px-2 text-xs text-muted hover:text-primary disabled:opacity-30"
-            >
-              Next
-              <ChevronRight className="size-3.5" />
-            </Button>
-          </div>
-        </div>
-      )}
-      </div>{/* end left panel */}
-
-      {/* ── Right: detail panel ── */}
-      {selectedSession && (
-        <SessionDetailPanel
-          session={selectedSession}
-          onClose={() => setSelectedSession(null)}
-        />
-      )}
     </motion.div>
   )
 }
