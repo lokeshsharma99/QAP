@@ -2,12 +2,16 @@
 Triage-Heal Workflow
 =====================
 
-Trace ZIP + Logs → Detective → [Healable Gate] → Medic → Verify 3x
+Trace ZIP + Logs → Detective → [Teams HITL Gate] → [Healable Gate] → Medic → Verify 3x
 
 Pipeline:
-  1. Analyze Failure (Detective → RCAReport)
-  2. Healable Check (Condition — LOCATOR_STALE + confidence >= 0.90)
-  3. Patch Locator (Medic → HealingPatch)
+  1. Analyze Failure   (Detective → RCAReport)
+  2. Teams HITL Gate   (Detective → post_rca_to_teams)
+     ↳ requires_confirmation=True — surfaces in /approvals AND pauses the chat run.
+       Human Lead reviews the Adaptive Card in Teams then approves/rejects in /approvals.
+       Both surfaces sync from the same DB record.
+  3. Healable Check    (Condition — LOCATOR_STALE + confidence >= 0.99)
+  4. Patch Locator     (Medic → HealingPatch)
 """
 
 import re
@@ -52,9 +56,43 @@ def healing_passed(outputs) -> bool:  # type: ignore[no-untyped-def]
 triage_heal = Workflow(
     id="triage-heal",
     name="Failure Triage & Self-Heal",
-    description="Trace ZIP + Logs → Detective → [Healable Gate] → Medic → Verify 3x",
+    description="Trace ZIP + Logs → Detective → [Teams HITL Gate] → [Healable Gate] → Medic → Verify 3x",
     steps=[
+        # -------------------------------------------------------------------
+        # Step 1 — Detective: parse trace/logs → RCAReport
+        # -------------------------------------------------------------------
         Step(name="Analyze Failure", agent=detective),
+        # -------------------------------------------------------------------
+        # Step 2 — Teams HITL Gate
+        # Detective calls post_rca_to_teams (requires_confirmation=True).
+        # Agno writes one approval record and pauses. The Human Lead sees:
+        #   • An Adaptive Card in the Teams channel (via Power Automate flow)
+        #   • An approval card in /approvals
+        #   • A paused run in the chat
+        # Approve from either surface → the other resolves automatically.
+        # Only after approval does the pipeline proceed to the Healable Check.
+        # -------------------------------------------------------------------
+        Step(
+            name="Notify Teams & Slack — Await HITL",
+            agent=detective,
+            description="""Post the RCAReport to Microsoft Teams (via Power Automate) and to Slack, then await Human Lead approval.
+
+Input: RCAReport from the Analyze Failure step.
+
+Your task:
+1. Extract from the RCAReport: test_name, classification, confidence, root_cause,
+   affected_file, suggested_fix, requires_human.
+2. Call post_rca_to_teams with these values.
+   - The call will pause for Human Lead confirmation (requires_confirmation=True).
+   - The Adaptive Card will appear in the Teams channel AND in /approvals simultaneously.
+   - Both surfaces reference the same approval record — approve from either one.
+3. Call post_rca_to_slack with the same values.
+   - This also pauses for confirmation via the same HITL mechanism.
+4. After both confirmations are received, output a brief summary:
+   "Teams and Slack notified. RCA for '<test_name>' approved by Human Lead. Proceeding to heal assessment."
+
+Do NOT proceed to the Healable Check gate until both tools return successfully.""",
+        ),
         Condition(
             name="Healable Check",
             evaluator=is_healable,

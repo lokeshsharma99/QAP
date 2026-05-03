@@ -6,7 +6,7 @@ import { useState } from 'react'
 import {
   MessageSquare, LayoutDashboard,
   FileCheck, Wrench, Activity, BookOpen, Brain, ShieldCheck, History, Settings, Map, CalendarClock,
-  FlaskConical, Database, BarChart2, Sparkles, ChevronDown
+  FlaskConical, Database, BarChart2, Sparkles, ChevronDown, Terminal
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +28,7 @@ const NAV_SECTIONS: NavSection[] = [
       { type: 'link', href: '/approvals',   icon: ShieldCheck,     label: 'Approvals' },
       { type: 'link', href: '/spec-review', icon: FileCheck,    label: 'Spec Review' },
       { type: 'link', href: '/healing',     icon: Wrench,       label: 'Healing' },
+      { type: 'link', href: '/automation',  icon: Terminal,     label: 'Automation' },
       { type: 'link', href: '/evals',       icon: FlaskConical, label: 'Evals' },
     ],
   },

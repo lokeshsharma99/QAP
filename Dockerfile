@@ -71,7 +71,8 @@ RUN groupadd -r app && useradd -r -g app -m -s /bin/bash app
 # ---------------------------------------------------------------------------
 WORKDIR /app
 COPY requirements.txt .
-RUN uv pip sync requirements.txt --system
+RUN uv pip sync requirements.txt --system && \
+    pip install ruff --quiet
 
 # ---------------------------------------------------------------------------
 # Patch agno library: PostgresDb.get_all_memory_topics() does not accept

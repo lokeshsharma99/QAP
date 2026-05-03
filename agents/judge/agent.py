@@ -18,7 +18,13 @@ from agno.tools.user_feedback import UserFeedbackTools
 from agents.judge.instructions import INSTRUCTIONS
 from agents.judge.tools import JudgeToolkit
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.sonarqube_mcp import get_sonarqube_mcp_tools
 from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
+
+# ---------------------------------------------------------------------------
+# SonarQube MCP tools (optional — loaded only if SONAR_TOKEN is set)
+# ---------------------------------------------------------------------------
+_sonar_tools = get_sonarqube_mcp_tools()
 
 # ---------------------------------------------------------------------------
 # Semantica Decision Intelligence (optional — activated via SEMANTICA_ENABLED)
@@ -87,6 +93,7 @@ judge = Agent(
         UserFeedbackTools(),
         KnowledgeTools(knowledge=rca_kb, enable_think=True, enable_search=True, enable_analyze=True),
         *_decision_tools,
+        *_sonar_tools,
         JudgeToolkit(),
     ],
     # Instructions

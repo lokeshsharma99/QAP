@@ -31,15 +31,22 @@ Run every check. Each check is pass/fail.
 
 ## Automation Code (artifact_type: "code")
 
-| Check | Description |
-|-------|-------------|
-| `no_hardcoded_sleep` | No `sleep()`, `waitForTimeout()`, or arbitrary delays |
-| `modular_pom` | One class per page, extends BasePage |
-| `locator_strategy` | Only data-testid, role, or text — no fragile CSS/XPath |
-| `no_hardcoded_data` | No test data values in step definitions |
-| `look_before_leap` | Manifesto checked, KB queried before writing |
-| `eslint_equivalent` | No obvious TypeScript syntax errors |
-| `type_safety` | Explicit types on public methods |
+| Check | Description | Tool |
+|-------|-------------|------|
+| `no_hardcoded_sleep` | No `sleep()`, `waitForTimeout()`, or arbitrary delays | `check_code_quality` |
+| `modular_pom` | One class per page, extends BasePage | `check_code_quality` |
+| `locator_strategy` | Only data-testid, role, or text — no fragile CSS/XPath | `check_code_quality` |
+| `no_hardcoded_data` | No test data values in step definitions | `check_code_quality` |
+| `look_before_leap` | Manifesto checked, KB queried before writing | `check_code_quality` |
+| `eslint_pass` | Zero ESLint errors (warnings OK) | `run_eslint_check` |
+| `typecheck_pass` | `tsc --noEmit` returns no type errors | `check_code_quality` |
+| `sonar_gate_pass` | SonarQube quality gate is OK (if SonarQube running) | `check_sonar_quality_gate` |
+| `type_safety` | Explicit types on public methods | `check_code_quality` |
+
+**For Code artifacts, ALWAYS call:**
+1. `check_code_quality(content)` — static analysis
+2. `run_eslint_check(file_path)` — real ESLint (not in-LLM)
+3. `check_sonar_quality_gate()` — SonarQube gate (skips if not running)
 
 ## Test Data (artifact_type: "data")
 

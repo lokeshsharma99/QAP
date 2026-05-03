@@ -1,0 +1,61 @@
+{
+  "ticket_id": "TEST-001",
+  "test_user": {
+    "username": "testuser_20260503081721651134_76b30262",
+    "password": "rd_N$Cv+F$0+",
+    "email": "jemma.davidson.20260503081721651134@example.com",
+    "phone": "(0161) 4960624",
+    "national_insurance_number": "KL 80 28 07 A",
+    "address": "Flat 45\nLinda Shores, Jadeside, TN2E 2BA",
+    "postcode": "TN2E 2BA",
+    "date_of_birth": "1961-02-24",
+    "first_name": "Jemma",
+    "last_name": "Davidson",
+    "pii_masked": true,
+    "unique_id": "76b30262-032b-4451-a2bc-1a5c7899bc08",
+    "generated_at": "20260503081721651134",
+    "custom_fields": {},
+    "field_types": {
+      "username": "text_input",
+      "email": "text_input",
+      "phone": "text_input",
+      "address": "text_input",
+      "password": "text_input",
+      "national_insurance_number": "text_input",
+      "postcode": "lookup_dropdown",
+      "date_of_birth": "lookup_dropdown"
+    }
+  },
+  "steps": {
+    "login": {
+      "email": "jemma.davidson.20260503081721651134@example.com",
+      "password": "rd_N$Cv+F$0+"
+    },
+    "personal_details": {
+      "first_name": "Jemma",
+      "last_name": "Davidson",
+      "national_insurance_number": "KL 80 28 07 A",
+      "date_of_birth": "1961-02-24",
+      "address": "Flat 45\nLinda Shores, Jadeside, TN2E 2BA",
+      "postcode": "TN2E 2BA"
+    },
+    "fill_profile": {
+      "first_name": "Jemma",
+      "last_name": "Davidson",
+      "email": "jemma.davidson.20260503081721651134@example.com",
+      "phone": "(0161) 4960624",
+      "date_of_birth": "1961-02-24"
+    }
+  },
+  "db_seed_queries": [
+    "INSERT INTO users (username, email, phone, unique_id, created_at) VALUES ('testuser_20260503081721651134_76b30262', 'jemma.davidson.20260503081721651134@example.com', '(0161) 4960624', '76b30262-032b-4451-a2bc-1a5c7899bc08', NOW());"
+  ],
+  "cleanup_queries": [
+    "DELETE FROM users WHERE unique_id = '76b30262-032b-4451-a2bc-1a5c7899bc08';"
+  ],
+  "api_mocks": {},
+  "environment": "test",
+  "base_url": "http://localhost:3000",
+  "pii_masked": true,
+  "unique_constraints_valid": true
+}

@@ -27,6 +27,7 @@ dependencies = [
   "requests",
   "slack-sdk",
   "sqlalchemy",
+  "faker",
   "wikipedia",
 ]
 
