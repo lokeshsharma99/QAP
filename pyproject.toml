@@ -8,6 +8,7 @@ authors = [{ name = "Quality Autopilot" }]
 dependencies = [
   "agno[os]",\n  # semantica[agno] — install from source (v0.4.0 not on PyPI yet, integrations/ module needed)\n  # pip install 'semantica[agno] @ git+https://github.com/Hawksight-AI/semantica.git'\n  "anthropic",
   "beautifulsoup4",
+  "crawl4ai",
   "ddgs",
   "exa-py",
   "google-api-python-client",
