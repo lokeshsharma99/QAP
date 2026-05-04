@@ -127,11 +127,16 @@ export const useStore = create<Store>()(
           messages: typeof messages === 'function' ? messages(state.messages) : messages
         })),
       chatInputRef: { current: null },
-      selectedEndpoint:
-        process.env.NEXT_PUBLIC_AGENTOS_URL ||
-        (typeof window !== 'undefined'
-          ? `${window.location.protocol}//${window.location.hostname}:8000`
-          : 'http://localhost:8000'),
+      selectedEndpoint: (() => {
+        if (process.env.NEXT_PUBLIC_AGENTOS_URL) return process.env.NEXT_PUBLIC_AGENTOS_URL
+        if (typeof window === 'undefined') return 'http://localhost:8000'
+        const { protocol, hostname } = window.location
+        // VS Code dev tunnels route by subdomain: swap the UI port for the API port
+        // e.g. 5w1xg05g-3000.uks1.devtunnels.ms → 5w1xg05g-8000.uks1.devtunnels.ms
+        const tunnelMatch = hostname.match(/^([^-]+)-\d+(\..+)$/)
+        if (tunnelMatch) return `${protocol}//${tunnelMatch[1]}-8000${tunnelMatch[2]}`
+        return `${protocol}//${hostname}:8000`
+      })(),
 
       setSelectedEndpoint: (selectedEndpoint) => set(() => {
         // Auto-upgrade http→https when the page is served over HTTPS (e.g. dev tunnel)
@@ -206,23 +211,29 @@ export const useStore = create<Store>()(
         // If the UI is accessed from a non-localhost host (e.g. 192.168.x.x)
         // but localStorage still holds the default localhost URL, update it
         // automatically so the backend URL matches the current access host.
-        if (
-          state &&
-          typeof window !== 'undefined' &&
-          window.location.hostname !== 'localhost' &&
-          window.location.hostname !== '127.0.0.1'
-        ) {
+        if (state && typeof window !== 'undefined') {
+          const { protocol, hostname } = window.location
+          const tunnelMatch = hostname.match(/^([^-]+)-\d+(\..+)$/)
           const stored = state.selectedEndpoint
+          let updated = stored
+
           if (stored.includes('localhost') || stored.includes('127.0.0.1')) {
-            const port = new URL(stored).port || '8000'
-            state.setSelectedEndpoint(
-              `${window.location.protocol}//${window.location.hostname}:${port}`
-            )
+            // Rewrite localhost → current host (handles LAN / tunnel access)
+            const port = (() => { try { return new URL(stored).port || '8000' } catch { return '8000' } })()
+            updated = tunnelMatch
+              ? `${protocol}//${tunnelMatch[1]}-${port}${tunnelMatch[2]}`
+              : `${protocol}//${hostname}:${port}`
+          } else if (tunnelMatch) {
+            // Already a tunnel URL but may have wrong port suffix or wrong protocol
+            const portMatch = stored.match(/:(\d+)$/)
+            const port = portMatch ? portMatch[1] : '8000'
+            updated = `${protocol}//${tunnelMatch[1]}-${port}${tunnelMatch[2]}`
           } else {
-            // Re-run setSelectedEndpoint so the http→https upgrade is applied
-            // to any value still in localStorage from a previous http session
-            state.setSelectedEndpoint(stored)
+            // Non-tunnel: just ensure protocol matches
+            updated = stored.replace(/^http:\/\//, protocol === 'https:' ? 'https://' : 'http://')
           }
+
+          if (updated !== stored) state.setSelectedEndpoint(updated)
         }
       },
       partialize: (state) => ({
