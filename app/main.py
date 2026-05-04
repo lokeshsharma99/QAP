@@ -152,9 +152,11 @@ _extra_origins: list[str] = [
 ]
 
 # Replace the CORS middleware with one that also allows wildcard-regex matching
-# for private-network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x) on port 3000.
-_PRIVATE_IP_RE = re.compile(
-    r"^http://(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$"
+# for private-network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x) on port 3000
+# and VS Code dev tunnels (*.devtunnels.ms).
+_ALLOWED_ORIGIN_RE = re.compile(
+    r"^https?://(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$"
+    r"|^https://[a-z0-9]+-\d+\.[\w]+\.devtunnels\.ms$"
 )
 
 # Gather the existing Agno-set origins and append ours
@@ -180,7 +182,7 @@ app.middleware_stack = None
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_all_origins,
-    allow_origin_regex=_PRIVATE_IP_RE.pattern,
+    allow_origin_regex=_ALLOWED_ORIGIN_RE.pattern,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
