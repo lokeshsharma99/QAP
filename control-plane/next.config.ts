@@ -11,7 +11,13 @@ const nextConfig: NextConfig = {
   // drops when the container restarts and must be re-established manually.
   experimental: {
     serverActions: {
-      allowedOrigins: ['*.devtunnels.ms', '*.ngrok.io', '*.ngrok-free.app', '*.trycloudflare.com'],
+      allowedOrigins: [
+        '*.devtunnels.ms',
+        '*.ngrok.io',
+        '*.ngrok-free.app',
+        '*.ngrok-free.dev',
+        '*.trycloudflare.com',
+      ],
     },
   },
   async rewrites() {

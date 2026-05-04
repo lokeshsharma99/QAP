@@ -138,9 +138,12 @@ export const useStore = create<Store>()(
         // e.g. 5w1xg05g-3000.uks1.devtunnels.ms → 5w1xg05g-8000.uks1.devtunnels.ms
         const tunnelMatch = hostname.match(/^([^-]+)-\d+(\..+)$/)
         if (tunnelMatch) return `${protocol}//${tunnelMatch[1]}-8000${tunnelMatch[2]}`
-        // Cloudflare / ngrok / localtunnel: hostnames don't encode a port.
-        // Appending :8000 won't work — fall back to same-origin so at least
-        // localhost works. User must configure the API URL in Settings.
+        // ngrok static / Cloudflare / loca.lt: no port encoding in hostname.
+        // Route through the Next.js rewrite proxy so only 1 tunnel is needed.
+        // The rewrite maps /api/agentOS/* → http://qap-api:8000/* (Docker-internal).
+        if (/\.(ngrok-free\.dev|ngrok-free\.app|ngrok\.io|trycloudflare\.com|loca\.lt)$/.test(hostname)) {
+          return `${protocol}//${hostname}/api/agentOS`
+        }
         if (protocol === 'https:') return 'http://localhost:8000'
         return `${protocol}//${hostname}:8000`
       })(),

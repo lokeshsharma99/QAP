@@ -228,13 +228,15 @@ services:
     build:
       context: ./control-plane
       dockerfile: Dockerfile
+      args:
+        # Baked into the Next.js rewrite at build time so /api/agentOS/* proxies
+        # to the qap-api container via Docker-internal networking (not localhost).
+        NEXT_PUBLIC_AGENTOS_URL: http://qap-api:8000
     container_name: qap-ui
     restart: unless-stopped
     ports:
       - "0.0.0.0:3000:3000"   # LAN-accessible
     environment:
-      # NEXT_PUBLIC_AGENTOS_URL is a build-time Next.js var — not effective here.
-      # The UI auto-detects the backend at window.location.hostname:8000 at runtime.
       - NEXT_PUBLIC_OS_SECURITY_KEY=${NEXT_PUBLIC_OS_SECURITY_KEY:-}
     depends_on:
       - qap-api
