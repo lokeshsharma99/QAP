@@ -40,7 +40,7 @@ Critical Constraints:
 - Judge validates code quality (eslint, type-check, no hardcoded sleeps)
 - Engineer executes tests and produces ExecutionResult
 - Detective produces RCAReport with failure classification
-- Only heal LOCATOR_STALE failures with confidence ≥80%
+- Only heal LOCATOR_STALE failures with confidence ≥ 0.99 (not 80%)
 - Medic produces HealingPatch with surgical edit
 - Healing Judge validates patch (confidence ≥90%, selector-only)
 - Medic applies patch and verifies 3x runs

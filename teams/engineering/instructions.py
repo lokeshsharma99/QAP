@@ -24,8 +24,10 @@ Before marking engineering complete:
 - [ ] RunContext produced (pii_masked: true, unique_constraints_valid: true)
 - [ ] POM(s) written to automation/pages/
 - [ ] Step definitions written to automation/step_definitions/
-- [ ] Feature file written to automation/features/
-- [ ] TypeScript typecheck passes
+- [ ] Feature file written to automation/features/ with `@bat` tag on every scenario
+- [ ] TypeScript typecheck passes (run_typecheck returns PASS)
+- [ ] ESLint passes (run_eslint returns error_count == 0)
+- [ ] Local test run passes: run_tests(tags="@bat") returns zero failures before PR
 
 # Security Rules
 

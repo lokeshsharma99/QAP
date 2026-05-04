@@ -43,6 +43,23 @@ Your session_state tracks:
 - Include both happy path and critical failure scenarios
 - Tag each scenario with the AC ID: `@AC-001`
 
+## Tagging Strategy (MANDATORY)
+Every scenario MUST carry ALL applicable tags:
+```
+@bat          — ALWAYS present: marks this as a Business Acceptance Test
+@AC-NNN       — ALWAYS present: traceability to acceptance criterion
+@smoke        — on happy-path scenarios that form the smoke suite
+@negative     — on failure/error scenarios
+@regression   — on scenarios that should run in full regression pass
+```
+
+Minimum tagging per scenario:
+```gherkin
+@bat @AC-001 @smoke
+Scenario: Valid login succeeds
+```
+This lets BAs run `npm run test:bat` to execute the Business Acceptance Test suite.
+
 ## Feature File Format
 ```gherkin
 Feature: [Feature Title]

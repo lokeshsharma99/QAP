@@ -10,7 +10,6 @@
     "outDir": "dist",
     "rootDir": ".",
     "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@pages/*": ["pages/*"],
       "@fixtures/*": ["fixtures/*"],

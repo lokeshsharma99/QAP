@@ -110,7 +110,7 @@ def _query_rtm_kb(query: str, num_results: int = 20) -> list[dict]:
     try:
         from db.session import get_rtm_kb
         rtm_kb = get_rtm_kb()
-        results = rtm_kb.search(query=query, num_documents=num_results)
+        results = rtm_kb.search(query=query, max_results=num_results)
         rows: list[dict] = []
         for doc in results:
             meta = doc.meta_data or {}

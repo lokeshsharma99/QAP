@@ -393,8 +393,77 @@ const ThinkingBubble = ({ latestEvent }: { latestEvent: import('@/store').ChatEv
   )
 }
 
-const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null, onFollowupClick, onRoute }: {
-  msg: ChatMessage; index: number; isActiveStreaming?: boolean; latestEvent?: import('@/store').ChatEvent | null; onFollowupClick?: (s: string) => void; onRoute?: (d: RouteDirective) => void
+// ---------------------------------------------------------------------------
+// LiveRunCard — session-entry style card shown at run start (no content yet)
+// ---------------------------------------------------------------------------
+const LiveRunCard = ({
+  agentLabel,
+  latestEvent,
+  startTs,
+}: {
+  agentLabel: string
+  latestEvent: import('@/store').ChatEvent | null
+  startTs: number
+}) => {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startTs) / 1000)), 500)
+    return () => clearInterval(id)
+  }, [startTs])
+
+  const mins = String(Math.floor(elapsed / 60)).padStart(2, '0')
+  const secs = String(elapsed % 60).padStart(2, '0')
+
+  const eventLabel =
+    latestEvent?.type === 'tool_start' ? latestEvent.detail ?? latestEvent.label
+    : latestEvent?.type === 'reasoning' ? 'Reasoning…'
+    : latestEvent?.type === 'memory'    ? latestEvent.label
+    : latestEvent?.label                ?? 'Run started'
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className="max-w-2xl w-full rounded-xl border border-brand/20 bg-primaryAccent overflow-hidden"
+    >
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-accent/40">
+        <div className="flex items-center gap-2">
+          <motion.span
+            className="size-2 rounded-full bg-positive"
+            animate={{ opacity: [1, 0.3, 1] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <span className="text-xs font-semibold text-positive">Live</span>
+          <span className="text-xs text-muted/50">·</span>
+          <span className="font-mono text-xs text-muted/70 tabular-nums">{mins}:{secs}</span>
+        </div>
+        <span className="text-[10px] font-medium uppercase tracking-widest text-muted/40">
+          {agentLabel}
+        </span>
+      </div>
+      {/* Event row */}
+      <div className="flex items-center gap-2 px-4 py-3">
+        <div className="flex items-center gap-1 shrink-0">
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              className="size-1.5 rounded-full bg-brand"
+              animate={{ opacity: [0.25, 1, 0.25], y: [0, -3, 0] }}
+              transition={{ duration: 1.0, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+            />
+          ))}
+        </div>
+        <span className="text-xs text-primary/80 truncate">{eventLabel}</span>
+      </div>
+    </motion.div>
+  )
+}
+
+const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null, agentLabel = 'Agent', runStartTs = 0, onFollowupClick, onRoute }: {
+  msg: ChatMessage; index: number; isActiveStreaming?: boolean; latestEvent?: import('@/store').ChatEvent | null; agentLabel?: string; runStartTs?: number; onFollowupClick?: (s: string) => void; onRoute?: (d: RouteDirective) => void
 }) => {
   const isUser = msg.role === 'user'
   return (
@@ -519,7 +588,13 @@ const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null
         </div>
       )}
       {!msg.content && !isUser && isActiveStreaming && (
-        <ThinkingBubble latestEvent={latestEvent} />
+        <LiveRunCard agentLabel={agentLabel} latestEvent={latestEvent} startTs={runStartTs} />
+      )}
+      {msg.content && !isUser && isActiveStreaming && latestEvent && latestEvent.type !== 'run_done' && (
+        <div className="flex items-center gap-1.5 text-[10px] text-muted/50">
+          <motion.span className="size-1.5 rounded-full bg-positive" animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }} />
+          <span>{latestEvent.detail ?? latestEvent.label}</span>
+        </div>
       )}
       {!isUser && !isActiveStreaming && msg.followups && msg.followups.length > 0 && onFollowupClick && (
         <FollowupSuggestions suggestions={msg.followups} onSelect={onFollowupClick} />
@@ -1837,7 +1912,7 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showActivity, setShowActivity] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
-  const { messages, isStreaming, isEndpointActive, rightPanelOpen, setRightPanelOpen, chatEvents, setMode, setMessages, activeRunId } = useStore()
+  const { messages, isStreaming, isEndpointActive, rightPanelOpen, setRightPanelOpen, chatEvents, setMode, setMessages, activeRunId, agents, teams } = useStore()
   const { handleStreamResponse, cancelRun } = useAIChatStreamHandler()
   const { clearChat } = useChatActions()
   const { getSessions, getSession } = useSessionLoader()
@@ -2100,7 +2175,12 @@ export default function ChatPage() {
                   const latestEvent = isActiveStreaming && chatEvents.length > 0
                     ? chatEvents[chatEvents.length - 1]
                     : null
-                  return <MessageItem key={i} msg={msg} index={i} isActiveStreaming={isActiveStreaming} latestEvent={latestEvent} onFollowupClick={(s) => { setInputMessage(s); setTimeout(() => textareaRef.current?.focus(), 0) }} onRoute={handleRoute} />
+                  const runStartTs = chatEvents.find(e => e.type === 'run_start')?.ts ?? Date.now()
+                  const agentLabel =
+                    agentId ? (agents.find(a => a.agent_id === agentId)?.name ?? agentId)
+                    : teamId ? (teams.find(t => t.team_id === teamId)?.name ?? teamId)
+                    : workflowId ?? 'Agent'
+                  return <MessageItem key={i} msg={msg} index={i} isActiveStreaming={isActiveStreaming} latestEvent={latestEvent} agentLabel={agentLabel} runStartTs={runStartTs} onFollowupClick={(s) => { setInputMessage(s); setTimeout(() => textareaRef.current?.focus(), 0) }} onRoute={handleRoute} />
                 })}
               </motion.div>
             )}

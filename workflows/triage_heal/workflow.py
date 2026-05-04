@@ -19,6 +19,8 @@ import re
 from agno.workflow import Condition, Loop, Step, Workflow
 
 from agents.detective import detective
+from agents.healing_judge import healing_judge
+from agents.librarian import librarian
 from agents.medic import medic
 
 
@@ -96,13 +98,54 @@ Do NOT proceed to the Healable Check gate until both tools return successfully."
         Condition(
             name="Healable Check",
             evaluator=is_healable,
-            # If healable: loop Medic up to 3× until verification_passes >= 3
+            # If healable: loop Medic up to 3× until verification_passes >= 3,
+            # then validate with Healing Judge, then re-index the patched POM.
             steps=[
                 Loop(
                     name="Verify Heal 3x",
                     steps=[Step(name="Patch and Verify", agent=medic)],
                     end_condition=healing_passed,
                     max_iterations=3,
+                ),
+                # -----------------------------------------------------------
+                # Healing Judge — validates the patch is surgical (selector-only,
+                # no logic changes) with confidence ≥ 0.99 before it is permanent.
+                # -----------------------------------------------------------
+                Step(
+                    name="Validate Patch",
+                    agent=healing_judge,
+                    description="""As the Healing Judge, perform an adversarial review of the HealingPatch.
+
+Input: HealingPatch from the Patch and Verify step.
+
+DoD checklist:
+- logic_changed must be False (REJECT immediately if True)
+- diff must touch ONLY locator selector lines (no method signatures, assertions, or imports changed)
+- verification_passes must be >= 3
+- old_locator and new_locator must both be present and differ
+- new_locator must use data-testid, role, or text strategy (no CSS/XPath)
+
+Output: JudgeVerdict with confidence 0.0–1.0 and passed boolean.
+confidence >= 0.99 → auto-approve → Librarian re-indexes.
+confidence < 0.99  → reject patch with specific reasons → Medic must redo.""",
+                ),
+                # -----------------------------------------------------------
+                # Librarian — re-indexes the patched POM so the KB stays current.
+                # -----------------------------------------------------------
+                Step(
+                    name="Re-index Patched POM",
+                    agent=librarian,
+                    description="""As the Librarian, re-index the patched Page Object Model file.
+
+Input: HealingPatch (contains file_path of the modified POM).
+
+Your task:
+1. Read the patched file from automation/pages/<file_path>.
+2. Index it into the automation_kb vector store, replacing the old version.
+3. Add a learning to qap_learnings_kb: record the old locator, new locator,
+   and the pattern of failure so future agents can avoid the same issue.
+
+Output: Confirmation that the file has been re-indexed.""",
                 ),
             ],
             # Else: escalate to human — LOGIC_CHANGE or requires_human=True
