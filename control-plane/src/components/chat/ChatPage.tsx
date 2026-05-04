@@ -22,7 +22,7 @@ import dayjs from 'dayjs'
 import { toast } from 'sonner'
 import { ChatMessage } from '@/types/os'
 import {
-  ChevronDown, ChevronUp, Wrench, Brain, Plus, PanelRightOpen, PanelRightClose,
+  ChevronDown, Wrench, Brain, Plus, PanelRightOpen, PanelRightClose,
   Bot, Cpu, CheckCircle, XCircle, GitBranch, Activity,
   Users, BookOpen, MemoryStick, Layers, MessageSquare, MessagesSquare,
   Play, CornerDownRight, ArrowUp, Paperclip, X as XIcon, FileText, Image as ImageIcon,
@@ -604,46 +604,67 @@ const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null
 }
 
 // ---------------------------------------------------------------------------
-// TurnNavigator — floating ▲/▼ pill to jump between user turns
+// TurnTOC — right-rail table of contents listing every user turn
 // ---------------------------------------------------------------------------
-const TurnNavigator = ({ messages }: { messages: ChatMessage[] }) => {
-  const userTurnCount = messages.filter((m) => m.role === 'user').length
-  const [currentTurn, setCurrentTurn] = useState(0)
+const TurnTOC = ({ messages }: { messages: ChatMessage[] }) => {
+  const userTurns = messages
+    .map((m, i) => ({ msg: m, msgIdx: i }))
+    .filter(({ msg }) => msg.role === 'user')
+    .map(({ msg, msgIdx }, turnIdx) => ({ id: `turn-${turnIdx}`, label: typeof msg.content === 'string' ? msg.content : '', msgIdx, turnIdx }))
 
-  // Reset when session changes
-  useEffect(() => { setCurrentTurn(0) }, [messages.length === 0])
+  const [activeId, setActiveId] = useState<string>('')
 
-  if (userTurnCount < 2) return null
+  // Observe each user-turn anchor; highlight the one most in view
+  useEffect(() => {
+    if (userTurns.length < 2) return
+    const els = userTurns.map(t => document.getElementById(t.id)).filter(Boolean) as HTMLElement[]
+    const obs = new IntersectionObserver(
+      (entries) => {
+        // pick the first entry that is ≥50% visible, or the last one that crossed
+        const visible = entries.filter(e => e.isIntersecting)
+        if (visible.length > 0) setActiveId(visible[0].target.id)
+      },
+      { threshold: 0.3, rootMargin: '-10% 0px -60% 0px' },
+    )
+    els.forEach(el => obs.observe(el))
+    return () => obs.disconnect()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userTurns.length])
 
-  const scrollToTurn = (index: number) => {
-    const clamped = Math.max(0, Math.min(index, userTurnCount - 1))
-    setCurrentTurn(clamped)
-    const el = document.querySelector<HTMLElement>(`[data-turn="${clamped}"]`)
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
+  if (userTurns.length < 2) return null
 
   return (
-    <div className="pointer-events-none absolute bottom-4 right-4 z-20 flex flex-col items-center gap-1">
-      <div className="pointer-events-auto flex flex-col items-center rounded-xl border border-accent bg-primaryAccent/95 shadow-md backdrop-blur-sm">
-        <button
-          onClick={() => scrollToTurn(currentTurn - 1)}
-          disabled={currentTurn === 0}
-          className="flex items-center justify-center rounded-t-xl px-2.5 py-1.5 text-muted transition-colors hover:bg-accent hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
-          title="Previous turn"
-        >
-          <ChevronUp className="size-3.5" />
-        </button>
-        <div className="border-y border-accent/50 px-2.5 py-1 font-mono text-[10px] text-muted tabular-nums">
-          {currentTurn + 1}/{userTurnCount}
+    <div className="absolute bottom-0 right-0 top-2 hidden h-fit w-[156px] gap-4 overflow-hidden pl-2 pt-[72px] xl:flex xl:flex-col 2xl:w-[288px]">
+      <div className="sticky h-fit max-h-[calc(100vh-200px)] overflow-y-auto pr-6">
+        <div className="flex w-full flex-col gap-2 overflow-y-auto">
+          <div className="flex flex-col gap-2">
+            {userTurns.map(({ id, label }) => {
+              const isActive = activeId === id || (!activeId && id === userTurns[0].id)
+              return (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    setActiveId(id)
+                  }}
+                  className={cn(
+                    'flex h-[29px] w-full cursor-pointer items-center gap-2 truncate border-l pl-2 transition-colors',
+                    isActive ? 'border-primary' : 'border-accent hover:border-primary/50',
+                  )}
+                >
+                  <p className={cn(
+                    'font-inter text-[0.875rem] font-normal leading-[21px] tracking-[-0.02em] truncate transition-colors',
+                    isActive ? 'text-primary' : 'text-muted hover:text-primary/70',
+                  )}>
+                    {label.slice(0, 80) || '…'}
+                  </p>
+                </a>
+              )
+            })}
+          </div>
         </div>
-        <button
-          onClick={() => scrollToTurn(currentTurn + 1)}
-          disabled={currentTurn === userTurnCount - 1}
-          className="flex items-center justify-center rounded-b-xl px-2.5 py-1.5 text-muted transition-colors hover:bg-accent hover:text-primary disabled:cursor-not-allowed disabled:opacity-30"
-          title="Next turn"
-        >
-          <ChevronDown className="size-3.5" />
-        </button>
       </div>
     </div>
   )
@@ -2155,7 +2176,7 @@ export default function ChatPage() {
 
         {/* Messages */}
         <StickToBottom className="relative flex-1 overflow-y-auto" resize="smooth" initial="smooth">
-          <TurnNavigator messages={messages} />
+          <TurnTOC messages={messages} />
           <StickToBottom.Content className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
             <AnimatePresence mode="wait">
             {messages.length === 0 ? (
@@ -2238,12 +2259,12 @@ export default function ChatPage() {
                     agentId ? (agents.find(a => a.agent_id === agentId)?.name ?? agentId)
                     : teamId ? (teams.find(t => t.team_id === teamId)?.name ?? teamId)
                     : workflowId ?? 'Agent'
-                  // track user-turn index for TurnNavigator
+                  // anchor id for TurnTOC
                   const userTurnIndex = msg.role === 'user'
                     ? messages.slice(0, i + 1).filter(m => m.role === 'user').length - 1
                     : undefined
                   return (
-                    <div key={i} {...(userTurnIndex !== undefined ? { 'data-turn': userTurnIndex } : {})}>
+                    <div key={i} {...(userTurnIndex !== undefined ? { id: `turn-${userTurnIndex}` } : {})}>
                       <MessageItem msg={msg} index={i} isActiveStreaming={isActiveStreaming} latestEvent={latestEvent} agentLabel={agentLabel} runStartTs={runStartTs} onFollowupClick={(s) => { setInputMessage(s); setTimeout(() => textareaRef.current?.focus(), 0) }} onRoute={handleRoute} />
                     </div>
                   )
