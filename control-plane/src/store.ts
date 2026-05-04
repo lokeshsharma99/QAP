@@ -130,11 +130,18 @@ export const useStore = create<Store>()(
       selectedEndpoint: (() => {
         if (process.env.NEXT_PUBLIC_AGENTOS_URL) return process.env.NEXT_PUBLIC_AGENTOS_URL
         if (typeof window === 'undefined') return 'http://localhost:8000'
+        // Check localStorage first — user may have already configured the endpoint
+        const stored = localStorage.getItem('_endpoint')
+        if (stored) return stored
         const { protocol, hostname } = window.location
         // VS Code dev tunnels route by subdomain: swap the UI port for the API port
         // e.g. 5w1xg05g-3000.uks1.devtunnels.ms → 5w1xg05g-8000.uks1.devtunnels.ms
         const tunnelMatch = hostname.match(/^([^-]+)-\d+(\..+)$/)
         if (tunnelMatch) return `${protocol}//${tunnelMatch[1]}-8000${tunnelMatch[2]}`
+        // Cloudflare / ngrok / localtunnel: hostnames don't encode a port.
+        // Appending :8000 won't work — fall back to same-origin so at least
+        // localhost works. User must configure the API URL in Settings.
+        if (protocol === 'https:') return 'http://localhost:8000'
         return `${protocol}//${hostname}:8000`
       })(),
 
