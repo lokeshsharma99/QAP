@@ -17,7 +17,8 @@
     "lint:report": "eslint . --ext .ts --format json -o reports/eslint-report.json || true",
     "sonar:scan": "sonar-scanner -Dsonar.host.url=${SONAR_URL:-http://localhost:9000} -Dsonar.token=${SONAR_TOKEN:-}",
     "clean": "rimraf dist reports/cucumber-report.json reports/cucumber-report.html",
-    "install:browsers": "npx playwright install chromium firefox"
+    "install:browsers": "npx playwright install chromium firefox",
+    "prepare": "node -e \"const fs=require('fs'),path=require('path'),src=path.join(__dirname,'scripts','pre-commit'),dst=path.join(__dirname,'..', '.git','hooks','pre-commit');try{fs.mkdirSync(path.dirname(dst),{recursive:true});fs.copyFileSync(src,dst);try{fs.chmodSync(dst,0o755)}catch(e){}console.log('Git pre-commit hook installed.')}catch(e){console.log('Note: could not install git hook:',e.message)}\""
   },
   "dependencies": {
     "@playwright/test": "^1.52.0",
