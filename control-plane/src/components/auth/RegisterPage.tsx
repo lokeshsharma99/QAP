@@ -5,7 +5,8 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { useStore } from '@/store'
 import { APIRoutes } from '@/api/routes'
-import { Loader2, Eye, EyeOff, Users, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Loader2, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
+import QapLogo from '@/components/auth/QapLogo'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -94,12 +95,14 @@ export default function RegisterPage() {
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: 'easeOut' }}
         className="w-full max-w-md space-y-8"
       >
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-2">
-            <Users className="w-6 h-6 text-primary" />
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center mb-1">
+            <QapLogo size={56} />
           </div>
-          <h1 className="text-2xl font-bold">Join Your Organisation</h1>
-          <p className="text-sm text-muted">Enter your organisation name to get started</p>
+          <div>
+            <h1 className="text-2xl font-bold">Join Your Organisation</h1>
+            <p className="text-sm text-muted mt-1">Enter your organisation name to get started</p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-primaryAccent border border-accent rounded-2xl p-8 space-y-4 shadow-sm">

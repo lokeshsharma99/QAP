@@ -5,7 +5,8 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { useStore } from '@/store'
 import { APIRoutes } from '@/api/routes'
-import { Loader2, Eye, EyeOff, Zap } from 'lucide-react'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
+import QapLogo from '@/components/auth/QapLogo'
 import { toast } from 'sonner'
 
 export default function SignInPage() {
@@ -55,12 +56,14 @@ export default function SignInPage() {
         className="w-full max-w-md space-y-8"
       >
         {/* Logo */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-2">
-            <Zap className="w-6 h-6 text-primary" />
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center mb-1">
+            <QapLogo size={56} />
           </div>
-          <h1 className="text-2xl font-bold">Quality Autopilot</h1>
-          <p className="text-sm text-muted-foreground">Sign in to your organisation</p>
+          <div>
+            <h1 className="text-2xl font-bold">Quality Autopilot</h1>
+            <p className="text-sm text-muted mt-1">Sign in to your organisation</p>
+          </div>
         </div>
 
         {/* Form */}
