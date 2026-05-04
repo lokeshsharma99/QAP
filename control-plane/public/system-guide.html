@@ -923,9 +923,9 @@
         <div class="agent-card">
           <div class="agent-icon">📊</div>
           <div class="agent-name">CI Log Analyzer</div>
-          <div class="agent-skill">log_parsing</div>
-          <div class="agent-desc">Analyzes CI/CD pipeline logs and GitHub Actions runs for systemic failure patterns.</div>
-          <div class="agent-output">→ <span>PipelineRCAReport</span></div>
+          <div class="agent-skill">log_parsing → rca_analysis</div>
+          <div class="agent-desc"><strong>Azure DevOps specialist.</strong> Reactive, per-failure. Fetches raw ADO pipeline log text, identifies the first failure event, performs RCA with learnings memory, and creates an ADO work item after HITL approval. Triggered by a CI webhook on a specific failed run.</div>
+          <div class="agent-output">→ <span>PipelineRCAReport + ADO Work Item</span></div>
         </div>
 
         <div class="agent-card">
@@ -947,9 +947,9 @@
         <div class="agent-card">
           <div class="agent-icon">📈</div>
           <div class="agent-name">Pipeline Analyst</div>
-          <div class="agent-skill">pipeline_analysis</div>
-          <div class="agent-desc">Analyzes CI/CD pipeline trends, flakiness scores, and mean-time-to-heal across builds. Surfaces systemic risk patterns.</div>
-          <div class="agent-output">→ <span>PipelineRCAReport</span></div>
+          <div class="agent-skill">pipeline_rca → remediation_plan</div>
+          <div class="agent-desc"><strong>GitHub Actions specialist.</strong> Reactive, per-failure with structured artifacts. Downloads Allure/JUnit XML test results from the failed run, classifies root cause (<code>LOCATOR_CHANGE</code> | <code>FUNCTIONALITY_CHANGE</code> | <code>FLAKY_TEST</code> | <code>ENV_FAILURE</code> | …), and posts an ordered remediation plan to Slack. Works with structured test output, not raw log text.</div>
+          <div class="agent-output">→ <span>PipelineRCAReport + Slack notification</span></div>
         </div>
 
       </div>
@@ -1093,7 +1093,12 @@
           </div>
           <div class="card-body">
             <p><strong>Members:</strong> 📊 CI Log Analyzer + 🔍 Detective</p>
-            <p><strong>Goal:</strong> CI failure triage with correlated pipeline log + Playwright trace analysis. Creates Jira tickets after HITL approval.</p>
+            <p><strong>Goal:</strong> Azure DevOps CI failure triage. CI Log Analyzer parses raw ADO log text for the failed run; Detective correlates with the Playwright <code>trace.zip</code>. Creates an ADO work item after HITL approval.</p>
+            <p style="margin-top:0.5rem;padding:0.6rem 0.8rem;background:rgba(99,179,237,0.08);border-left:3px solid #63b3ed;border-radius:4px;font-size:0.85rem">
+              <strong>CI Log Analyzer vs Pipeline Analyst</strong> — These look similar but are different tools:<br>
+              • <strong>CI Log Analyzer</strong>: Azure DevOps · raw log text → RCA → ADO ticket (HITL)<br>
+              • <strong>Pipeline Analyst</strong>: GitHub Actions · Allure/JUnit XML artifacts → failure classification → Slack remediation plan
+            </p>
           </div>
         </div>
       </div>
@@ -2400,7 +2405,7 @@ Drop: repeated intermediate reasoning, verbose OK/200 responses, duplicate tool 
           <tr><td class="mono">MCPTools (github-mcp)</td><td>Engineer</td><td>Create GitHub branches, commits, and pull requests via the GitHub MCP server.</td></tr>
           <tr><td class="mono">MCPTools (playwright-mcp)</td><td>Discovery, Medic</td><td>Control a real browser: navigate, click, extract Accessibility Trees.</td></tr>
           <tr><td class="mono">MCPTools (atlassian-mcp)</td><td>Architect, CI Log Analyzer</td><td>Read Jira tickets, create Jira issues from RCA reports.</td></tr>
-          <tr><td class="mono">MCPTools (ado-mcp)</td><td>CI Log Analyzer, Pipeline Analyst</td><td>Fetch Azure DevOps pipeline logs, create ADO work items.</td></tr>
+          <tr><td class="mono">MCPTools (ado-mcp)</td><td>CI Log Analyzer</td><td>Fetch Azure DevOps pipeline run logs (raw text). Create ADO work items after HITL approval of RCA findings.</td></tr>
           <tr><td class="mono">Custom: trace_analyzer</td><td>Detective</td><td>Parse Playwright trace.zip NDJSON to extract error events, network failures, and timing.</td></tr>
           <tr><td class="mono">Custom: ui_crawler</td><td>Discovery</td><td>Orchestrate multi-page crawl: login → navigate → extract Accessibility Tree → write SiteManifesto.</td></tr>
         </table>

@@ -4,11 +4,16 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: false },
-  // Allow VS Code dev-tunnel origins (*.devtunnels.ms) so the app loads
-  // correctly when port-forwarded via VS Code Live Share / Dev Tunnels.
-  // Next.js 15 blocks requests whose Host header doesn't match localhost
-  // unless explicitly listed here.
-  allowedDevOrigins: ['*.devtunnels.ms', 'localhost'],
+  // Allow VS Code dev-tunnel and ngrok origins for Server Actions (production).
+  // Also allows the dev server to accept requests from these origins.
+  // Note: if the page still returns 502 after a container rebuild, stop and
+  // re-forward the port in VS Code's Ports panel — the tunnel connection
+  // drops when the container restarts and must be re-established manually.
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['*.devtunnels.ms', '*.ngrok.io', '*.ngrok-free.app'],
+    },
+  },
   async rewrites() {
     return [
       {
