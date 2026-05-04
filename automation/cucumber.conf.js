@@ -10,6 +10,7 @@ module.exports = {
   paths: ['features/**/*.feature'],
   format: [
     'progress-bar',
+    'json:reports/cucumber-report.json',
   ],
   formatOptions: {
     snippetInterface: 'async-await',
