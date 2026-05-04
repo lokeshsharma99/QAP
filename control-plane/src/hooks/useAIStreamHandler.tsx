@@ -106,6 +106,22 @@ const useAIChatStreamHandler = () => {
         formData.append('message', input)
       }
 
+      // Optimistically add a placeholder session entry as soon as the user sends
+      // a message so it appears in the sidebar immediately (not after agent responds).
+      const PENDING_PREFIX = '__pending__'
+      const pendingSessionId = PENDING_PREFIX + Date.now()
+      if (!sessionId) {
+        const userMessage = formData.get('message') as string | null
+        setSessionsData((prev) => {
+          const placeholder = {
+            session_id: pendingSessionId,
+            session_name: userMessage ?? 'New session',
+            created_at: Math.floor(Date.now() / 1000),
+          }
+          return [placeholder, ...(prev ?? [])]
+        })
+      }
+
       setMessages((prevMessages) => {
         if (prevMessages.length >= 2) {
           const lastMessage = prevMessages[prevMessages.length - 1]
@@ -210,7 +226,11 @@ const useAIChatStreamHandler = () => {
                     (session) => session.session_id === chunk.session_id
                   )
                   if (sessionExists) return prevSessionsData
-                  return [sessionData, ...(prevSessionsData ?? [])]
+                  // Replace the optimistic placeholder (if present) with the real session entry
+                  const withoutPlaceholder = (prevSessionsData ?? []).filter(
+                    (s) => !s.session_id.startsWith(PENDING_PREFIX)
+                  )
+                  return [sessionData, ...withoutPlaceholder]
                 })
               }
               addChatEvent({ type: 'run_start', label: `${chunk.event}`, ts: Date.now(), detail: chunk.session_id as string | undefined })
@@ -535,12 +555,15 @@ const useAIChatStreamHandler = () => {
             })
             addChatEvent({ type: 'error', label: `Error: ${errMsg.slice(0, 80)}`, ts: Date.now() })
             setStreamingErrorMessage(errMsg)
-            if (newSessionId) {
-              setSessionsData(
-                (prevSessionsData) =>
-                  prevSessionsData?.filter((session) => session.session_id !== newSessionId) ?? null
-              )
-            }
+            // Remove actual session entry or placeholder on error
+            setSessionsData(
+              (prevSessionsData) =>
+                prevSessionsData?.filter(
+                  (session) =>
+                    session.session_id !== newSessionId &&
+                    !session.session_id.startsWith(PENDING_PREFIX)
+                ) ?? null
+            )
           },
           onComplete: () => {}
         })
@@ -556,12 +579,15 @@ const useAIChatStreamHandler = () => {
         })
         addChatEvent({ type: 'error', label: `Error: ${errMsg.slice(0, 80)}`, ts: Date.now() })
         setStreamingErrorMessage(errMsg)
-        if (newSessionId) {
-          setSessionsData(
-            (prevSessionsData) =>
-              prevSessionsData?.filter((session) => session.session_id !== newSessionId) ?? null
-          )
-        }
+        // Remove actual session entry or placeholder on error
+        setSessionsData(
+          (prevSessionsData) =>
+            prevSessionsData?.filter(
+              (session) =>
+                session.session_id !== newSessionId &&
+                !session.session_id.startsWith(PENDING_PREFIX)
+            ) ?? null
+        )
       } finally {
         focusChatInput()
         setIsStreaming(false)

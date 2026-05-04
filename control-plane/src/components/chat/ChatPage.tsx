@@ -630,6 +630,7 @@ const SessionItem = ({ session, isSelected, onClick }: {
   isSelected: boolean
   onClick: () => void
 }) => {
+  const isPending = session.session_id.startsWith('__pending__')
   const displayName = session.session_name
     ? session.session_name.length > 40
       ? session.session_name.slice(0, 40).trimEnd() + '…'
@@ -637,14 +638,25 @@ const SessionItem = ({ session, isSelected, onClick }: {
     : friendlySessionName(session.session_id)
   return (
   <button
-    onClick={onClick}
+    onClick={isPending ? undefined : onClick}
+    disabled={isPending}
     className={cn(
       'w-full truncate rounded-xl px-3 py-2 text-left text-xs transition-colors',
+      isPending ? 'cursor-default opacity-60' :
       isSelected ? 'bg-accent text-primary' : 'text-muted hover:bg-accent/50 hover:text-primary'
     )}
   >
-    <div className="font-medium leading-snug" title={session.session_name}>{displayName}</div>
-    <div className="mt-0.5 text-muted/50">{fmtSessionDate(session.created_at)}</div>
+    <div className="flex items-center gap-1.5">
+      {isPending && (
+        <motion.span
+          className="size-1.5 shrink-0 rounded-full bg-positive"
+          animate={{ opacity: [1, 0.3, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      )}
+      <div className="font-medium leading-snug truncate" title={session.session_name}>{displayName}</div>
+    </div>
+    <div className="mt-0.5 text-muted/50">{isPending ? 'Starting…' : fmtSessionDate(session.created_at)}</div>
   </button>
   )
 }
