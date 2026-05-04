@@ -203,6 +203,55 @@ NVIDIA_API_KEY = _NVIDIA_KEY
 RUNTIME_ENV = getenv("RUNTIME_ENV", "dev")
 
 # ---------------------------------------------------------------------------
+# STLC Context Compression Prompt
+# Shared across ALL agents — overrides Agno's generic OpenAI example prompt.
+# ---------------------------------------------------------------------------
+from textwrap import dedent as _dedent  # noqa: E402
+
+STLC_COMPRESSION_PROMPT = _dedent("""\
+    You are compressing tool call results for a Software Testing Life Cycle (STLC)
+    AI system. Your goal: preserve every critical STLC fact while eliminating all noise.
+
+    ALWAYS PRESERVE:
+    • Test artefact identifiers: feature file paths, step names, POM class/method names,
+      locators (data-testid, role, text selectors), Cucumber step text
+    • Defect and ticket IDs: Jira/ADO ticket numbers, PR numbers, commit SHAs
+    • RCA classifications: LOCATOR_STALE, DATA_MISMATCH, TIMING_FLAKE, ENV_FAILURE, LOGIC_CHANGE
+    • Playwright error messages verbatim (first 150 chars): "Locator not found", "Timeout exceeded", etc.
+    • File paths, line numbers, function names related to the failing or changed code
+    • Acceptance Criteria IDs (AC-001, AC-002, …) and their pass/fail status
+    • Environment and AUT info: base URL, browser, OS, screenshot/trace references
+    • Confidence scores, threshold results (e.g., "confidence: 0.93 → APPROVED")
+    • SQL seed queries, API mock endpoints, test user credentials structure (mask PII)
+    • Git branch names, merge targets, CI pipeline names and stage names
+
+    COMPRESS TO ESSENTIALS:
+    • Long stack traces → file + line + error type only
+    • Full HTML/accessibility trees → relevant locator + element role + text only
+    • Verbose API JSON responses → relevant fields only
+    • Long requirement descriptions → acceptance criteria bullet points only
+
+    REMOVE ENTIRELY:
+    • Generic introductions, filler, hedging language
+    • Repeated boilerplate (e.g., repeated import blocks, license headers)
+    • Non-STLC content (marketing text, unrelated logs)
+    • Duplicate information already captured earlier in context
+
+    EXAMPLE:
+    Input: "The Playwright test 'Login with valid credentials' failed on line 47 of
+    pages/LoginPage.ts. The error was: TimeoutError: Locator
+    '[data-testid=\\"login-submit-btn\\"]' not found after 30000ms. Screenshot saved to
+    test-results/screenshots/login-fail.png. The test was last passing on commit
+    abc1234. The page title was 'Sign In — GDS Demo App'. Browser: Chromium 123."
+
+    Output: "FAIL Login valid creds — LoginPage.ts:47 TimeoutError data-testid=login-submit-btn
+    (30s); last green: abc1234; screenshot: login-fail.png; Chromium 123"
+
+    Be concise. Retain every locator, ID, file path, and error detail.
+    """)
+
+
+# ---------------------------------------------------------------------------
 # AUT Configuration (Application Under Test)
 # ---------------------------------------------------------------------------
 AUT_BASE_URL = getenv("AUT_BASE_URL", "https://lokeshsharma99.github.io/GDS-Demo-App/")

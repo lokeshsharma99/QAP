@@ -17,7 +17,7 @@ from agno.tools.knowledge import KnowledgeTools
 from agents.engineer.instructions import INSTRUCTIONS
 from agents.engineer.tools import run_typecheck, write_feature, write_pom, write_step_def, run_tests, parse_test_report, write_run_context, run_eslint, run_ruff
 from agents.librarian.agent import automation_knowledge
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from db import get_qap_learnings_kb, get_site_manifesto_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -127,7 +127,7 @@ engineer = Agent(
     # Context compression — CodingTools + FileTools + KnowledgeTools produce verbose
     # results (file contents, lint output, KB docs). Compress after 4 000 tokens to
     # prevent context overflow on kilo-auto/free during multi-step PR builds.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,

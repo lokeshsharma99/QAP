@@ -16,7 +16,7 @@ from agno.tools.user_feedback import UserFeedbackTools
 
 from agents.judge.instructions import INSTRUCTIONS
 from agents.judge.tools import JudgeToolkit
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from app.sonarqube_mcp import get_sonarqube_mcp_tools
 from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
@@ -124,7 +124,7 @@ judge = Agent(
     # Context compression — KnowledgeTools(rca_kb) + JudgeToolkit can return verbose
     # RCA histories and artifact bodies. Compress after 4 000 tokens as a safety net.
     # History depth kept at 5 — Judge needs full past verdicts for consistency.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,

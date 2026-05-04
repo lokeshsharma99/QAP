@@ -17,7 +17,7 @@ from app.ado_mcp import get_ado_mcp_for_impact_analyst
 from app.atlassian_mcp import get_atlassian_mcp_for_impact_analyst
 from app.github_mcp import get_github_mcp_for_impact_analyst
 from agno.learn import LearningMachine, LearningMode, SessionContextConfig, UserMemoryConfig
-from app.settings import MODEL, FOLLOWUP_MODEL, agent_db
+from app.settings import MODEL, FOLLOWUP_MODEL, agent_db, STLC_COMPRESSION_PROMPT
 from db import get_automation_kb, get_culture_manager, get_qap_learnings_kb, get_site_manifesto_kb
 
 # ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ impact_analyst = Agent(
     # Context compression — GitHub PR diffs, ADO work items, and KB docs are
     # extremely verbose. Compress after 4 000 tokens; each impact analysis is
     # scoped to one PR/ticket so history depth can be reduced.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,

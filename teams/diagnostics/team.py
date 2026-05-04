@@ -17,7 +17,7 @@ from agno.compression.manager import CompressionManager
 from agents.ci_log_analyzer import ci_log_analyzer
 from agents.detective import detective
 from agents.pipeline_analyst import pipeline_analyst
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from teams.diagnostics.instructions import LEADER_INSTRUCTIONS
 
 # ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ diagnostics_team = Team(
     # (Pipeline Analyst) are the most verbose outputs in the system. With
     # share_member_interactions=True, 5 prior runs = potentially hundreds of KB of
     # tool call results in context. Compress and reduce depth aggressively.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Context — each failure triage is independent. 2 history runs provides enough
     # coordinator context while members' own session_context tracks per-failure state.
     add_datetime_to_context=True,

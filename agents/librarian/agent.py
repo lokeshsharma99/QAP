@@ -14,7 +14,7 @@ from agno.tools.knowledge import KnowledgeTools
 
 from agents.librarian.instructions import INSTRUCTIONS
 from agents.librarian.tools import LibrarianToolkit
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from db import get_automation_kb, get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -100,7 +100,7 @@ librarian = Agent(
     # Context compression — CodingTools reads many source files during indexing;
     # KB graph queries return verbose JSON. Compress after 4 000 tokens.
     # Indexing progress is tracked in session_state so history depth can be reduced.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,

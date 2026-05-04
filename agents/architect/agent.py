@@ -15,7 +15,7 @@ from agno.tools.reasoning import ReasoningTools
 
 from agents.architect.instructions import INSTRUCTIONS
 from agents.architect.tools import fetch_jira_ticket, fetch_linked_issues, add_jira_comment, create_jira_issue, index_ticket_to_document_library
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from db import get_qap_learnings_kb, get_site_manifesto_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -158,7 +158,7 @@ architect = Agent(
     # Context compression — Jira ticket bodies, GitHub PR diffs, ADO work items, and
     # KB doc results can be very verbose. Compress after 4 000 tokens to keep context
     # lean across multi-ticket analysis sessions.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,

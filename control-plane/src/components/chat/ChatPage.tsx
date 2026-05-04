@@ -26,7 +26,7 @@ import {
   Bot, Cpu, CheckCircle, XCircle, GitBranch, Activity,
   Users, BookOpen, MemoryStick, Layers, MessageSquare, MessagesSquare,
   Play, CornerDownRight, ArrowUp, Paperclip, X as XIcon, FileText, Image as ImageIcon,
-  Hammer, ChevronRight, Copy, Check, Square, Search, Settings2
+  Hammer, ChevronRight, Copy, Check, Square, Search, Settings2, Split
 } from 'lucide-react'
 
 import { getAgentDetailAPI, getTeamDetailAPI, getWorkflowDetailAPI } from '@/api/os'
@@ -609,6 +609,86 @@ const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null
 // ---------------------------------------------------------------------------
 type WfMeta = { description?: string; squad?: string; pipeline?: string[]; inputFormat?: string; placeholder?: string }
 
+// Icons inline (no extra lucide imports needed for the step-marker)
+const StepDotIcon = () => (
+  <svg viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="size-4 text-primary shrink-0">
+    <path d="M7.5 2C7.77614 2 8 2.22386 8 2.5L8 12.5C8 12.7761 7.77614 13 7.5 13C7.22386 13 7 12.7761 7 12.5L7 2.5C7 2.22386 7.22386 2 7.5 2Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+  </svg>
+)
+const LoopIcon = () => (
+  <svg viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="size-4 text-primary shrink-0">
+    <path d="M3.35355 1.85355C3.54882 1.65829 3.54882 1.34171 3.35355 1.14645C3.15829 0.951184 2.84171 0.951184 2.64645 1.14645L0.646447 3.14645C0.451184 3.34171 0.451184 3.65829 0.646447 3.85355L2.64645 5.85355C2.84171 6.04882 3.15829 6.04882 3.35355 5.85355C3.54882 5.65829 3.54882 5.34171 3.35355 5.14645L2.20711 4H9.5C11.433 4 13 5.567 13 7.5C13 7.77614 13.2239 8 13.5 8C13.7761 8 14 7.77614 14 7.5C14 5.01472 11.9853 3 9.5 3H2.20711L3.35355 1.85355ZM2 7.5C2 7.22386 1.77614 7 1.5 7C1.22386 7 1 7.22386 1 7.5C1 9.98528 3.01472 12 5.5 12H12.7929L11.6464 13.1464C11.4512 13.3417 11.4512 13.6583 11.6464 13.8536C11.8417 14.0488 12.1583 14.0488 12.3536 13.8536L14.3536 11.8536C14.5488 11.6583 14.5488 11.3417 14.3536 11.1464L12.3536 9.14645C12.1583 8.95118 11.8417 8.95118 11.6464 9.14645C11.4512 9.34171 11.4512 9.65829 11.6464 9.85355L12.7929 11H5.5C3.567 11 2 9.433 2 7.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+  </svg>
+)
+
+const WorkflowStepRow = ({ step, depth = 0 }: { step: WorkflowStep; depth?: number }) => {
+  const [open, setOpen] = useState(true)
+  const type = step.type?.toLowerCase() ?? 'step'
+  const isCondition = type === 'condition'
+  const isLoop = type === 'loop'
+  const isRouter = type === 'router'
+  const hasChildren = (step.steps?.length ?? 0) > 0
+  const isNested = isCondition || isLoop || isRouter
+
+  const indentClass = depth > 0 ? 'ml-6' : ''
+  const borderColour = depth > 0 ? 'border-border' : 'border-primary/30'
+  const childHint = isLoop ? 'Repeats until condition is met:' : isCondition ? 'Runs if condition evaluates to true:' : isRouter ? 'Routes to one branch:' : ''
+
+  if (isNested && hasChildren) {
+    return (
+      <div className={cn('group relative border-l-2', borderColour, indentClass)}>
+        <div>
+          <div className="border-0">
+            <h3 className="flex">
+              <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="flex size-8 flex-1 items-center justify-between gap-2 text-sm font-medium transition-all py-0 hover:no-underline pl-3"
+              >
+                <div className="flex w-full">
+                  <div className="flex cursor-pointer items-center gap-2 truncate py-2">
+                    <div className="shrink-0">
+                      {isLoop ? <LoopIcon /> : <Split className="size-4 text-primary" />}
+                    </div>
+                    <p className="text-sm min-w-0 truncate text-primary">{step.name ?? type}</p>
+                  </div>
+                </div>
+                <ChevronDown className={cn('shrink-0 transition-transform duration-200 text-primary size-3', open && 'rotate-180')} />
+              </button>
+            </h3>
+            {open && (
+              <div className="pb-2 pl-4 pt-2">
+                <div className="flex flex-col gap-y-2">
+                  {childHint && (
+                    <p className="font-inter text-[0.75rem] font-normal leading-[1.0625rem] tracking-[-0.02em] italic text-muted">{childHint}</p>
+                  )}
+                  <div className="flex flex-col gap-y-1">
+                    {step.steps!.map((child, ci) => (
+                      <WorkflowStepRow key={ci} step={child} depth={depth + 1} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('group relative flex items-center border-l-2 pl-3', borderColour, indentClass, depth > 0 && 'pl-5')}>
+      <div className="flex cursor-default items-center gap-2 truncate py-2">
+        <StepDotIcon />
+        <p className="text-sm min-w-0 truncate text-primary">{step.name ?? `Step`}</p>
+        {step.type && step.type !== 'Step' && (
+          <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[9px] uppercase text-muted/60">{step.type}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const AccordionRow = ({
   title, badge, defaultOpen = true, children,
 }: {
@@ -696,19 +776,7 @@ const WorkflowAccordion = ({ workflowDetail, meta }: { workflowDetail: WorkflowF
             <div className="rounded-lg bg-secondary/30 p-3">
               <div className="flex flex-col gap-y-3">
                 {steps.map((step, i) => (
-                  <div key={i} className="group relative flex items-center border-l-2 border-primary/30 pl-3">
-                    <div className="flex cursor-default items-center gap-2 truncate py-2">
-                      <div className="shrink-0">
-                        <svg viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="size-4 text-primary">
-                          <path d="M7.5 2C7.77614 2 8 2.22386 8 2.5L8 12.5C8 12.7761 7.77614 13 7.5 13C7.22386 13 7 12.7761 7 12.5L7 2.5C7 2.22386 7.22386 2 7.5 2Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <p className="text-sm min-w-0 truncate text-primary">{step.name ?? `Step ${i + 1}`}</p>
-                      {step.type && (
-                        <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[9px] uppercase text-muted/60">{step.type}</span>
-                      )}
-                    </div>
-                  </div>
+                  <WorkflowStepRow key={i} step={step} depth={0} />
                 ))}
               </div>
             </div>

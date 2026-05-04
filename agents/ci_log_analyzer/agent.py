@@ -24,7 +24,7 @@ from agents.ci_log_analyzer.tools import (
 from app.ado_mcp import get_ado_mcp_for_ci_log_analyzer
 from app.atlassian_mcp import get_atlassian_mcp_for_ci_log_analyzer
 from db import get_culture_manager
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from db.session import get_rca_kb as get_rca_knowledge
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ ci_log_analyzer = SemanticaAgent(
     update_memory_on_run=True,
     enable_session_summaries=False,  # Disabled to reduce context window
     compress_tool_results=True,
-    compression_manager=CompressionManager(model=MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
 
     # Culture
     culture_manager=culture_manager,

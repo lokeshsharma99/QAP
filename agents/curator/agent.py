@@ -27,7 +27,7 @@ from agents.curator.tools import (
 )
 from agents.architect.tools import add_jira_comment
 from db import get_culture_manager
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from db.session import get_automation_kb
 
 logger = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ curator = Agent(
     # Context compression — FileTools reads and maintenance report generation can be
     # verbose. Compress after 4 000 tokens as a safety net.
     # History kept at 5 — deletion decisions are high-stakes and need full audit trail.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

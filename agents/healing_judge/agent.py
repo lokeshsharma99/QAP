@@ -14,7 +14,7 @@ from agents.base.semantica_agent import SemanticaAgent
 from agents.healing_judge.instructions import INSTRUCTIONS
 from agents.healing_judge.tools import healing_judge_tools
 from db import get_culture_manager
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 
 # ---------------------------------------------------------------------------
 # Culture Manager
@@ -71,7 +71,7 @@ healing_judge = SemanticaAgent(
     enable_agentic_culture=True,
     # Context compression — healing patch diffs and verification logs can be verbose.
     # Compress as safety net while preserving full history for accurate surgical review.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,

@@ -17,7 +17,7 @@ from agno.compression.manager import CompressionManager
 from agents.detective.instructions import INSTRUCTIONS
 from agents.detective.tools import classify_failure, extract_screenshot_from_trace, parse_ci_log, parse_trace_zip
 from app.power_automate import post_rca_to_slack, post_rca_to_teams
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from db import get_qap_learnings_kb, get_rca_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -132,7 +132,7 @@ detective = Agent(
     search_past_sessions=True,
     num_past_sessions_to_search=3,
     compress_tool_results=True,
-    compression_manager=CompressionManager(model=MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     tool_call_limit=50,
     # Culture
     culture_manager=culture_manager,

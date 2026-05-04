@@ -12,7 +12,7 @@ from agno.compression.manager import CompressionManager
 
 from agents.detective import detective
 from agents.medic import medic
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from teams.operations.instructions import LEADER_INSTRUCTIONS
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ operations_team = Team(
     update_memory_on_run=True,
     # Context compression — Detective produces trace parse output; Medic reads POM files
     # and produces diffs. Both are verbose when captured in shared team history.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Context — each heal cycle is per-failure. Session context on members tracks progress.
     # 3 history runs preserves enough coordinator continuity for recurring failures.
     add_datetime_to_context=True,

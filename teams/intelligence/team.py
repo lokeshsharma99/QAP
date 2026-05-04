@@ -19,7 +19,7 @@ from agno.compression.manager import CompressionManager
 
 from agents.impact_analyst import impact_analyst
 from agents.pipeline_analyst import pipeline_analyst
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from teams.intelligence.instructions import LEADER_INSTRUCTIONS
 
 # ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ intelligence_team = Team(
     enable_agentic_memory=True,
     # Context compression — Impact Analyst processes PR diffs (GitHub/ADO/Atlassian MCP);
     # Pipeline Analyst parses CI log bodies. Both are verbose in shared team history.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Context — each analysis is scoped to one PR or pipeline run. 3 history runs
     # preserves trend awareness without loading stale diff/log data.
     add_datetime_to_context=True,

@@ -21,7 +21,7 @@ from agents.data_agent.tools import (
     generate_scenario_data,
     clear_data_cache,
 )
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from db import get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -90,7 +90,7 @@ data_agent = Agent(
     # Context compression — CodingTools can return verbose execution output; KB docs
     # can be long. Compress after 4 000 tokens as a safety net.
     # History kept at 5 — test data correctness requires full prior scenario context.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,

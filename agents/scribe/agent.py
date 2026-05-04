@@ -18,7 +18,7 @@ from agents.librarian.tools import persist_traceability_to_rtm
 from agents.scribe.instructions import INSTRUCTIONS
 from app.atlassian_mcp import get_atlassian_mcp_for_scribe
 from agno.tools.user_control_flow import UserControlFlowTools
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from db import get_qap_learnings_kb, get_culture_manager
 
 # ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ scribe = Agent(
     # contents can be verbose. Compress after 4 000 tokens.
     # History kept at 4 (not 3) — Scribe needs recent spec context to avoid
     # duplicating Gherkin steps across features.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Culture
     culture_manager=culture_manager,
     add_culture_to_context=True,

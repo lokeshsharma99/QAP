@@ -13,7 +13,7 @@ from agno.compression.manager import CompressionManager
 
 from agents.architect import architect
 from agents.judge import judge
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from teams.grooming.instructions import INSTRUCTIONS
 
 # ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ grooming_team = Team(
     update_memory_on_run=True,
 
     # Context compression — scoring + Jira comment formatting can be verbose.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
 
     # Context
     add_datetime_to_context=True,

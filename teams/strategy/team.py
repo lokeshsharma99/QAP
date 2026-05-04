@@ -12,7 +12,7 @@ from agno.compression.manager import CompressionManager
 
 from agents.architect import architect
 from agents.scribe import scribe
-from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from app.settings import MODEL, agent_db, FOLLOWUP_MODEL, STLC_COMPRESSION_PROMPT
 from teams.strategy.instructions import LEADER_INSTRUCTIONS
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ strategy_team = Team(
     update_memory_on_run=True,
     # Context compression — Architect fetches Jira/GitHub/ADO ticket bodies + KB docs;
     # Scribe generates full .feature file content. All captured in shared team history.
-    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000),
+    compression_manager=CompressionManager(model=FOLLOWUP_MODEL, compress_token_limit=4000, compress_tool_call_instructions=STLC_COMPRESSION_PROMPT),
     # Context — session_context planning on members tracks per-ticket steps. 3 history
     # runs gives the team coordinator cross-ticket step-reuse awareness.
     add_datetime_to_context=True,
