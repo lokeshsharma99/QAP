@@ -12,6 +12,7 @@ Answers questions; routes to specialist agents for action.
 """
 
 from agno.agent import Agent
+from agno.tools.knowledge import KnowledgeTools
 from agno.tools.reasoning import ReasoningTools
 
 from agents.scout.instructions import INSTRUCTIONS
@@ -49,7 +50,19 @@ scout = Agent(
     knowledge=_automation_kb,
     search_knowledge=True,
     # Capabilities
-    tools=[ReasoningTools(add_instructions=True)],
+    # ReasoningTools: structured reasoning before answering.
+    # KnowledgeTools for each secondary KB: Scout's PRIMARY SKILL is unified_kb_search —
+    # it MUST be able to search all KBs. search_knowledge=True covers automation_kb (primary).
+    # Each secondary KB needs explicit KnowledgeTools so Scout can route the right question
+    # to the right KB (UI components → site_manifesto, traceability → rtm, failures → rca, etc.)
+    tools=[
+        ReasoningTools(add_instructions=True),
+        KnowledgeTools(knowledge=_site_manifesto_kb, enable_think=True, enable_search=True),
+        KnowledgeTools(knowledge=_rtm_kb, enable_think=True, enable_search=True),
+        KnowledgeTools(knowledge=_document_library_kb, enable_think=True, enable_search=True),
+        KnowledgeTools(knowledge=_rca_kb, enable_think=True, enable_search=True),
+        KnowledgeTools(knowledge=_learnings_kb, enable_think=True, enable_search=True),
+    ],
     learning=True,
     add_learnings_to_context=True,
     # Instructions

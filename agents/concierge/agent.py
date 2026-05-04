@@ -53,6 +53,9 @@ concierge = Agent(
         user_profile=UserProfileConfig(mode=LearningMode.ALWAYS),
         user_memory=UserMemoryConfig(mode=LearningMode.ALWAYS),
     ),
+    update_memory_on_run=True,
+    # Memory
+    enable_agentic_memory=True,
     # Context
     add_datetime_to_context=True,
     add_history_to_context=True,
