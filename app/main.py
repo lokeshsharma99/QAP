@@ -13,6 +13,7 @@ from pathlib import Path
 from agno.os import AgentOS
 
 from agents.architect import architect
+from agents.ci_log_analyzer import ci_log_analyzer
 from agents.concierge import concierge
 from agents.curator import curator
 from agents.scout import scout
@@ -51,6 +52,7 @@ from teams.knowledge import knowledge_team
 from teams.operations import operations_team
 from teams.strategy import strategy_team
 from workflows.automation_scaffold import automation_scaffold
+from workflows.ado_ci_triage import ado_ci_triage
 from workflows.discovery_onboard import discovery_onboard
 from workflows.full_lifecycle import full_lifecycle
 from workflows.full_regression import full_regression
@@ -99,6 +101,7 @@ agent_os = AgentOS(
         detective,
         medic,
         curator,
+        ci_log_analyzer,
         impact_analyst,
         pipeline_analyst,
         healing_judge,
@@ -121,6 +124,7 @@ agent_os = AgentOS(
         triage_heal,
         impact_assessment,
         pipeline_failure_assessment,
+        ado_ci_triage,
         automation_scaffold,
         full_lifecycle,
         full_regression,

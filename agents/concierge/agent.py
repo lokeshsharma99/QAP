@@ -14,7 +14,9 @@ from agno.tools.workflow import WorkflowTools
 
 from agents.concierge.instructions import INSTRUCTIONS
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
+from workflows.ado_ci_triage import ado_ci_triage
 from workflows.discovery_onboard import discovery_onboard
+from workflows.jira_to_pr import jira_to_pr
 from workflows.spec_to_code import spec_to_code
 from workflows.triage_heal import triage_heal
 
@@ -38,9 +40,11 @@ concierge = Agent(
         ReasoningTools(add_instructions=True),
         # enable_think/enable_analyze disabled — ReasoningTools already handles thinking.
         # Keeping them off cuts tool count from 10+ to 4, staying within free-tier limits.
-        WorkflowTools(workflow=spec_to_code),
+        WorkflowTools(workflow=jira_to_pr),        # Primary: Jira ticket → full spec→code→PR pipeline
+        WorkflowTools(workflow=spec_to_code),      # Alternative: free-text requirement → spec→code
         WorkflowTools(workflow=triage_heal),
         WorkflowTools(workflow=discovery_onboard),
+        WorkflowTools(workflow=ado_ci_triage),     # ADO CI failure → RCA → HITL → ticket
     ],
     # Instructions
     instructions=INSTRUCTIONS,

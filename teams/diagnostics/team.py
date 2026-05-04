@@ -14,6 +14,7 @@ from agno.team import Team
 from agno.team.mode import TeamMode
 from agno.compression.manager import CompressionManager
 
+from agents.ci_log_analyzer import ci_log_analyzer
 from agents.detective import detective
 from agents.pipeline_analyst import pipeline_analyst
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL
@@ -30,7 +31,10 @@ diagnostics_team = Team(
     # Model
     model=MODEL,
     # Members
-    members=[pipeline_analyst, detective],
+    # pipeline_analyst  — GitHub Actions CI failure analysis (workflow runs, job logs)
+    # ci_log_analyzer   — Azure DevOps CI failure analysis (ADO pipelines, creates work items)
+    # detective         — Playwright trace.zip analysis (locator failures, screenshots)
+    members=[pipeline_analyst, ci_log_analyzer, detective],
     # Data
     db=agent_db,
     # Instructions
