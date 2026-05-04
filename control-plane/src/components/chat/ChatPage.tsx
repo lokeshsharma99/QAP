@@ -477,7 +477,7 @@ const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null
         <Icon type={isUser ? 'user' : 'agent'} size="xs" />
         <span className="text-xs font-medium uppercase text-muted">{isUser ? 'You' : 'Agent'}</span>
         <span className="text-xs text-muted/50">{fmtMsgTime(msg.created_at)}</span>
-        {!isUser && isActiveStreaming && (
+        {!isUser && isActiveStreaming && !!msg.content && (
           <span className="flex items-center gap-1 rounded-full bg-positive/10 px-1.5 py-0.5 text-[10px] text-positive">
             <span className="size-1 rounded-full bg-positive animate-pulse inline-block" />
             Live
