@@ -157,6 +157,7 @@ _extra_origins: list[str] = [
 _ALLOWED_ORIGIN_RE = re.compile(
     r"^https?://(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(:\d+)?$"
     r"|^https://[a-z0-9]+-\d+\.[\w]+\.devtunnels\.ms$"
+    r"|^https://[a-zA-Z0-9-]+\.(ngrok-free\.dev|ngrok-free\.app|ngrok\.io|trycloudflare\.com|loca\.lt)$"
 )
 
 # Gather the existing Agno-set origins and append ours
