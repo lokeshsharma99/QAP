@@ -24,6 +24,7 @@ Quality Autopilot treats AI as a Senior SDET that reasons through requirements, 
 12. [Gated Roadmap](#12-gated-roadmap)
 13. [Tech Stack](#13-tech-stack)
 14. [User Onboarding & Auth](#14-user-onboarding--auth)
+15. [Model Providers](#15-model-providers)
 
 ---
 
@@ -60,18 +61,35 @@ cp example.env .env
 Open `.env` in your editor. The minimum required settings:
 
 ```bash
-# ── Model provider (pick ONE) ──────────────────────────────────────────────
+# ── Model provider (required — pick ONE) ──────────────────────────────────
+# Set MODEL_PROVIDER to one of: nvidia | kilo | kilo_paid | gemini | gpt4o_mini | haiku
+# Default if unset: nvidia
+MODEL_PROVIDER=nvidia
 
-# Option A: Kilo AI (free tier — recommended for first run)
-# Sign up at https://app.kilo.ai
-KILO_API_KEY=your_kilo_key_here
-OPENROUTER_BASE_URL=https://api.kilo.ai/api/openrouter/v1
+# NVIDIA NIM (default — best quality/speed balance)
+# Sign up at https://build.nvidia.com
+NVIDIA_API_KEY=your_nvidia_key_here
 
-# Option B: GitHub Copilot (local proxy via VS Code extension)
-GITHUB_COPILOT_BASE_URL=http://127.0.0.1:3030/v1
+# -- OR: Kilo AI (free tier — recommended for first run / zero cost)
+# Sign up at https://app.kilo.ai  — no billing required
+# MODEL_PROVIDER=kilo
+# KILO_API_KEY=your_kilo_key_here
 
-# Option C: NVIDIA NIM
-# NVIDIA_API_KEY=your_nvidia_key_here
+# -- OR: Kilo AI paid tier (faster, higher rate limits)
+# MODEL_PROVIDER=kilo_paid
+# KILO_API_KEY=your_kilo_key_here
+
+# -- OR: Google Gemini 2.5 Flash
+# MODEL_PROVIDER=gemini
+# GOOGLE_API_KEY=your_google_key_here
+
+# -- OR: OpenAI GPT-4o mini
+# MODEL_PROVIDER=gpt4o_mini
+# OPENAI_API_KEY=your_openai_key_here
+
+# -- OR: Anthropic Claude 3.5 Haiku
+# MODEL_PROVIDER=haiku
+# ANTHROPIC_API_KEY=your_anthropic_key_here
 
 # ── Ollama (embeddings — required) ────────────────────────────────────────
 OLLAMA_HOST=http://host.docker.internal:11434
@@ -96,7 +114,8 @@ AUT_BASE_URL=https://your-app.example.com
 # AZURE_DEVOPS_PAT=your_ado_pat
 ```
 
-> **Tip:** You only need `KILO_API_KEY` + `OLLAMA_HOST` to get started. Everything else is optional and enables specific agents.
+> **Quickest start:** Set `MODEL_PROVIDER=kilo` and `KILO_API_KEY` to get running at zero cost. Add `OLLAMA_HOST` for embeddings. Everything else is optional.
+> See [§15 Model Providers](#15-model-providers) for a full comparison of all options.
 
 ---
 
@@ -335,7 +354,8 @@ npx cucumber-js features/GDS-5-contact-details-form.feature  # single feature
 | Control Plane | Next.js 15 App Router | Port 3000 |
 | Database | PostgreSQL 16 + PgVector | `agnohq/pgvector:18` |
 | Embeddings | Ollama `qwen3-embedding:4b` | 2560 dimensions, hybrid search |
-| Model gateway | Kilo AI / OpenRouter | `kilo-auto/free` default |
+| Model gateway | NVIDIA NIM (default) | Multi-provider via `MODEL_PROVIDER` env var |
+| Compression | `CompressionManager` + STLC prompt | STLC-domain tool call compression for token efficiency |
 | Test engine | Playwright + Cucumber (TypeScript) | BDD+POM pattern |
 | MCP servers | GitHub, Atlassian, ADO, Playwright | Tool namespacing per agent |
 | Container | Docker Compose | Single `compose.yaml` |
@@ -475,3 +495,60 @@ curl -X POST http://localhost:8000/auth/forgot-password \
 | Sign-in redirects to itself | Session expired — seed admin again or accept a new invite |
 
 See `example.env` for the full environment variable reference.
+
+---
+
+## 15. Model Providers
+
+Quality Autopilot supports six LLM backends. Select one via `MODEL_PROVIDER` in `.env`. All use the same `Agent` interface — no code changes required.
+
+| `MODEL_PROVIDER` | Provider | Model | Cost | Best For |
+|-----------------|----------|-------|------|---------|
+| `nvidia` *(default)* | NVIDIA NIM | `qwen/qwen3-coder-480b-a35b-instruct` | Pay-per-token | Best code quality, production use |
+| `kilo` | Kilo AI | `kilo-auto/free` | **Free** | Getting started, demos, zero cost |
+| `kilo_paid` | Kilo AI | `kilo-auto/paid` | Pay-per-token | Higher rate limits on Kilo |
+| `gemini` | Google | `gemini-2.5-flash` | Pay-per-token | Fast, large context window |
+| `gpt4o_mini` | OpenAI | `gpt-4o-mini` | Pay-per-token | OpenAI ecosystem preference |
+| `haiku` | Anthropic | `claude-3-5-haiku-latest` | Pay-per-token | Anthropic ecosystem preference |
+
+### Switching at Runtime
+
+```bash
+# Change provider in .env, then restart only the API container
+# (no need to rebuild)
+docker compose restart qap-api
+```
+
+### How It Works
+
+`app/settings.py` reads `MODEL_PROVIDER` at startup and constructs `MODEL` and `FOLLOWUP_MODEL` accordingly. Every agent imports `MODEL` from `app.settings` — no per-agent config needed.
+
+```python
+# app/settings.py (simplified)
+from os import getenv
+
+MODEL_PROVIDER = getenv("MODEL_PROVIDER", "nvidia")
+
+if MODEL_PROVIDER == "nvidia":
+    MODEL = NvidiaOpenAI(id="qwen/qwen3-coder-480b-a35b-instruct")
+elif MODEL_PROVIDER == "kilo":
+    MODEL = OpenRouter(id="kilo-auto/free", base_url="...")
+# ...etc.
+```
+
+### STLC Compression Prompt
+
+All 19 agent/team files use a shared `STLC_COMPRESSION_PROMPT` passed to Agno's `CompressionManager`. This overrides the default generic compression example with STLC-domain context, ensuring the model preserves critical information (locators, RCA classifications, Playwright error messages, ticket IDs, feature file paths) when compressing long tool call histories.
+
+```python
+# Every agent uses this pattern
+from agno.compression.manager import CompressionManager
+from app.settings import STLC_COMPRESSION_PROMPT
+
+agent = Agent(
+    ...
+    compression_manager=CompressionManager(
+        compress_tool_call_instructions=STLC_COMPRESSION_PROMPT,
+    ),
+)
+```

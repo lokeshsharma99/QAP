@@ -581,8 +581,14 @@
       <div class="nav-item active" onclick="show('overview', this)">
         <div class="nav-dot" style="background:var(--brand)"></div> Overview
       </div>
+      <div class="nav-item" onclick="show('quickstart', this)">
+        <div class="nav-dot" style="background:var(--positive)"></div> Quick Start
+      </div>
       <div class="nav-item" onclick="show('stack', this)">
-        <div class="nav-dot" style="background:var(--positive)"></div> Tech Stack
+        <div class="nav-dot" style="background:var(--teal)"></div> Tech Stack
+      </div>
+      <div class="nav-item" onclick="show('agno', this)">
+        <div class="nav-dot" style="background:var(--purple)"></div> Agno Features
       </div>
 
       <div class="nav-section">Agents</div>
@@ -2026,6 +2032,477 @@
           All user input is validated at system boundaries via Pydantic contracts.<br>
           No SQL string concatenation — use parameterised queries only.
         </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- QUICK START                                                         -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-quickstart" class="section">
+      <div class="page-header">
+        <h2>Quick Start — First-Time Setup</h2>
+        <p>Get Quality Autopilot running in under 10 minutes. Follow these steps in order.</p>
+      </div>
+
+      <div class="callout info">
+        <div class="callout-icon">ℹ️</div>
+        <div><strong>Prerequisites:</strong> Docker Desktop 4.x+, Ollama (latest), Git. Node.js 20+ only needed to run automation tests locally.</div>
+      </div>
+
+      <h3>Step 1 — Clone &amp; Configure</h3>
+      <pre><span class="hl-cmt"># Clone the repository</span>
+git clone https://github.com/lokeshsharma99/QAP.git
+cd QAP
+
+<span class="hl-cmt"># Copy the environment template</span>
+cp example.env .env</pre>
+
+      <p style="margin:12px 0 8px">Open <code style="font-family:var(--mono)">.env</code> and set at minimum:</p>
+      <pre><span class="hl-cmt"># Pick ONE model provider (set MODEL_PROVIDER + matching API key)</span>
+<span class="hl-key">MODEL_PROVIDER</span>=<span class="hl-str">kilo</span>               <span class="hl-cmt"># free tier — best for first run</span>
+<span class="hl-key">KILO_API_KEY</span>=<span class="hl-str">your_kilo_key</span>        <span class="hl-cmt"># sign up at app.kilo.ai</span>
+
+<span class="hl-cmt"># Embeddings (required for Knowledge Bases)</span>
+<span class="hl-key">OLLAMA_HOST</span>=<span class="hl-str">http://host.docker.internal:11434</span></pre>
+
+      <div class="table-wrap" style="margin-top:12px">
+        <table>
+          <tr><th>MODEL_PROVIDER</th><th>Provider</th><th>Cost</th><th>Best For</th></tr>
+          <tr><td class="mono">nvidia</td><td>NVIDIA NIM</td><td>Pay/token</td><td>Best quality — default for production</td></tr>
+          <tr><td class="mono">kilo</td><td>Kilo AI</td><td><span style="color:var(--positive)">Free</span></td><td>Getting started — zero cost</td></tr>
+          <tr><td class="mono">kilo_paid</td><td>Kilo AI</td><td>Pay/token</td><td>Higher rate limits on Kilo</td></tr>
+          <tr><td class="mono">gemini</td><td>Google</td><td>Pay/token</td><td>Large context window</td></tr>
+          <tr><td class="mono">gpt4o_mini</td><td>OpenAI</td><td>Pay/token</td><td>OpenAI ecosystem</td></tr>
+          <tr><td class="mono">haiku</td><td>Anthropic</td><td>Pay/token</td><td>Anthropic ecosystem</td></tr>
+        </table>
+      </div>
+
+      <h3 style="margin-top:24px">Step 2 — Pull Embedding Model</h3>
+      <p style="margin-bottom:8px;color:var(--muted)">Run on your <strong>host machine</strong> (not inside Docker):</p>
+      <pre><span class="hl-cmt"># Pull the embedding model used by all Knowledge Bases</span>
+ollama pull qwen3-embedding:4b
+
+<span class="hl-cmt"># Verify</span>
+ollama list</pre>
+
+      <h3 style="margin-top:24px">Step 3 — Start the Stack</h3>
+      <pre><span class="hl-cmt"># Build and start all services</span>
+docker compose up -d --build
+
+<span class="hl-cmt"># Services started:</span>
+<span class="hl-cmt"># qap-db        PostgreSQL 16 + PgVector        :5432</span>
+<span class="hl-cmt"># qap-api       AgentOS (FastAPI)               :8000</span>
+<span class="hl-cmt"># qap-ui        Control Plane (Next.js)          :3000</span>
+<span class="hl-cmt"># github-mcp    GitHub MCP server               (internal)</span>
+<span class="hl-cmt"># atlassian-mcp Atlassian/Jira MCP server       (internal)</span>
+<span class="hl-cmt"># ado-mcp       Azure DevOps MCP server         (internal)</span>
+<span class="hl-cmt"># playwright-mcp Browser automation MCP server  (internal)</span></pre>
+
+      <h3 style="margin-top:24px">Step 4 — Seed the Admin Account</h3>
+      <pre><span class="hl-cmt"># Creates the default super-admin (run once)</span>
+docker compose exec qap-api python scripts/seed_superuser.py
+
+<span class="hl-cmt"># Override credentials (optional)</span>
+QAP_ADMIN_EMAIL=you@company.com QAP_ADMIN_PASS=MyStr0ng! \
+  docker compose exec qap-api python scripts/seed_superuser.py</pre>
+
+      <div class="table-wrap" style="margin-top:12px">
+        <table>
+          <tr><th>Field</th><th>Default Value</th></tr>
+          <tr><td>URL</td><td class="mono">http://localhost:3000/sign-in</td></tr>
+          <tr><td>Email</td><td class="mono">admin@quality-autopilot.dev</td></tr>
+          <tr><td>Password</td><td class="mono">Admin@QAP123!</td></tr>
+          <tr><td>Role</td><td>admin</td></tr>
+        </table>
+      </div>
+
+      <div class="callout danger" style="margin-top:12px">
+        <div class="callout-icon">⚠️</div>
+        <div>Change the default password immediately in any non-local environment.</div>
+      </div>
+
+      <h3 style="margin-top:24px">Step 5 — Verify &amp; Open</h3>
+      <pre><span class="hl-cmt"># Confirm API is healthy</span>
+curl http://localhost:8000/health
+<span class="hl-cmt"># → {"status":"ok","instantiated_at":"..."}</span>
+
+<span class="hl-cmt"># Open the Control Plane</span>
+open http://localhost:3000</pre>
+
+      <div class="callout" style="border-color:var(--positive);background:rgba(34,197,94,0.06);margin-top:12px">
+        <div class="callout-icon">✅</div>
+        <div>The Concierge agent loads automatically on first visit with suggestion pills. You don't need to know agent names to get started.</div>
+      </div>
+
+      <h3 style="margin-top:24px">Step 6 — Onboard Your AUT</h3>
+      <p style="color:var(--muted);margin-bottom:8px">Set your Application Under Test URL, then let Discovery crawl it:</p>
+      <pre><span class="hl-cmt"># In .env</span>
+<span class="hl-key">AUT_BASE_URL</span>=<span class="hl-str">https://your-app.example.com</span>
+<span class="hl-key">AUT_AUTH_USER</span>=<span class="hl-str">testuser</span>
+<span class="hl-key">AUT_AUTH_PASS</span>=<span class="hl-str">testpass</span>
+
+<span class="hl-cmt"># Start browser automation service</span>
+docker compose --profile mcp up -d
+
+<span class="hl-cmt"># In the Chat UI: select "Discovery Onboard" workflow</span>
+<span class="hl-cmt"># Type: "Onboard https://your-app.example.com"</span></pre>
+
+      <div class="callout info" style="margin-top:12px">
+        <div class="callout-icon">💡</div>
+        <div>After Discovery finishes, the Site Manifesto is indexed in PgVector. The Engineer agent can now query it before writing any automation code — no hallucinated selectors.</div>
+      </div>
+
+      <h3 style="margin-top:24px">Step 7 — Generate Your First Test</h3>
+      <div class="card">
+        <div class="flow">
+          <div class="flow-step highlight">Open /chat</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">Select "spec-to-code" workflow</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">Type: "Generate tests for [your feature]"</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-gate">Architect → Scribe → Judge → Engineer</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight">GitHub PR</div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:24px">Troubleshooting</h3>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Symptom</th><th>Fix</th></tr>
+          <tr><td>qap-api takes 20s to start</td><td>Normal — MCP tool registration. Wait for /health to return 200.</td></tr>
+          <tr><td>Embedding errors on KB search</td><td>Ensure Ollama is running and <code style="font-family:var(--mono)">qwen3-embedding:4b</code> is pulled.</td></tr>
+          <tr><td>Discovery agent can't browse</td><td>Run <code style="font-family:var(--mono)">docker compose --profile mcp up -d</code>.</td></tr>
+          <tr><td>/approvals queue not draining</td><td>A Judge confidence &lt;90% item needs human approval in the UI.</td></tr>
+          <tr><td>Sign-in redirects to itself</td><td>Seed the admin account: <code style="font-family:var(--mono)">docker compose exec qap-api python scripts/seed_superuser.py</code></td></tr>
+          <tr><td>After <code style="font-family:var(--mono)">docker compose up -d --build</code>, UI unchanged</td><td>Use <code style="font-family:var(--mono)">--force-recreate qap-ui</code> to force container replacement.</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- AGNO FEATURES                                                       -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="section-agno" class="section">
+      <div class="page-header">
+        <h2>Agno Features — What They Do &amp; Why We Use Them</h2>
+        <p>Quality Autopilot is built exclusively on <strong>Agno</strong> (<code style="font-family:var(--mono)">agno[os]</code>). This section explains every Agno capability we use, what it does, and why it matters for the STLC pipeline.</p>
+      </div>
+
+      <div class="callout info">
+        <div class="callout-icon">📖</div>
+        <div>Agno is a pure-Python agent framework. Its primitives are <code style="font-family:var(--mono)">Agent</code>, <code style="font-family:var(--mono)">Team</code>, <code style="font-family:var(--mono)">Workflow</code>, and <code style="font-family:var(--mono)">AgentOS</code>. No LangChain, CrewAI, AutoGen, or LlamaIndex — ever.</div>
+      </div>
+
+      <!-- AgentOS -->
+      <h3 style="margin-top:24px">🖥️ AgentOS — The Runtime Host</h3>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(255,64,23,0.15)">⚡</div>
+          <div>
+            <div class="card-title">AgentOS</div>
+            <div class="card-subtitle">agno.os.AgentOS · app/main.py</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p><strong>What it is:</strong> A FastAPI application host that registers all agents, teams, and workflows under a single process on port 8000. It exposes REST + SSE endpoints, handles session persistence, and manages authorization.</p>
+          <p><strong>Why we use it:</strong> AgentOS turns the entire agent fleet into a single deployable service. The Control Plane talks to it via <code style="font-family:var(--mono)">POST /agents/{id}/runs</code> and Server-Sent Events for streaming. All 15 agents, 6 teams, and 10 workflows are registered once in <code style="font-family:var(--mono)">app/main.py</code>.</p>
+        </div>
+      </div>
+      <pre><span class="hl-fn">agent_os</span> = <span class="hl-class">AgentOS</span>(
+    <span class="hl-key">name</span>=<span class="hl-str">"Quality Autopilot"</span>,
+    <span class="hl-key">tracing</span>=<span class="hl-key">True</span>,            <span class="hl-cmt"># every tool call logged to traces_table</span>
+    <span class="hl-key">authorization</span>=<span class="hl-fn">RUNTIME_ENV</span> == <span class="hl-str">"prd"</span>,
+    <span class="hl-key">db</span>=<span class="hl-fn">agent_db</span>,
+    <span class="hl-key">agents</span>=[architect, scribe, engineer, ...],
+    <span class="hl-key">teams</span>=[strategy_team, context_team, ...],
+    <span class="hl-key">workflows</span>=[spec_to_code, triage_heal, ...],
+)</pre>
+
+      <!-- Agent -->
+      <h3 style="margin-top:24px">🤖 Agent — The Core Primitive</h3>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(139,92,246,0.15)">🤖</div>
+          <div>
+            <div class="card-title">agno.agent.Agent</div>
+            <div class="card-subtitle">One agent per directory (agents/&lt;name&gt;/)</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <p><strong>What it is:</strong> An LLM-powered autonomous unit with its own instructions, tools, memory, and session state. Agents reason, call tools, and produce structured outputs.</p>
+          <p><strong>Why we use it:</strong> Each STLC role (Architect, Scribe, Engineer, etc.) maps to one Agent with a focused system prompt and minimal toolset — single responsibility principle for AI.</p>
+        </div>
+      </div>
+
+      <!-- db=agent_db -->
+      <h3 style="margin-top:24px">🗄️ db=agent_db — Persistent Sessions</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> A <code style="font-family:var(--mono)">PostgresDb</code> instance passed to every agent. Agno uses it to persist chat history, session state, memories, and learnings across runs.</p>
+          <p><strong>Why we use it:</strong> Without <code style="font-family:var(--mono)">db</code>, every conversation is stateless and ephemeral. With it, agents remember previous interactions, the Architect can reference a previous RequirementContext, and the Detective can look up past RCA findings — all stored in PostgreSQL, never SQLite.</p>
+        </div>
+      </div>
+      <pre><span class="hl-cmt"># db/session.py</span>
+<span class="hl-fn">agent_db</span> = <span class="hl-class">PostgresDb</span>(<span class="hl-key">id</span>=<span class="hl-str">"quality-autopilot-db"</span>, <span class="hl-key">db_url</span>=<span class="hl-fn">db_url</span>)
+
+<span class="hl-cmt"># Every agent gets the same db instance</span>
+<span class="hl-fn">agent</span> = <span class="hl-class">Agent</span>(<span class="hl-key">db</span>=<span class="hl-fn">agent_db</span>, ...)</pre>
+
+      <!-- knowledge + search_knowledge -->
+      <h3 style="margin-top:24px">📚 knowledge + search_knowledge — Vector KB Search</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> A <code style="font-family:var(--mono)">Knowledge</code> object backed by PgVector. When <code style="font-family:var(--mono)">search_knowledge=True</code>, Agno automatically queries the KB before each response using <code style="font-family:var(--mono)">SearchType.hybrid</code> (vector similarity + keyword BM25 combined).</p>
+          <p><strong>Why we use it:</strong> The Engineer queries <code style="font-family:var(--mono)">codebase_vectors</code> to check if a Page Object already exists before writing new code. The Medic queries <code style="font-family:var(--mono)">rca_kb</code> for historical fix patterns. The Architect queries <code style="font-family:var(--mono)">qap_learnings</code> for conventions. This prevents hallucinated selectors and duplicate code.</p>
+        </div>
+      </div>
+      <pre><span class="hl-cmt"># db/session.py — all KBs use hybrid search + Ollama embedder</span>
+<span class="hl-fn">automation_kb</span> = <span class="hl-class">Knowledge</span>(
+    <span class="hl-key">vector_db</span>=<span class="hl-class">PgVector</span>(
+        <span class="hl-key">table_name</span>=<span class="hl-str">"codebase_vectors"</span>,
+        <span class="hl-key">search_type</span>=<span class="hl-class">SearchType</span>.<span class="hl-fn">hybrid</span>,
+        <span class="hl-key">embedder</span>=<span class="hl-class">OllamaEmbedder</span>(<span class="hl-key">id</span>=<span class="hl-str">"qwen3-embedding:4b"</span>, <span class="hl-key">dimensions</span>=<span class="hl-num">2560</span>),
+    ),
+)
+<span class="hl-fn">engineer</span> = <span class="hl-class">Agent</span>(
+    <span class="hl-key">knowledge</span>=<span class="hl-fn">automation_kb</span>,
+    <span class="hl-key">search_knowledge</span>=<span class="hl-key">True</span>,  <span class="hl-cmt"># auto-searches KB on every response</span>
+    ...
+)</pre>
+
+      <!-- learning -->
+      <h3 style="margin-top:24px">🎓 learning + add_learnings_to_context — Agents Learn</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> <code style="font-family:var(--mono)">learning=True</code> gives agents tools to record learnings into the <code style="font-family:var(--mono)">qap_learnings</code> KB. <code style="font-family:var(--mono)">add_learnings_to_context=True</code> automatically prepends relevant past learnings to every new response.</p>
+          <p><strong>Why we use it:</strong> Over time, agents accumulate project-specific knowledge — stable locator patterns, quirky API behaviours, known flaky test areas. This is injected automatically as context, making each run smarter than the last without manual prompt engineering.</p>
+        </div>
+      </div>
+      <pre><span class="hl-fn">detective</span> = <span class="hl-class">Agent</span>(
+    <span class="hl-key">learning</span>=<span class="hl-key">True</span>,                    <span class="hl-cmt"># can store learnings</span>
+    <span class="hl-key">add_learnings_to_context</span>=<span class="hl-key">True</span>,   <span class="hl-cmt"># past learnings injected as context</span>
+    ...
+)</pre>
+
+      <!-- enable_agentic_memory -->
+      <h3 style="margin-top:24px">🧠 enable_agentic_memory — Per-User Memory</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> Agno provides agents with tools to store and retrieve <em>facts about the user</em> across sessions. Memory is user-scoped and persisted in PostgreSQL — it survives container restarts.</p>
+          <p><strong>Why we use it:</strong> The Concierge remembers your preferred AUT URL. The Architect remembers that you always want P0 tickets addressed first. The Scribe remembers your Gherkin step naming conventions. These preferences are recalled automatically — the agent adapts to you over time, not just within a single chat.</p>
+          <p><strong>Control Plane:</strong> View, search, and delete all memories at <code style="font-family:var(--mono)">/memory</code>. The "Optimize" button triggers memory consolidation to deduplicate and summarise stale entries.</p>
+        </div>
+      </div>
+      <pre><span class="hl-fn">architect</span> = <span class="hl-class">Agent</span>(
+    <span class="hl-key">enable_agentic_memory</span>=<span class="hl-key">True</span>,  <span class="hl-cmt"># user facts persisted across sessions</span>
+    ...
+)</pre>
+
+      <!-- session_state + enable_agentic_state -->
+      <h3 style="margin-top:24px">📋 session_state + enable_agentic_state — Run-Time State</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> <code style="font-family:var(--mono)">session_state</code> is a dictionary of transient data that persists across turns within a session (not across sessions like memory). <code style="font-family:var(--mono)">enable_agentic_state=True</code> gives the agent tools to read and modify it. <code style="font-family:var(--mono)">add_session_state_to_context=True</code> injects it as context on every turn.</p>
+          <p><strong>Why we use it:</strong> The Engineer tracks <code style="font-family:var(--mono)">created_files</code>, <code style="font-family:var(--mono)">current_feature</code>, and <code style="font-family:var(--mono)">validation_results</code> across a multi-turn automation generation session. The Detective tracks <code style="font-family:var(--mono)">analyzed_failures</code> and <code style="font-family:var(--mono)">root_causes</code>. This prevents the agent from losing track of its progress mid-task.</p>
+        </div>
+      </div>
+      <pre><span class="hl-fn">engineer</span> = <span class="hl-class">Agent</span>(
+    <span class="hl-key">session_state</span>={
+        <span class="hl-str">"created_files"</span>: [],
+        <span class="hl-str">"current_feature"</span>: <span class="hl-key">None</span>,
+        <span class="hl-str">"validation_results"</span>: {},
+    },
+    <span class="hl-key">enable_agentic_state</span>=<span class="hl-key">True</span>,
+    <span class="hl-key">add_session_state_to_context</span>=<span class="hl-key">True</span>,
+    ...
+)</pre>
+
+      <!-- add_history_to_context + read_chat_history -->
+      <h3 style="margin-top:24px">💬 add_history_to_context + read_chat_history — Multi-Turn Awareness</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> <code style="font-family:var(--mono)">add_history_to_context=True</code> automatically prepends the last N turns of the conversation. <code style="font-family:var(--mono)">read_chat_history=True</code> gives the agent a tool to retrieve further history on demand. <code style="font-family:var(--mono)">num_history_runs=5</code> sets the default window.</p>
+          <p><strong>Why we use it:</strong> Without history, every message is treated as a new conversation — the Scribe forgets which feature it was writing, the Medic forgets which locator it was patching. With 5-turn history, agents maintain coherent multi-step task execution.</p>
+        </div>
+      </div>
+      <pre><span class="hl-fn">medic</span> = <span class="hl-class">Agent</span>(
+    <span class="hl-key">add_history_to_context</span>=<span class="hl-key">True</span>,
+    <span class="hl-key">read_chat_history</span>=<span class="hl-key">True</span>,
+    <span class="hl-key">num_history_runs</span>=<span class="hl-num">5</span>,
+    ...
+)</pre>
+
+      <!-- CompressionManager -->
+      <h3 style="margin-top:24px">🗜️ CompressionManager + STLC_COMPRESSION_PROMPT — Token Budget</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> Agno's <code style="font-family:var(--mono)">CompressionManager</code> compresses long tool call histories when they exceed a token threshold. The <code style="font-family:var(--mono)">compress_tool_call_instructions</code> parameter tells the LLM <em>how</em> to compress — what to preserve vs. drop.</p>
+          <p><strong>Why we use it:</strong> Generic compression (Agno default) loses STLC-critical details like selector values, RCA classifications (<code style="font-family:var(--mono)">LOCATOR_STALE</code>), Playwright error messages, and ticket IDs. Our custom <code style="font-family:var(--mono)">STLC_COMPRESSION_PROMPT</code> in <code style="font-family:var(--mono)">app/settings.py</code> instructs the compressor to always preserve these domain-specific signals — keeping long triage or code-gen sessions coherent without blowing the context window.</p>
+          <p><strong>Applied to:</strong> All 19 agents and teams (globally via <code style="font-family:var(--mono)">app/settings.py</code>).</p>
+        </div>
+      </div>
+      <pre><span class="hl-cmt"># app/settings.py</span>
+<span class="hl-fn">STLC_COMPRESSION_PROMPT</span> = <span class="hl-str">"""
+You are compressing a tool-call history for a software testing agent.
+ALWAYS preserve:
+- Playwright locator selectors and data-testid values
+- RCA classifications: LOCATOR_STALE, DATA_MISMATCH, TIMING_FLAKE, ENV_FAILURE, LOGIC_CHANGE
+- Playwright error messages and stack traces
+- Ticket IDs (Jira/ADO) and acceptance criteria IDs
+- Feature file paths and POM class names
+- Judge confidence scores and verdict outcomes
+Drop: repeated intermediate reasoning, verbose OK/200 responses, duplicate tool echoes.
+"""</span>
+
+<span class="hl-cmt"># Every agent/team uses this pattern</span>
+<span class="hl-fn">agent</span> = <span class="hl-class">Agent</span>(
+    <span class="hl-key">compression_manager</span>=<span class="hl-class">CompressionManager</span>(
+        <span class="hl-key">compress_tool_call_instructions</span>=<span class="hl-fn">STLC_COMPRESSION_PROMPT</span>,
+    ),
+    ...
+)</pre>
+
+      <!-- tools -->
+      <h3 style="margin-top:24px">🔧 tools=[] — Capabilities</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> A list of callables or Agno tool classes that the agent can invoke during its reasoning loop. Each tool is a function with typed parameters and a docstring — Agno automatically generates the JSON schema for the LLM.</p>
+          <p><strong>Why we use it:</strong> Tools are what make agents take real actions — reading files, searching KBs, running code, calling APIs, writing to GitHub. Without tools, agents can only reason in text.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Tool</th><th>Used by</th><th>What it does</th></tr>
+          <tr><td class="mono">ReasoningTools</td><td>Architect, Judge, Detective</td><td>Structured chain-of-thought reasoning. Forces the agent to think step-by-step before answering.</td></tr>
+          <tr><td class="mono">CodingTools</td><td>Scribe, Engineer, Librarian, Medic</td><td>Read/write files, run code, execute shell commands inside the container.</td></tr>
+          <tr><td class="mono">FileTools</td><td>Scribe, Engineer</td><td>Read and write files in the automation/ directory.</td></tr>
+          <tr><td class="mono">MCPTools (github-mcp)</td><td>Engineer</td><td>Create GitHub branches, commits, and pull requests via the GitHub MCP server.</td></tr>
+          <tr><td class="mono">MCPTools (playwright-mcp)</td><td>Discovery, Medic</td><td>Control a real browser: navigate, click, extract Accessibility Trees.</td></tr>
+          <tr><td class="mono">MCPTools (atlassian-mcp)</td><td>Architect, CI Log Analyzer</td><td>Read Jira tickets, create Jira issues from RCA reports.</td></tr>
+          <tr><td class="mono">MCPTools (ado-mcp)</td><td>CI Log Analyzer, Pipeline Analyst</td><td>Fetch Azure DevOps pipeline logs, create ADO work items.</td></tr>
+          <tr><td class="mono">Custom: trace_analyzer</td><td>Detective</td><td>Parse Playwright trace.zip NDJSON to extract error events, network failures, and timing.</td></tr>
+          <tr><td class="mono">Custom: ui_crawler</td><td>Discovery</td><td>Orchestrate multi-page crawl: login → navigate → extract Accessibility Tree → write SiteManifesto.</td></tr>
+        </table>
+      </div>
+
+      <!-- Team -->
+      <h3 style="margin-top:24px">👥 Team + TeamMode.coordinate — Agent Collaboration</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> <code style="font-family:var(--mono)">agno.team.Team</code> is a group of agents with a shared leader. <code style="font-family:var(--mono)">TeamMode.coordinate</code> means the team leader decides which member to delegate to — members never delegate to each other directly.</p>
+          <p><strong>Why we use it:</strong> The Strategy Squad leader receives "Generate tests for GDS-123" and decides to first send it to Architect, then pass the RequirementContext to Scribe. This coordination happens automatically without manual routing. <code style="font-family:var(--mono)">share_member_interactions=True</code> means all members see each other's work — so Scribe can see the full Architect output when generating Gherkin.</p>
+        </div>
+      </div>
+      <pre><span class="hl-fn">strategy_team</span> = <span class="hl-class">Team</span>(
+    <span class="hl-key">mode</span>=<span class="hl-class">TeamMode</span>.<span class="hl-fn">coordinate</span>,    <span class="hl-cmt"># leader delegates to members</span>
+    <span class="hl-key">members</span>=[<span class="hl-fn">architect</span>, <span class="hl-fn">scribe</span>],
+    <span class="hl-key">share_member_interactions</span>=<span class="hl-key">True</span>, <span class="hl-cmt"># members see each other's work</span>
+    <span class="hl-key">show_members_responses</span>=<span class="hl-key">True</span>,  <span class="hl-cmt"># responses streamed to UI</span>
+    ...
+)</pre>
+
+      <!-- Workflow primitives -->
+      <h3 style="margin-top:24px">🔀 Workflow Primitives — Step, Condition, Router, Loop</h3>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(59,130,246,0.15)">▶️</div>
+            <div>
+              <div class="card-title">Step</div>
+              <div class="card-subtitle">agno.workflow.Step</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p>A single agent invocation within a pipeline. Passes the output of the previous step as input. Most workflow nodes are Steps.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(245,158,11,0.15)">🔀</div>
+            <div>
+              <div class="card-title">Condition</div>
+              <div class="card-subtitle">agno.workflow.Condition</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p>A gate that only runs its child steps if the evaluator function returns <code style="font-family:var(--mono)">True</code>. Used for all Judge gates — pipeline only continues if confidence ≥ 90%.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(16,185,129,0.15)">🛣️</div>
+            <div>
+              <div class="card-title">Router</div>
+              <div class="card-subtitle">agno.workflow.Router</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p>Selects one branch from multiple options based on the evaluator output. Used in the triage pipeline to route <code style="font-family:var(--mono)">LOCATOR_STALE</code> to Medic vs. other classifications to Human.</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon" style="background:rgba(139,92,246,0.15)">🔁</div>
+            <div>
+              <div class="card-title">Loop</div>
+              <div class="card-subtitle">agno.workflow.Loop</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p>Repeats its child steps until a stop condition is met. The Triage &amp; Heal pipeline uses a Loop to verify the Medic's patch passes 3 consecutive times before submitting the PR.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Judge as post_hook -->
+      <h3 style="margin-top:24px">⚖️ post_hook — The Invisible Judge Pattern</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> A <code style="font-family:var(--mono)">post_hook</code> is a function called after every agent response within a workflow step. Agno passes the full step output to it.</p>
+          <p><strong>Why we use it:</strong> The Judge is wired as a <code style="font-family:var(--mono)">post_hook</code> on every workflow Step — not as a team member. This makes it <em>invisible</em> to other agents (they can't delegate to it or skip it), and it runs automatically on every artifact without requiring any agent to "remember" to call it. This is how we guarantee that no unreviewed artifact ever leaves a pipeline step.</p>
+        </div>
+      </div>
+      <pre><span class="hl-cmt"># Judge as a post_hook on a workflow Step</span>
+<span class="hl-key">def</span> <span class="hl-fn">judge_post_hook</span>(<span class="hl-fn">response</span>):
+    verdict = judge.run(f<span class="hl-str">"Review this artifact:\n{response.content}"</span>)
+    confidence = extract_confidence(verdict.content)
+    <span class="hl-key">if</span> confidence < <span class="hl-num">0.50</span>:
+        <span class="hl-key">raise</span> <span class="hl-class">AutoRejectError</span>(verdict.content)
+    <span class="hl-key">elif</span> confidence < <span class="hl-num">0.90</span>:
+        queue_for_human_review(verdict)
+
+<span class="hl-class">Step</span>(<span class="hl-key">name</span>=<span class="hl-str">"Author Gherkin"</span>, <span class="hl-key">agent</span>=<span class="hl-fn">scribe</span>, <span class="hl-key">post_hooks</span>=[<span class="hl-fn">judge_post_hook</span>])</pre>
+
+      <!-- markdown=True -->
+      <h3 style="margin-top:24px">📝 markdown=True — Structured Output</h3>
+      <div class="card">
+        <div class="card-body">
+          <p><strong>What it is:</strong> Instructs Agno to tell the LLM to format responses as Markdown. The Control Plane renders markdown, code blocks, and Mermaid diagrams.</p>
+          <p><strong>Why we use it:</strong> All agents use <code style="font-family:var(--mono)">markdown=True</code>. This gives consistent rich output in the Chat UI — code blocks with syntax highlighting, structured tables, numbered steps — making agent responses readable and reviewable by human leads without parsing raw text.</p>
+        </div>
+      </div>
+
+      <!-- Summary table -->
+      <h3 style="margin-top:24px">📊 Feature Usage Summary</h3>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Agno Feature</th><th>Param / Class</th><th>Used by</th><th>Key Benefit</th></tr>
+          <tr><td>Runtime host</td><td class="mono">AgentOS</td><td>app/main.py</td><td>Single process, REST + SSE, tracing</td></tr>
+          <tr><td>Persistent sessions</td><td class="mono">db=agent_db</td><td>All 15 agents</td><td>History + memory survive restarts</td></tr>
+          <tr><td>Hybrid KB search</td><td class="mono">knowledge + search_knowledge</td><td>6 agents</td><td>No hallucinated selectors or duplicate POMs</td></tr>
+          <tr><td>Collective learning</td><td class="mono">learning=True</td><td>All agents</td><td>Project knowledge accumulates over time</td></tr>
+          <tr><td>Per-user memory</td><td class="mono">enable_agentic_memory</td><td>All agents</td><td>Agents adapt to user preferences</td></tr>
+          <tr><td>Run-time state</td><td class="mono">session_state + enable_agentic_state</td><td>8 agents</td><td>Multi-step tasks don't lose context</td></tr>
+          <tr><td>Multi-turn history</td><td class="mono">add_history_to_context</td><td>All agents</td><td>Coherent task execution across turns</td></tr>
+          <tr><td>Token compression</td><td class="mono">CompressionManager</td><td>All 19 agents/teams</td><td>STLC-aware compression — no data loss</td></tr>
+          <tr><td>Tool use</td><td class="mono">tools=[]</td><td>All agents</td><td>Real actions: code, browser, GitHub, Jira</td></tr>
+          <tr><td>Team coordination</td><td class="mono">TeamMode.coordinate</td><td>6 teams</td><td>Structured delegation, no circular loops</td></tr>
+          <tr><td>Pipeline gating</td><td class="mono">Condition / Router / Loop</td><td>All workflows</td><td>Judge gates, branching, retry loops</td></tr>
+          <tr><td>Quality gate</td><td class="mono">post_hook (Judge)</td><td>All workflow Steps</td><td>No unreviewed artifact leaves a step</td></tr>
+          <tr><td>Rich output</td><td class="mono">markdown=True</td><td>All agents</td><td>Consistent, readable, reviewable output</td></tr>
+        </table>
       </div>
     </div>
 
