@@ -25,6 +25,7 @@ const useAIChatStreamHandler = () => {
   const setIsStreaming = useStore((state) => state.setIsStreaming)
   const setSessionsData = useStore((state) => state.setSessionsData)
   const addChatEvent = useStore((state) => state.addChatEvent)
+  const upsertLastChatEvent = useStore((state) => state.upsertLastChatEvent)
   const clearChatEvents = useStore((state) => state.clearChatEvents)
   const setActiveRunId = useStore((state) => state.setActiveRunId)
   const { streamResponse } = useAIResponseStream()
@@ -276,6 +277,17 @@ const useAIChatStreamHandler = () => {
                   ) {
                     const uniqueContent = chunk.content.replace(lastContent, '')
                     lastContent = chunk.content
+                    // Emit a live content event so the Activity Stream updates in real-time.
+                    // upsertLastChatEvent replaces the previous content event instead of appending
+                    // a new one for every token — keeps the stream readable.
+                    if (uniqueContent.trim()) {
+                      upsertLastChatEvent({
+                        type: 'content',
+                        label: '✍ Generating…',
+                        ts: Date.now(),
+                        detail: chunk.content.slice(-100).replace(/\n+/g, ' '),
+                      })
+                    }
                     newMessages[idx] = {
                       ...lastMessage,
                       content: lastMessage.content + uniqueContent,
@@ -541,6 +553,31 @@ const useAIChatStreamHandler = () => {
                   return newMessages
                 })
               }
+            } else if (
+              chunk.event === RunEvent.RunOutput
+            ) {
+              // RunOutput carries structured output — surface it as a debug event
+              addChatEvent({ type: 'debug', label: `◦ RunOutput`, ts: Date.now(), detail: typeof chunk.content === 'string' ? chunk.content.slice(0, 120) : undefined })
+            } else if (
+              chunk.event === RunEvent.RunCancelled
+            ) {
+              addChatEvent({ type: 'debug', label: '◦ Run cancelled', ts: Date.now() })
+            } else if (
+              chunk.event === RunEvent.RunPaused
+            ) {
+              addChatEvent({ type: 'debug', label: '⏸ Run paused', ts: Date.now() })
+            } else if (
+              chunk.event === RunEvent.RunContinued
+            ) {
+              addChatEvent({ type: 'debug', label: '▶ Run continued', ts: Date.now() })
+            } else if (
+              chunk.event === RunEvent.FollowupsStarted ||
+              chunk.event === RunEvent.TeamFollowupsStarted
+            ) {
+              addChatEvent({ type: 'debug', label: '◦ Generating follow-ups…', ts: Date.now() })
+            } else if (chunk.event) {
+              // Catch-all: surface any other event type as a debug entry so nothing is invisible
+              addChatEvent({ type: 'debug', label: `◦ ${chunk.event}`, ts: Date.now() })
             }
           },
           onError: (error) => {
@@ -612,6 +649,7 @@ const useAIChatStreamHandler = () => {
       setSessionId,
       processChunkToolCalls,
       addChatEvent,
+      upsertLastChatEvent,
       clearChatEvents,
       setActiveRunId
     ]

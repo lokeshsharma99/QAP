@@ -853,7 +853,8 @@ const EVENT_COLOR: Record<string, string> = {
   reasoning: 'text-info',
   error: 'text-destructive',
   memory: 'text-muted',
-  content: 'text-primary',
+  content: 'text-primary/60',
+  debug: 'text-muted/50',
 }
 
 const ActivityLog = ({ events, isStreaming }: { events: import('@/store').ChatEvent[]; isStreaming: boolean }) => {

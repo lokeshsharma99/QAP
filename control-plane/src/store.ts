@@ -4,7 +4,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { AgentDetails, SessionEntry, TeamDetails, WorkflowDetails, type ChatMessage } from '@/types/os'
 
 export interface ChatEvent {
-  type: 'tool_start' | 'tool_done' | 'reasoning' | 'content' | 'run_start' | 'run_done' | 'error' | 'memory'
+  type: 'tool_start' | 'tool_done' | 'reasoning' | 'content' | 'run_start' | 'run_done' | 'error' | 'memory' | 'debug'
   label: string
   ts: number
   detail?: string
@@ -81,6 +81,7 @@ interface Store {
   setIsSessionsLoading: (isSessionsLoading: boolean) => void
   chatEvents: ChatEvent[]
   addChatEvent: (e: ChatEvent) => void
+  upsertLastChatEvent: (e: ChatEvent) => void
   clearChatEvents: () => void
   rightPanelOpen: boolean
   setRightPanelOpen: (open: boolean) => void
@@ -159,6 +160,13 @@ export const useStore = create<Store>()(
       setIsSessionsLoading: (isSessionsLoading) => set(() => ({ isSessionsLoading })),
       chatEvents: [],
       addChatEvent: (e) => set((s) => ({ chatEvents: [...s.chatEvents.slice(-199), e] })),
+      upsertLastChatEvent: (e) => set((s) => {
+        const last = s.chatEvents[s.chatEvents.length - 1]
+        if (last && last.type === e.type) {
+          return { chatEvents: [...s.chatEvents.slice(0, -1), e] }
+        }
+        return { chatEvents: [...s.chatEvents.slice(-199), e] }
+      }),
       clearChatEvents: () => set({ chatEvents: [] }),
       rightPanelOpen: true,
       setRightPanelOpen: (open) => set({ rightPanelOpen: open }),
