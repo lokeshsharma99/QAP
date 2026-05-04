@@ -25,10 +25,10 @@ Write-Host "Starting QAP tunnels (2 ngrok accounts)..." -ForegroundColor Cyan
 Write-Host ""
 
 # ngrok doesn't support two authtokens in a single process — run two separate instances.
-# Instance 1: UI tunnel (account 1, port 3000) — uses default ngrok web UI port 4040
-$jobUI  = Start-Job -ScriptBlock { param($bin, $cfg) & $bin start --all --config $cfg 2>&1 } -ArgumentList $ngrokBin, $cfg1
-# Instance 2: API tunnel (account 2, port 8000) — uses alternate web port 4041
-$jobAPI = Start-Job -ScriptBlock { param($bin, $cfg) & $bin start --all --config $cfg --web-addr 127.0.0.1:4041 2>&1 } -ArgumentList $ngrokBin, $cfg2
+# web_addr for instance 2 is set in ngrok-api.yml (127.0.0.1:4041) to avoid conflict with instance 1 (4040).
+# Use Start-Process with array arguments so the config path is passed correctly without shell splitting.
+$null = Start-Process -FilePath $ngrokBin -ArgumentList @("start", "--all", "--config", $cfg1) -WindowStyle Hidden -PassThru
+$procAPI = Start-Process -FilePath $ngrokBin -ArgumentList @("start", "--all", "--config", $cfg2) -WindowStyle Hidden -PassThru
 
 # Wait for both ngrok local APIs
 $ready1 = $false; $ready2 = $false
@@ -49,8 +49,8 @@ for ($i = 0; $i -lt 30; $i++) {
     if ($ready1 -and $ready2) { break }
 }
 
-if (-not $ready1) { Write-Warning "UI tunnel (4040) did not start. Check: http://localhost:4040"; Receive-Job $jobUI  | Select-Object -Last 10 }
-if (-not $ready2) { Write-Warning "API tunnel (4041) did not start. Check: http://localhost:4041"; Receive-Job $jobAPI | Select-Object -Last 10 }
+if (-not $ready1) { Write-Warning "UI tunnel (4040) did not start. Check: http://localhost:4040" }
+if (-not $ready2) { Write-Warning "API tunnel (4041) did not start. Check: http://localhost:4041" }
 
 $uiUrl  = ((Invoke-RestMethod "http://localhost:4040/api/tunnels").tunnels | Select-Object -First 1).public_url -replace '^http:', 'https:'
 $apiUrl = ((Invoke-RestMethod "http://localhost:4041/api/tunnels").tunnels | Select-Object -First 1).public_url -replace '^http:', 'https:'
@@ -69,7 +69,6 @@ Write-Host "Tunnels running. Press Ctrl+C to stop." -ForegroundColor Cyan
 try {
     while ($true) { Start-Sleep -Seconds 30 }
 } finally {
-    Stop-Job $jobUI;  Remove-Job $jobUI
-    Stop-Job $jobAPI; Remove-Job $jobAPI
+    Get-Process ngrok -ErrorAction SilentlyContinue | Stop-Process -Force
     Write-Host "Tunnels stopped." -ForegroundColor Yellow
 }
