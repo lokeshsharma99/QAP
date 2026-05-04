@@ -71,4 +71,5 @@ Output: Confirm which fixture files were created and their paths.
 Critical rules:
 - NEVER use real email addresses, real names, or production data.
 - All passwords must be strong random strings, NOT 'password123' or similar.""",
-        ),
+        ),    ],
+)
