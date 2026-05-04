@@ -222,6 +222,13 @@ export const useStore = create<Store>()(
         // but localStorage still holds the default localhost URL, update it
         // automatically so the backend URL matches the current access host.
         if (state && typeof window !== 'undefined') {
+          // NEXT_PUBLIC_AGENTOS_URL is baked at build time (e.g. ngrok API domain).
+          // It always wins — never let localStorage override a baked-in value.
+          if (process.env.NEXT_PUBLIC_AGENTOS_URL) {
+            state.setSelectedEndpoint(process.env.NEXT_PUBLIC_AGENTOS_URL)
+            return
+          }
+
           const { protocol, hostname } = window.location
           const tunnelMatch = hostname.match(/^([^-]+)-\d+(\..+)$/)
           const stored = state.selectedEndpoint
