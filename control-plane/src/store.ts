@@ -130,10 +130,17 @@ export const useStore = create<Store>()(
       selectedEndpoint:
         process.env.NEXT_PUBLIC_AGENTOS_URL ||
         (typeof window !== 'undefined'
-          ? `http://${window.location.hostname}:8000`
+          ? `${window.location.protocol}//${window.location.hostname}:8000`
           : 'http://localhost:8000'),
 
-      setSelectedEndpoint: (selectedEndpoint) => set(() => ({ selectedEndpoint })),
+      setSelectedEndpoint: (selectedEndpoint) => set(() => {
+        // Auto-upgrade http→https when the page is served over HTTPS (e.g. dev tunnel)
+        const upgraded =
+          typeof window !== 'undefined' && window.location.protocol === 'https:'
+            ? selectedEndpoint.replace(/^http:\/\//, 'https://')
+            : selectedEndpoint
+        return { selectedEndpoint: upgraded }
+      }),
       authToken: '',
       setAuthToken: (authToken) => set(() => ({ authToken })),
       currentUser: null,
@@ -209,8 +216,12 @@ export const useStore = create<Store>()(
           if (stored.includes('localhost') || stored.includes('127.0.0.1')) {
             const port = new URL(stored).port || '8000'
             state.setSelectedEndpoint(
-              `http://${window.location.hostname}:${port}`
+              `${window.location.protocol}//${window.location.hostname}:${port}`
             )
+          } else {
+            // Re-run setSelectedEndpoint so the http→https upgrade is applied
+            // to any value still in localStorage from a previous http session
+            state.setSelectedEndpoint(stored)
           }
         }
       },
