@@ -48,7 +48,6 @@ from teams.diagnostics import diagnostics_team
 from teams.engineering import engineering_team
 from teams.grooming import grooming_team
 from teams.intelligence import intelligence_team
-from teams.knowledge import knowledge_team
 from teams.operations import operations_team
 from teams.strategy import strategy_team
 from workflows.automation_scaffold import automation_scaffold
@@ -115,7 +114,6 @@ agent_os = AgentOS(
         diagnostics_team,
         grooming_team,
         intelligence_team,
-        knowledge_team,
     ],
     workflows=[
         discovery_onboard,

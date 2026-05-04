@@ -87,10 +87,11 @@ pipeline_failure_assessment = Workflow(
     id="pipeline-failure-assessment",
     name="CI Pipeline Failure Analysis",
     description=(
-        "CI failure (GitHub Actions / Azure DevOps) → Pipeline Analyst → Judge Gate "
+        "GitHub Actions CI failure → Pipeline Analyst → Judge Gate "
         "→ PipelineRCAReport with classification, confidence score, and ordered "
         "remediation plan. Routes LOCATOR_CHANGE to Diagnostics Squad for auto-heal; "
-        "escalates FUNCTIONALITY_CHANGE to Human Lead."
+        "escalates FUNCTIONALITY_CHANGE to Human Lead. "
+        "For Azure DevOps CI failures use the ado-ci-triage workflow."
     ),
     steps=[
         Step(

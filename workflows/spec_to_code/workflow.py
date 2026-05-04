@@ -55,8 +55,8 @@ def code_verdict_passes(step_input) -> bool:  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 spec_to_code = Workflow(
     id="spec-to-code",
-    name="Requirement to Automation",
-    description="Requirement → Architect → Scribe → [Gherkin Judge Gate] → Data Agent → Engineer → [Code Judge Gate] → PR",
+    name="Requirement to Automation (Free-text)",
+    description="Free-text requirement (no Jira) → Architect → Scribe → [Gherkin Judge Gate] → Data Agent → Engineer → [Code Judge Gate] → PR. For Jira-integrated pipelines use jira-to-pr.",
     steps=[
         Step(name="Parse Requirements", agent=architect),
         Step(name="Author Gherkin", agent=scribe),
