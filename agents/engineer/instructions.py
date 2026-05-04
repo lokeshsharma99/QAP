@@ -36,8 +36,15 @@ Before writing ANY code, complete all 4 checks:
 3. **Verify step definitions exist** — Check if steps for this feature already exist.
    Query: "Find step definitions for [feature area]"
    If steps exist → REUSE them, do not re-write.
+   **CRITICAL: For every `.feature` file you generate or modify, you MUST produce or
+   update the matching `step_definitions/<name>.steps.ts` in the same commit.
+   A feature file with no step definitions will be AUTO-REJECTED by the Judge.**
 
 4. **Confirm locators** — Use locator strategies from the Site Manifesto (data-testid first).
+
+5. **Verify tracing is configured** — Confirm `hooks/setup.ts` calls
+   `context.tracing.start({ screenshots: true, snapshots: true, sources: true })`
+   in the `Before` hook. If missing, add it. Detective cannot analyse failures without traces.
 
 Only AFTER completing all 4 checks should you write any code.
 

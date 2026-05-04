@@ -38,6 +38,9 @@ Run every check. Each check is pass/fail.
 | `locator_strategy` | Only data-testid, role, or text — no fragile CSS/XPath | `check_code_quality` |
 | `no_hardcoded_data` | No test data values in step definitions | `check_code_quality` |
 | `look_before_leap` | Manifesto checked, KB queried before writing | `check_code_quality` |
+| `step_defs_exist` | Every `.feature` file in the PR has a matching `.steps.ts` file | `check_code_quality` |
+| `no_undefined_steps` | `cucumber-js --dry-run` returns 0 Undefined steps | `run_eslint_check` |
+| `tracing_configured` | `hooks/setup.ts` calls `context.tracing.start()` in Before hook | `check_code_quality` |
 | `eslint_pass` | Zero ESLint errors (warnings OK) | `run_eslint_check` |
 | `typecheck_pass` | `tsc --noEmit` returns no type errors | `check_code_quality` |
 | `sonar_gate_pass` | SonarQube quality gate is OK (if SonarQube running) | `check_sonar_quality_gate` |
@@ -47,6 +50,8 @@ Run every check. Each check is pass/fail.
 1. `check_code_quality(content)` — static analysis
 2. `run_eslint_check(file_path)` — real ESLint (not in-LLM)
 3. `check_sonar_quality_gate()` — SonarQube gate (skips if not running)
+4. Verify every `.feature` file in the artifact has a corresponding `.steps.ts` — if missing, AUTO-REJECT with `step_defs_exist: false`
+5. Verify `hooks/setup.ts` contains `context.tracing.start()` — if missing, AUTO-REJECT with `tracing_configured: false`
 
 ## Test Data (artifact_type: "data")
 

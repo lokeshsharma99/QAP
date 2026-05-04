@@ -1,0 +1,73 @@
+#!/bin/sh
+# pre-commit hook — QAP Automation Guard
+#
+# Blocks commits that would break the Cucumber runner:
+#   1. Any staged .feature file with no matching .steps.ts file
+#   2. Cucumber --dry-run returns Undefined steps across the whole suite
+#
+# Install:  cp automation/scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# Or run:   ./scripts/install-hooks.sh
+
+set -e
+
+AUTOMATION_DIR="automation"
+PASS=0
+FAIL=1
+
+# ─── Guard 1: every staged .feature must have a matching .steps.ts ───────────
+echo "🔍 [pre-commit] Checking feature → step-def pairings..."
+
+FEATURE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.feature$' || true)
+
+if [ -n "$FEATURE_FILES" ]; then
+  MISSING=""
+  for feature in $FEATURE_FILES; do
+    # Derive expected step def path:
+    #   automation/features/header.feature  →  automation/step_definitions/header.steps.ts
+    base=$(basename "$feature" .feature)
+    expected="${AUTOMATION_DIR}/step_definitions/${base}.steps.ts"
+    if [ ! -f "$expected" ]; then
+      MISSING="${MISSING}\n  ❌  ${feature}  →  missing ${expected}"
+    fi
+  done
+
+  if [ -n "$MISSING" ]; then
+    echo ""
+    echo "❌  [pre-commit] BLOCKED — feature file(s) have no matching step definitions:"
+    printf "%b\n" "$MISSING"
+    echo ""
+    echo "    Engineer must create the matching .steps.ts before committing the .feature."
+    echo "    Run the jira-to-pr or spec-to-code workflow to generate them automatically."
+    echo ""
+    exit $FAIL
+  fi
+fi
+
+# ─── Guard 2: Cucumber dry-run — no Undefined steps allowed ──────────────────
+# Only run if node_modules is present (skip in environments without Node)
+if [ -d "${AUTOMATION_DIR}/node_modules/.bin" ]; then
+  echo "🔍 [pre-commit] Running Cucumber dry-run to check for Undefined steps..."
+  cd "$AUTOMATION_DIR"
+
+  DRY_OUTPUT=$(node node_modules/.bin/cucumber-js --config cucumber.conf.js --dry-run 2>&1 || true)
+  cd - > /dev/null
+
+  UNDEFINED_COUNT=$(echo "$DRY_OUTPUT" | grep -c "Undefined\." || true)
+  if [ "$UNDEFINED_COUNT" -gt 0 ]; then
+    echo ""
+    echo "❌  [pre-commit] BLOCKED — $UNDEFINED_COUNT step(s) are Undefined in the suite."
+    echo ""
+    echo "$DRY_OUTPUT" | grep -A2 "Undefined\." | head -40
+    echo ""
+    echo "    Implement all step definitions before committing."
+    echo "    Run 'npm run test:regression' locally to verify the full suite passes."
+    echo ""
+    exit $FAIL
+  fi
+  echo "✅  [pre-commit] All steps defined."
+else
+  echo "⚠️   [pre-commit] node_modules not found — skipping Cucumber dry-run."
+fi
+
+echo "✅  [pre-commit] Automation guard passed."
+exit $PASS
