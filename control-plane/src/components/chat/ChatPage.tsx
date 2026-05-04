@@ -1336,7 +1336,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
       : `${endpointUrl}/memories?team_id=${currentEntityId}`
     fetch(url, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} })
       .then((r) => r.ok ? r.json() : [])
-      .then((data) => { setMemories(Array.isArray(data) ? data : (data.memories ?? [])); setMemoriesLoading(false) })
+      .then((data) => { setMemories(Array.isArray(data) ? data : (data.data ?? data.memories ?? [])); setMemoriesLoading(false) })
       .catch(() => setMemoriesLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, currentEntityId, mode])
@@ -1502,13 +1502,13 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
           transition={{ duration: 0.18, ease: 'easeOut' }}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold uppercase text-muted">Stored Memories</span>
+            <span className="text-xs font-semibold uppercase text-muted">Agent Memories</span>
             <button
               onClick={() => {
                 setMemoriesLoading(true); setMemories([])
                 fetch(`${endpointUrl}/memories?agent_id=${agentId}`, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} })
                   .then((r) => r.ok ? r.json() : [])
-                  .then((data) => { setMemories(Array.isArray(data) ? data : (data.memories ?? [])); setMemoriesLoading(false) })
+                  .then((data) => { setMemories(Array.isArray(data) ? data : (data.data ?? data.data ?? data.memories ?? [])); setMemoriesLoading(false) })
                   .catch(() => setMemoriesLoading(false))
               }}
               className="rounded-lg p-1 text-muted hover:bg-accent hover:text-primary" title="Refresh"
@@ -1696,7 +1696,7 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
                 setMemoriesLoading(true); setMemories([])
                 fetch(`${endpointUrl}/memories?team_id=${teamId}`, { headers: authToken ? { Authorization: `Bearer ${authToken}` } : {} })
                   .then((r) => r.ok ? r.json() : [])
-                  .then((data) => { setMemories(Array.isArray(data) ? data : (data.memories ?? [])); setMemoriesLoading(false) })
+                  .then((data) => { setMemories(Array.isArray(data) ? data : (data.data ?? data.memories ?? [])); setMemoriesLoading(false) })
                   .catch(() => setMemoriesLoading(false))
               }}
               className="rounded-lg p-1 text-muted hover:bg-accent hover:text-primary" title="Refresh"

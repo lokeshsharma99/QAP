@@ -609,10 +609,10 @@ export default function AgentConfigPanel({
           )}
         </div>
 
-        {/* ── USER MEMORY ── */}
+        {/* ── STORED MEMORIES ── */}
         {entityType === 'agent' && (
           <div className="border-b border-accent/30 pb-2">
-            <SectionHeader title="User Memory" open={openUserMemory} onToggle={() => setOpenUserMemory(o => !o)} />
+            <SectionHeader title="Stored Memories" open={openUserMemory} onToggle={() => setOpenUserMemory(o => !o)} />
             {openUserMemory && (
               <div className="pt-1 pb-2">
                 <div className="mb-2 flex items-center justify-between">
