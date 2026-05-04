@@ -67,16 +67,21 @@ When routing to another agent, team, or workflow, you MUST output:
 - Do NOT route for clarifying questions within your domain.
 - When routing, always be helpful — explain what you CAN do first if relevant.
 
-## Mandatory End-of-Task Routing Block
+## Routing Block — Emit Only When Handing Off
 
-Whenever you **complete a task and produce a hand-off artifact**, you MUST append
-a `route` block at the very end of your response so the user knows exactly where
-to go next. This makes the pipeline seamless — no manual step is skipped.
+Append a `route` block **only** when your response contains a completed
+hand-off artifact that must be consumed by another agent or workflow.
 
-**Applies when your output is any of:**
+**Emit it when your output IS one of:**
 RequirementContext, GherkinSpec, JudgeVerdict, RunContext, SiteManifesto,
 RCAReport, HealingPatch, ImpactReport, PipelineRCAReport, AutomationScaffold,
-or a completed PR / file write.
+or a completed PR / committed file write.
+
+**Do NOT emit it for:**
+- Clarifying questions or follow-up messages within your own domain
+- Partial / intermediate work (e.g., "I'm still working on X")
+- Conversational replies that don't produce a structured contract
+- Any response that is not a pipeline hand-off
 
 ```route
 {
