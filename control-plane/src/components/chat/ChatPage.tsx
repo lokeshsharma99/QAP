@@ -604,6 +604,140 @@ const MessageItem = ({ msg, index, isActiveStreaming = false, latestEvent = null
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// WorkflowAccordion — Agno-style collapsible workflow config panel
+// ---------------------------------------------------------------------------
+type WfMeta = { description?: string; squad?: string; pipeline?: string[]; inputFormat?: string; placeholder?: string }
+
+const AccordionRow = ({
+  title, badge, defaultOpen = true, children,
+}: {
+  title: string; badge?: React.ReactNode; defaultOpen?: boolean; children: React.ReactNode
+}) => {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="flex flex-col">
+      <h3 className="flex">
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          className="flex size-8 flex-1 items-center text-sm font-medium transition-all justify-start gap-2"
+        >
+          <ChevronDown className={cn('shrink-0 transition-transform duration-200 text-primary size-4', open && 'rotate-180')} />
+          <div className="flex items-center gap-2">
+            <p className="font-inter text-[0.875rem] font-medium leading-5 tracking-[-0.02em]">{title}</p>
+            {badge}
+          </div>
+        </button>
+      </h3>
+      {open && (
+        <div className="ml-2 border-l border-border py-2 pl-4">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const WorkflowAccordion = ({ workflowDetail, meta }: { workflowDetail: WorkflowFullDetail; meta?: WfMeta }) => {
+  const steps: WorkflowStep[] = workflowDetail.steps ?? []
+  const description = meta?.description ?? workflowDetail.description ?? ''
+  return (
+    <div className="flex flex-col gap-y-6 px-4 py-4">
+      <div className="flex flex-col gap-y-4">
+
+        {/* ── Workflow Details ── */}
+        <AccordionRow title="Workflow Details" defaultOpen={true}>
+          <div className="flex flex-col gap-4">
+            {description && (
+              <div className="flex flex-col gap-2">
+                <p className="font-dmmono text-xs font-normal tracking-[0.02em] leading-[1rem] uppercase text-muted">Description</p>
+                <p className="font-inter text-[0.75rem] font-normal leading-[1.0625rem] tracking-[-0.02em] text-primary">{description}</p>
+              </div>
+            )}
+            <div className="w-full">
+              <div className="flex w-full flex-col gap-3 rounded-[10px] bg-secondary/50 p-3 font-dmmono text-xs">
+                <div className="space-y-2">
+                  <div className="space-y-1.5">
+                    <div className="space-y-1">
+                      <div className="flex items-start gap-2 py-0.5">
+                        <p className="font-dmmono text-[0.75rem] font-normal leading-[1rem] tracking-[-0.015em] text-muted shrink-0">Workflow Id:</p>
+                        <p className="font-dmmono text-[0.75rem] font-normal leading-[1rem] tracking-[-0.015em] text-primary break-all">{workflowDetail.id}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-start gap-2 py-0.5">
+                        <p className="font-dmmono text-[0.75rem] font-normal leading-[1rem] tracking-[-0.015em] text-muted shrink-0">Workflow Name:</p>
+                        <p className="font-dmmono text-[0.75rem] font-normal leading-[1rem] tracking-[-0.015em] text-primary">{workflowDetail.name}</p>
+                      </div>
+                    </div>
+                    {meta?.squad && (
+                      <div className="space-y-1">
+                        <div className="flex items-start gap-2 py-0.5">
+                          <p className="font-dmmono text-[0.75rem] font-normal leading-[1rem] tracking-[-0.015em] text-muted shrink-0">Squad:</p>
+                          <p className="font-dmmono text-[0.75rem] font-normal leading-[1rem] tracking-[-0.015em] text-primary">{meta.squad}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </AccordionRow>
+
+        {/* ── Steps ── */}
+        {steps.length > 0 && (
+          <AccordionRow
+            title="Steps"
+            defaultOpen={true}
+            badge={<span className="flex min-w-[32px] items-center justify-center rounded-md bg-secondary/50 px-2 py-0.5 text-[10px] text-muted">{steps.length}</span>}
+          >
+            <div className="rounded-lg bg-secondary/30 p-3">
+              <div className="flex flex-col gap-y-3">
+                {steps.map((step, i) => (
+                  <div key={i} className="group relative flex items-center border-l-2 border-primary/30 pl-3">
+                    <div className="flex cursor-default items-center gap-2 truncate py-2">
+                      <div className="shrink-0">
+                        <svg viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="size-4 text-primary">
+                          <path d="M7.5 2C7.77614 2 8 2.22386 8 2.5L8 12.5C8 12.7761 7.77614 13 7.5 13C7.22386 13 7 12.7761 7 12.5L7 2.5C7 2.22386 7.22386 2 7.5 2Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <p className="text-sm min-w-0 truncate text-primary">{step.name ?? `Step ${i + 1}`}</p>
+                      {step.type && (
+                        <span className="shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[9px] uppercase text-muted/60">{step.type}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </AccordionRow>
+        )}
+
+        {/* ── How to Run ── */}
+        {(meta?.inputFormat || meta?.placeholder) && (
+          <AccordionRow title="How to Run" defaultOpen={false}>
+            <div className="flex flex-col gap-3">
+              {meta.inputFormat && (
+                <div className="flex flex-col gap-1">
+                  <p className="font-dmmono text-xs font-normal tracking-[0.02em] leading-[1rem] uppercase text-muted">Input Format</p>
+                  <p className="font-inter text-[0.75rem] font-normal leading-[1.0625rem] tracking-[-0.02em] text-primary">{meta.inputFormat}</p>
+                </div>
+              )}
+              {meta.placeholder && (
+                <pre className="rounded-[10px] bg-secondary/50 p-3 font-dmmono text-xs text-muted whitespace-pre-wrap">{meta.placeholder}</pre>
+              )}
+            </div>
+          </AccordionRow>
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // TurnTOC — right-rail table of contents listing every user turn
 // ---------------------------------------------------------------------------
 const TurnTOC = ({ messages }: { messages: ChatMessage[] }) => {
@@ -1794,8 +1928,8 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
 
       {/* ═══ WORKFLOW tabs ═══ */}
 
-      {mode === 'workflow' && tab === 'details' && (
-        <motion.div key="wf-overview" className="flex-1 overflow-y-auto"
+      {mode === 'workflow' && (tab === 'details' || tab === 'steps') && (
+        <motion.div key="wf-agno" className="flex-1 overflow-y-auto"
           initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
         >
@@ -1803,122 +1937,10 @@ const RightPanel = ({ agentId, teamId, workflowId, sessionId, clearChat, setSess
           {!loading && workflowDetail && (() => {
             const wid = workflowDetail.id
             const meta = WORKFLOW_META[wid]
-            return (
-              <div className="p-3 space-y-3">
-                {/* Header */}
-                <div className="rounded-xl border border-positive/20 bg-positive/5 p-3">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-2">
-                      <GitBranch className="size-4 text-positive shrink-0" />
-                      <span className="text-xs font-semibold text-primary">{workflowDetail.name}</span>
-                    </div>
-                    {meta?.squad && (
-                      <span className="shrink-0 rounded-full bg-positive/10 border border-positive/20 px-2 py-0.5 text-[9px] font-semibold uppercase text-positive tracking-wide">
-                        {meta.squad}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-muted/70 leading-relaxed">
-                    {meta?.description ?? workflowDetail.description ?? 'No description available.'}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-muted/50">
-                    <span className="font-mono">id: {workflowDetail.id}</span>
-                    <span>·</span>
-                    <span>{workflowDetail.steps?.length ?? 0} steps</span>
-                  </div>
-                </div>
-
-                {/* Pipeline */}
-                {meta?.pipeline && (
-                  <Section icon={<Layers className="size-3.5 text-positive" />} title="Pipeline">
-                    <div className="rounded-xl border border-accent bg-background p-3">
-                      <div className="flex flex-col gap-1">
-                        {meta.pipeline.map((step, i) => (
-                          <div key={i} className="flex items-start gap-2">
-                            <div className="flex flex-col items-center shrink-0 mt-0.5">
-                              <span className="flex size-4 items-center justify-center rounded-full bg-positive/10 text-[9px] font-bold text-positive">{i + 1}</span>
-                              {i < meta.pipeline.length - 1 && <div className="w-px flex-1 bg-accent/60 mt-0.5 h-3" />}
-                            </div>
-                            <span className="text-xs text-primary leading-relaxed pb-1">{step}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </Section>
-                )}
-
-                {/* Input format */}
-                <Section icon={<Play className="size-3.5 text-positive" />} title="How to Run">
-                  <div className="space-y-2">
-                    {meta?.inputFormat && (
-                      <div className="rounded-xl border border-accent bg-background p-2.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Input Format</p>
-                        <p className="text-xs text-primary">{meta.inputFormat}</p>
-                      </div>
-                    )}
-                    {meta?.placeholder && (
-                      <div className="rounded-xl border border-accent/50 bg-accent/20 p-2.5">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted/60 mb-1">Example</p>
-                        <pre className="text-xs text-muted whitespace-pre-wrap font-mono">{meta.placeholder}</pre>
-                      </div>
-                    )}
-                    {!meta && (
-                      <div className="rounded-xl border border-accent bg-background p-3 text-xs text-muted leading-relaxed">
-                        Type your input in the chat box and press Send. The workflow will execute all steps automatically.
-                      </div>
-                    )}
-                  </div>
-                </Section>
-              </div>
-            )
+            return <WorkflowAccordion workflowDetail={workflowDetail} meta={meta} />
           })()}
           {!loading && !workflowDetail && (
-            <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted/40">Select a workflow to view its overview</div>
-          )}
-        </motion.div>
-      )}
-
-      {mode === 'workflow' && tab === 'steps' && (
-        <motion.div key="wf-steps" className="flex-1 overflow-y-auto"
-          initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
-        >
-          {loading && <div className="p-3 space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}</div>}
-          {!loading && workflowDetail?.steps && workflowDetail.steps.length > 0 && (
-            <div className="p-3 space-y-2">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Layers className="size-3.5 text-positive" />
-                <span className="text-xs font-semibold uppercase text-muted">{workflowDetail.steps.length} Steps</span>
-              </div>
-              {workflowDetail.steps.map((step, i) => {
-                const stepsLen = workflowDetail.steps?.length ?? 0
-                return (
-                <div key={i} className="relative flex gap-3">
-                  {i < stepsLen - 1 && (
-                    <div className="absolute left-[13px] top-7 bottom-0 w-px bg-accent/60" />
-                  )}
-                  <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-positive/40 bg-positive/10 text-[10px] font-bold text-positive z-10">
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 rounded-xl border border-accent bg-background px-3 py-2 mb-1">
-                    <p className="text-xs font-semibold text-primary">{step.name ?? `Step ${i + 1}`}</p>
-                    {step.type && (
-                      <span className="mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-[9px] uppercase font-medium text-muted/70">
-                        {step.type}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                )
-              })}
-            </div>
-          )}
-          {!loading && (!workflowDetail?.steps || workflowDetail.steps.length === 0) && (
-            <div className="flex flex-col items-center justify-center py-12 text-center p-6">
-              <Layers className="size-8 text-muted/20" />
-              <p className="mt-2 text-xs text-muted/50">No step data available</p>
-              <p className="text-xs text-muted/30">Select a workflow first</p>
-            </div>
+            <div className="flex flex-1 items-center justify-center p-6 text-center text-xs text-muted/40">Select a workflow to view its details</div>
           )}
         </motion.div>
       )}
