@@ -6,7 +6,10 @@ import { AgentDetails, AgentFullDetail, PaginatedSessions, Sessions, TeamDetails
 
 const createHeaders = (authToken?: string): HeadersInit => {
   const headers: HeadersInit = {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    // ngrok free tier shows a browser-warning interstitial that strips CORS headers.
+    // This header bypasses it for all API fetch calls.
+    'ngrok-skip-browser-warning': 'true',
   }
   if (authToken) {
     headers['Authorization'] = `Bearer ${authToken}`

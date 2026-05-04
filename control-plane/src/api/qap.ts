@@ -4,7 +4,10 @@ import { APIRoutes } from './routes'
 import { WorkflowRun } from '@/types/qap'
 
 const createHeaders = (authToken?: string): HeadersInit => {
-  const headers: HeadersInit = { 'Content-Type': 'application/json' }
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+  }
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`
   return headers
 }
