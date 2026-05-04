@@ -12,6 +12,11 @@ RUN pnpm install --frozen-lockfile || pnpm install
 # Copy source
 COPY . .
 
+# Build-time public env vars (baked into client-side JS by Next.js)
+# NEXT_PUBLIC_AGENTOS_URL  = external API URL (ngrok / devtunnel / localhost)
+ARG NEXT_PUBLIC_AGENTOS_URL=http://localhost:8000
+ENV NEXT_PUBLIC_AGENTOS_URL=${NEXT_PUBLIC_AGENTOS_URL}
+
 # Build
 RUN pnpm build
 

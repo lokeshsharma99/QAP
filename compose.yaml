@@ -229,14 +229,17 @@ services:
       context: ./control-plane
       dockerfile: Dockerfile
       args:
-        # Baked into the Next.js rewrite at build time so /api/agentOS/* proxies
-        # to the qap-api container via Docker-internal networking (not localhost).
-        NEXT_PUBLIC_AGENTOS_URL: http://qap-api:8000
+        # Baked into client-side JS at build time — used by the store to call the API.
+        # Points to the permanent ngrok API tunnel URL.
+        NEXT_PUBLIC_AGENTOS_URL: https://nonelectrized-portia-nonartistically.ngrok-free.dev
     container_name: qap-ui
     restart: unless-stopped
     ports:
       - "0.0.0.0:3000:3000"   # LAN-accessible
     environment:
+      # Server-side runtime var used by the Next.js rewrite proxy.
+      # Routes /api/agentOS/* to qap-api via Docker-internal networking.
+      - AGENTOS_URL=http://qap-api:8000
       - NEXT_PUBLIC_OS_SECURITY_KEY=${NEXT_PUBLIC_OS_SECURITY_KEY:-}
     depends_on:
       - qap-api

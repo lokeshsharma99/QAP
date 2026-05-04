@@ -24,7 +24,9 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/agentOS/:path*',
-        destination: `${process.env.NEXT_PUBLIC_AGENTOS_URL || 'http://localhost:8000'}/:path*`
+        // Use AGENTOS_URL (server-only runtime var) for Docker-internal routing.
+        // Falls back to NEXT_PUBLIC_AGENTOS_URL then localhost for local dev.
+        destination: `${process.env.AGENTOS_URL || process.env.NEXT_PUBLIC_AGENTOS_URL || 'http://localhost:8000'}/:path*`
       }
     ]
   }
