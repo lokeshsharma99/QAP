@@ -593,7 +593,7 @@
 
       <div class="nav-section">Agents</div>
       <div class="nav-item" onclick="show('agents', this)">
-        <div class="nav-dot" style="background:var(--purple)"></div> All 15 Agents
+        <div class="nav-dot" style="background:var(--purple)"></div> All 16 Agents
       </div>
       <div class="nav-item" onclick="show('squads', this)">
         <div class="nav-dot" style="background:var(--warning)"></div> 6 Squads (Teams)
@@ -618,6 +618,7 @@
       <div class="nav-item" onclick="show('workflows', this)">
         <div class="nav-dot" style="background:var(--warning)"></div> All 12 Workflows
       </div>
+
 
       <div class="nav-section">Data</div>
       <div class="nav-item" onclick="show('contracts', this)">
@@ -659,7 +660,7 @@
 
       <div class="stat-grid">
         <div class="stat-item">
-          <div class="stat-num" style="color:var(--purple)">15</div>
+          <div class="stat-num" style="color:var(--purple)">16</div>
           <div class="stat-label">Autonomous Agents</div>
         </div>
         <div class="stat-item">
@@ -717,10 +718,10 @@
 
       <h3>🏗️ Directory Structure</h3>
       <pre><span class="hl-cmt">quality-autopilot/</span>
-├── <span class="hl-class">agents/</span>        <span class="hl-cmt"># 15 autonomous agents (one directory each)</span>
+├── <span class="hl-class">agents/</span>        <span class="hl-cmt"># 16 autonomous agents (one directory each)</span>
 ├── <span class="hl-class">teams/</span>         <span class="hl-cmt"># 6 coordinating squads</span>
 ├── <span class="hl-class">workflows/</span>     <span class="hl-cmt"># 12 multi-step pipelines</span>
-├── <span class="hl-class">contracts/</span>     <span class="hl-cmt"># 12 Pydantic hand-off models</span>
+├── <span class="hl-class">contracts/</span>     <span class="hl-cmt"># 15 Pydantic hand-off models</span>
 ├── <span class="hl-class">db/</span>            <span class="hl-cmt"># PostgreSQL + PgVector helpers</span>
 ├── <span class="hl-class">automation/</span>    <span class="hl-cmt"># BDD+POM test framework (TypeScript)</span>
 ├── <span class="hl-class">app/</span>           <span class="hl-cmt"># AgentOS FastAPI entry point</span>
@@ -816,8 +817,8 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-agents" class="section">
       <div class="page-header">
-        <h2>All 15 Agents</h2>
-        <p style="margin-top:6px;color:var(--positive)">✨ New: Concierge agent added — routes users to the right agent, team, or workflow on first visit.</p>
+        <h2>All 16 Agents</h2>
+        <p style="margin-top:6px;color:var(--positive)">✨ 16 autonomous agents — from Concierge (entry-point routing) to Pipeline Analyst (CI trend analysis).</p>
         <p>Each agent lives in its own directory with <code style="font-family:var(--mono)">agent.py · instructions.py · __init__.py · __main__.py</code></p>
       </div>
 
@@ -1680,7 +1681,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <div id="section-workflows" class="section">
       <div class="page-header">
-        <h2>All 10 Workflows</h2>
+        <h2>All 12 Workflows</h2>
         <p>Every workflow lives in <code style="font-family:var(--mono)">workflows/&lt;name&gt;/</code> with <code style="font-family:var(--mono)">workflow.py · instructions.py · __init__.py</code></p>
       </div>
 
@@ -1746,6 +1747,24 @@
             <td>workflows/technical_testing/</td>
             <td>Technical Tester</td>
             <td>Rapid exploratory test generation via Playwright agents for new features</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--orange)">impact-assessment</td>
+            <td>workflows/impact_assessment/</td>
+            <td>Impact Analyst</td>
+            <td>PR number / issue ID → ImpactReport: blast radius, risk score, affected tests and Page Objects</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--orange)">pipeline-failure-assessment</td>
+            <td>workflows/pipeline_failure_assessment/</td>
+            <td>Pipeline Analyst → Detective</td>
+            <td>CI run ID → PipelineRCAReport: failure patterns, flakiness scores, ordered remediation plan</td>
+          </tr>
+          <tr>
+            <td class="mono" style="color:var(--destructive)">ado-ci-triage</td>
+            <td>workflows/ado_ci_triage/</td>
+            <td>CI Log Analyzer + Diagnostics Squad</td>
+            <td>Azure DevOps pipeline failure → correlated log + trace RCA → ADO ticket (after HITL approval)</td>
           </tr>
         </table>
       </div>
@@ -2207,7 +2226,7 @@ docker compose --profile mcp up -d
         </div>
         <div class="card-body">
           <p><strong>What it is:</strong> A FastAPI application host that registers all agents, teams, and workflows under a single process on port 8000. It exposes REST + SSE endpoints, handles session persistence, and manages authorization.</p>
-          <p><strong>Why we use it:</strong> AgentOS turns the entire agent fleet into a single deployable service. The Control Plane talks to it via <code style="font-family:var(--mono)">POST /agents/{id}/runs</code> and Server-Sent Events for streaming. All 15 agents, 6 teams, and 10 workflows are registered once in <code style="font-family:var(--mono)">app/main.py</code>.</p>
+          <p><strong>Why we use it:</strong> AgentOS turns the entire agent fleet into a single deployable service. The Control Plane talks to it via <code style="font-family:var(--mono)">POST /agents/{id}/runs</code> and Server-Sent Events for streaming. All 16 agents, 6 teams, and 12 workflows are registered once in <code style="font-family:var(--mono)">app/main.py</code>.</p>
         </div>
       </div>
       <pre><span class="hl-fn">agent_os</span> = <span class="hl-class">AgentOS</span>(
@@ -2340,7 +2359,7 @@ docker compose --profile mcp up -d
         <div class="card-body">
           <p><strong>What it is:</strong> Agno's <code style="font-family:var(--mono)">CompressionManager</code> compresses long tool call histories when they exceed a token threshold. The <code style="font-family:var(--mono)">compress_tool_call_instructions</code> parameter tells the LLM <em>how</em> to compress — what to preserve vs. drop.</p>
           <p><strong>Why we use it:</strong> Generic compression (Agno default) loses STLC-critical details like selector values, RCA classifications (<code style="font-family:var(--mono)">LOCATOR_STALE</code>), Playwright error messages, and ticket IDs. Our custom <code style="font-family:var(--mono)">STLC_COMPRESSION_PROMPT</code> in <code style="font-family:var(--mono)">app/settings.py</code> instructs the compressor to always preserve these domain-specific signals — keeping long triage or code-gen sessions coherent without blowing the context window.</p>
-          <p><strong>Applied to:</strong> All 19 agents and teams (globally via <code style="font-family:var(--mono)">app/settings.py</code>).</p>
+          <p><strong>Applied to:</strong> All 16 agents and 6 teams (globally via <code style="font-family:var(--mono)">app/settings.py</code>).</p>
         </div>
       </div>
       <pre><span class="hl-cmt"># app/settings.py</span>
@@ -2490,13 +2509,13 @@ Drop: repeated intermediate reasoning, verbose OK/200 responses, duplicate tool 
         <table>
           <tr><th>Agno Feature</th><th>Param / Class</th><th>Used by</th><th>Key Benefit</th></tr>
           <tr><td>Runtime host</td><td class="mono">AgentOS</td><td>app/main.py</td><td>Single process, REST + SSE, tracing</td></tr>
-          <tr><td>Persistent sessions</td><td class="mono">db=agent_db</td><td>All 15 agents</td><td>History + memory survive restarts</td></tr>
+          <tr><td>Persistent sessions</td><td class="mono">db=agent_db</td><td>All 16 agents</td><td>History + memory survive restarts</td></tr>
           <tr><td>Hybrid KB search</td><td class="mono">knowledge + search_knowledge</td><td>6 agents</td><td>No hallucinated selectors or duplicate POMs</td></tr>
           <tr><td>Collective learning</td><td class="mono">learning=True</td><td>All agents</td><td>Project knowledge accumulates over time</td></tr>
           <tr><td>Per-user memory</td><td class="mono">enable_agentic_memory</td><td>All agents</td><td>Agents adapt to user preferences</td></tr>
           <tr><td>Run-time state</td><td class="mono">session_state + enable_agentic_state</td><td>8 agents</td><td>Multi-step tasks don't lose context</td></tr>
           <tr><td>Multi-turn history</td><td class="mono">add_history_to_context</td><td>All agents</td><td>Coherent task execution across turns</td></tr>
-          <tr><td>Token compression</td><td class="mono">CompressionManager</td><td>All 19 agents/teams</td><td>STLC-aware compression — no data loss</td></tr>
+          <tr><td>Token compression</td><td class="mono">CompressionManager</td><td>All 16 agents + 6 teams</td><td>STLC-aware compression — no data loss</td></tr>
           <tr><td>Tool use</td><td class="mono">tools=[]</td><td>All agents</td><td>Real actions: code, browser, GitHub, Jira</td></tr>
           <tr><td>Team coordination</td><td class="mono">TeamMode.coordinate</td><td>6 teams</td><td>Structured delegation, no circular loops</td></tr>
           <tr><td>Pipeline gating</td><td class="mono">Condition / Router / Loop</td><td>All workflows</td><td>Judge gates, branching, retry loops</td></tr>
