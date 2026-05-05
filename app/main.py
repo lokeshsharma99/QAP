@@ -42,6 +42,7 @@ from app.endpoints.profile import router as profile_router
 from app.endpoints.settings import router as settings_router
 from app.registry import registry
 from app.settings import RUNTIME_ENV, agent_db
+from app.tenancy_middleware import OrgScopingMiddleware
 from db import get_automation_kb, get_qap_learnings_kb, get_rca_kb, get_site_manifesto_kb
 from teams.context import context_team
 from teams.diagnostics import diagnostics_team
@@ -135,6 +136,16 @@ agent_os = AgentOS(
 )
 
 app = agent_os.get_app()
+
+# ---------------------------------------------------------------------------
+# Org-Scoping Middleware
+# Must be added BEFORE the CORS middleware (outermost layer wins for raw ASGI
+# middleware).  Intercepts Agno run endpoints and injects user_id = org_id so
+# all users in the same org share memory, sessions, traces, and culture.
+# Non-run endpoints (culture, optimize-memories) read org_id from
+# request.state.org_id which the middleware writes to scope["state"].
+# ---------------------------------------------------------------------------
+app.add_middleware(OrgScopingMiddleware)  # type: ignore[arg-type]
 
 # ---------------------------------------------------------------------------
 # Expand CORS to allow LAN / IP-based origins.

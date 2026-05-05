@@ -10,11 +10,13 @@ from db.session import (
     get_automation_kb,
     get_culture_manager,
     get_document_library_kb,
+    get_org_db,
     get_postgres_db,
     get_qap_learnings_kb,
     get_rca_kb,
     get_rtm_kb,
     get_site_manifesto_kb,
+    get_tenant_kb,
     get_test_results_kb,
 )
 from db.url import db_url
@@ -25,10 +27,12 @@ __all__ = [
     "get_automation_kb",
     "get_culture_manager",
     "get_document_library_kb",
+    "get_org_db",
     "get_postgres_db",
     "get_qap_learnings_kb",
     "get_rca_kb",
     "get_rtm_kb",
     "get_site_manifesto_kb",
+    "get_tenant_kb",
     "get_test_results_kb",
 ]

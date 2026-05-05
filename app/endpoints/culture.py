@@ -11,12 +11,18 @@ GET    /culture/{id}         — get single entry
 POST   /culture              — create entry (manual seed / UI-created)
 DELETE /culture/{id}         — delete entry
 GET    /culture/categories   — distinct category values for filter chips
+
+Org scoping
+-----------
+All endpoints are org-scoped: the ``Authorization: Bearer <qap_session_token>``
+header is used to resolve the caller's ``org_id``.  Users within the same org
+share all cultural knowledge; different orgs are fully isolated.
 """
 
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from agno.db.schemas.culture import CulturalKnowledge
@@ -68,15 +74,25 @@ def _to_out(k: CulturalKnowledge) -> CultureEntryOut:
     )
 
 
+def _get_org_id(request: Request) -> str:
+    """Resolve the caller's org_id from the ASGI scope state.
+
+    OrgScopingMiddleware sets ``request.state.org_id`` for all authenticated
+    requests.  Falls back to ``"system"`` when no auth token is present
+    (local dev / anonymous access).
+    """
+    return getattr(request.state, "org_id", "system") or "system"
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
 @router.get("/culture/categories")
-async def get_culture_categories() -> dict:
+async def get_culture_categories(request: Request) -> dict:
     """Return distinct category strings across all cultural knowledge entries."""
     try:
-        cm = get_culture_manager()
+        cm = get_culture_manager(_get_org_id(request))
         cm.initialize()
         all_k = cm.get_all_knowledge()
         cats: set[str] = set()
@@ -91,13 +107,14 @@ async def get_culture_categories() -> dict:
 
 @router.get("/culture")
 async def list_culture(
+    request: Request,
     category: Optional[str] = None,
     agent_id: Optional[str] = None,
     q: Optional[str] = None,
 ) -> dict:
-    """List all cultural knowledge. Optionally filter by category, agent_id, or free-text."""
+    """List all cultural knowledge for the caller's org. Optionally filter by category, agent_id, or free-text."""
     try:
-        cm = get_culture_manager()
+        cm = get_culture_manager(_get_org_id(request))
         cm.initialize()
         all_k = cm.get_all_knowledge()
 
@@ -122,10 +139,10 @@ async def list_culture(
 
 
 @router.get("/culture/{entry_id}")
-async def get_culture_entry(entry_id: str) -> dict:
+async def get_culture_entry(entry_id: str, request: Request) -> dict:
     """Fetch a single cultural knowledge entry by ID."""
     try:
-        cm = get_culture_manager()
+        cm = get_culture_manager(_get_org_id(request))
         cm.initialize()
         all_k = cm.get_all_knowledge()
         for k in all_k:
@@ -140,10 +157,10 @@ async def get_culture_entry(entry_id: str) -> dict:
 
 
 @router.post("/culture", status_code=201)
-async def create_culture_entry(body: CultureCreateRequest) -> dict:
+async def create_culture_entry(body: CultureCreateRequest, request: Request) -> dict:
     """Manually create a cultural knowledge entry (UI seed / manual principle)."""
     try:
-        cm = get_culture_manager()
+        cm = get_culture_manager(_get_org_id(request))
         cm.initialize()
         entry = CulturalKnowledge(
             name=body.name,
@@ -160,10 +177,10 @@ async def create_culture_entry(body: CultureCreateRequest) -> dict:
 
 
 @router.delete("/culture/{entry_id}", status_code=200)
-async def delete_culture_entry(entry_id: str) -> dict:
+async def delete_culture_entry(entry_id: str, request: Request) -> dict:
     """Delete a cultural knowledge entry by ID."""
     try:
-        cm = get_culture_manager()
+        cm = get_culture_manager(_get_org_id(request))
         cm.initialize()
         cm.delete_knowledge(entry_id)
         return {"message": "Deleted"}

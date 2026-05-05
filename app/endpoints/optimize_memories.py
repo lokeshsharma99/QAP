@@ -49,8 +49,17 @@ async def optimize_memories(
     db_id: Optional[str] = Query(default=None, description="Database ID (ignored — uses QAP agent_db)"),
     table: Optional[str] = Query(default=None, description="Table (ignored — uses QAP agent_db)"),
 ) -> OptimizeMemoriesResponse:
-    """Override: use MODEL (kilo-auto/free) instead of MemoryManager's gpt-4o default."""
-    if hasattr(http_request.state, "user_id") and http_request.state.user_id is not None:
+    """Override: use MODEL (kilo-auto/free) instead of MemoryManager's gpt-4o default.
+
+    If OrgScopingMiddleware set request.state.org_id (i.e. the caller is an authenticated
+    QAP user), optimise memories for the whole org — not just the individual user_id sent
+    by the Agno UI.  This keeps the optimize-memories action in sync with the org-scoped
+    memory written by the run endpoints.
+    """
+    org_id = getattr(http_request.state, "org_id", None)
+    if org_id:
+        request.user_id = org_id
+    elif hasattr(http_request.state, "user_id") and http_request.state.user_id is not None:
         request.user_id = http_request.state.user_id
 
     try:
