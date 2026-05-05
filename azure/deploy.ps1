@@ -292,7 +292,7 @@ $createOrUpdateArgs = @(
     '--min-replicas',   '1'
     '--max-replicas',   '2'
     '--command',        'uvicorn'
-    '--args',           'app.main:app,--host,0.0.0.0,--port,8000,--workers,2'
+    '--args',           'app.main:app', '--host', '0.0.0.0', '--port', '8000', '--workers', '2'
     '--secrets'
 ) + $apiSecrets + @('--env-vars') + $apiEnv
 
@@ -302,6 +302,8 @@ if (ContainerAppExists $qapApiName $RESOURCE_GROUP) {
         '--resource-group', $RESOURCE_GROUP,
         '--name', $qapApiName,
         '--image', $API_IMAGE,
+        '--command', 'uvicorn',
+        '--args', 'app.main:app', '--host', '0.0.0.0', '--port', '8000', '--workers', '2',
         '--secrets') + $apiSecrets + @('--set-env-vars') + $apiEnv
     az @updateArgs | Out-Null
 } else {
