@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+
+  "subscriptionId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "resourceGroup":  "rg-quality-autopilot",
+
+  "parameters": {
+
+    "location": { "value": "westeurope" },
+    "prefix":   { "value": "qap" },
+    "env":      { "value": "dev" },
+
+    "dbPass":        { "value": "CHANGE_ME_strong_password" },
+    "sessionSecret": { "value": "CHANGE_ME_run_openssl_rand_-hex_32" },
+
+    "modelProvider":      { "value": "kilo" },
+    "openrouterApiKey":   { "value": "" },
+    "openrouterBaseUrl":  { "value": "https://api.kilo.ai/api/openrouter/v1" },
+    "kiloApiKey":         { "value": "" },
+    "kiloApiUrl":         { "value": "https://api.kilo.ai" },
+    "openaiApiKey":       { "value": "" },
+    "googleApiKey":       { "value": "" },
+    "anthropicApiKey":    { "value": "" },
+
+    "githubToken":        { "value": "" },
+
+    "azureDevOpsUrl":     { "value": "" },
+    "azureDevOpsEmail":   { "value": "" },
+    "azureDevOpsPat":     { "value": "" },
+
+    "atlassianUrl":       { "value": "" },
+    "atlassianEmail":     { "value": "" },
+    "atlassianApiToken":  { "value": "" },
+
+    "autBaseUrl":         { "value": "https://lokeshsharma99.github.io/GDS-Demo-App/" },
+    "autGithubOwner":     { "value": "lokeshsharma99" },
+    "autGithubRepo":      { "value": "GDS-Demo-App" },
+
+    "appBaseUrl":         { "value": "" }
+  }
+}

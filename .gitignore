@@ -22,6 +22,10 @@ build/
 .env.*
 !example.env
 
+# Azure deployment — parameters.json contains secrets, never commit it
+azure/parameters.json
+azure/.deploy-state.json
+
 # IDE
 .vscode/*
 !.vscode/settings.json
