@@ -11,6 +11,7 @@ from agno.culture.manager import CultureManager
 from agno.db.postgres import PostgresDb
 from agno.knowledge import Knowledge
 from agno.knowledge.embedder.ollama import OllamaEmbedder
+from agno.knowledge.embedder.openai import OpenAIEmbedder
 from agno.models.openrouter import OpenRouter
 from agno.vectordb.pgvector import HNSW, PgVector, SearchType
 
@@ -21,6 +22,13 @@ DB_ID = "quality-autopilot-db"
 # Ollama host — inside Docker use host.docker.internal to reach the host machine
 
 OLLAMA_HOST = getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
+
+# Embedding provider: "openai" (default, works in ACA) or "ollama" (local dev with Ollama).
+# Change via EMBEDDING_PROVIDER env var.  Switching providers requires dropping the vector
+# tables so they are recreated with the correct dimension — set RECREATE_VECTOR_TABLES=1
+# on one restart after switching.
+_EMBEDDING_PROVIDER = getenv("EMBEDDING_PROVIDER", "openai").lower()
+_EMBEDDING_DIMS = 2560 if _EMBEDDING_PROVIDER == "ollama" else 1536
 
 
 def _get_qap_model() -> OpenRouter:
@@ -36,6 +44,34 @@ def _get_qap_model() -> OpenRouter:
         id=_model_id,
         base_url="https://api.kilo.ai/api/openrouter/v1",
         api_key=_kilo_key,
+    )
+
+
+def _get_embedder() -> OllamaEmbedder | OpenAIEmbedder:
+    """Return the embedder for vector knowledge bases.
+
+    Provider is controlled by the EMBEDDING_PROVIDER environment variable:
+    - ``openai`` (default): OpenAI ``text-embedding-3-small`` (1536 dims).
+      Works in ACA without a sidecar. Requires OPENAI_API_KEY.
+    - ``ollama``: local Ollama ``qwen3-embedding:4b`` (2560 dims).
+      Use for local development when Ollama is running.
+
+    When switching providers the vector tables must be dropped and recreated
+    because the vector column dimension differs.  Set RECREATE_VECTOR_TABLES=1
+    on the first restart after changing EMBEDDING_PROVIDER.
+    """
+    if _EMBEDDING_PROVIDER == "ollama":
+        return OllamaEmbedder(
+            id="qwen3-embedding:4b",
+            dimensions=2560,
+            host=OLLAMA_HOST,
+            enable_batch=True,
+            batch_size=32,
+        )
+    # Default — OpenAI (reliable, no sidecar required)
+    return OpenAIEmbedder(
+        id="text-embedding-3-small",
+        dimensions=1536,
     )
 
 
@@ -56,8 +92,8 @@ def get_postgres_db(knowledge_table: str | None = None) -> PostgresDb:
 def create_knowledge(name: str, table_name: str) -> Knowledge:
     """Create a Knowledge instance with PgVector hybrid search.
 
-    Uses a local Ollama embedding model (qwen3-embedding:4b) to avoid
-    requiring an OpenAI API key for embeddings.
+    The embedder is chosen via the EMBEDDING_PROVIDER environment variable
+    (``openai`` by default; ``ollama`` for local dev).
 
     Args:
         name: Display name for the knowledge base.
@@ -73,15 +109,16 @@ def create_knowledge(name: str, table_name: str) -> Knowledge:
             table_name=table_name,
             search_type=SearchType.hybrid,
             vector_index=HNSW(m=16, ef_construction=200),
-            embedder=OllamaEmbedder(
-                id="qwen3-embedding:4b",
-                dimensions=2560,
-                host=OLLAMA_HOST,
-                enable_batch=True,
-                batch_size=32,
-            ),
+            embedder=_get_embedder(),
         ),
-        contents_db=get_postgres_db(knowledge_table=f"{table_name}_contents"),
+        # Each KB gets its own unique db_id. Sharing DB_ID across multiple
+        # Knowledge instances causes AgentOS to raise "Multiple knowledge
+        # instances found for db_id" (400) because it validates uniqueness.
+        contents_db=PostgresDb(
+            id=f"{DB_ID}-{table_name}",
+            db_url=db_url,
+            knowledge_table=f"{table_name}_contents",
+        ),
     )
 
 

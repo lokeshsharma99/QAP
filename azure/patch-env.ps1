@@ -144,8 +144,10 @@ $secretMap = [ordered]@{
     'ado-pat'             = G 'AZURE_DEVOPS_EXT_PAT'
     'github-token'        = G 'GITHUB_TOKEN'
     'nvidia-api-key'      = G 'NVIDIA_API_KEY'
+    'openai-api-key'      = G 'OPENAI_API_KEY'
     'google-api-key'      = G 'GOOGLE_API_KEY'
     'ollama-api-key'      = G 'OLLAMA_API_KEY'
+    'kilo-api-key'        = G 'KILO_API_KEY'
     'slack-bot-token'     = G 'SLACK_BOT_TOKEN'
     'smtp-pass'           = G 'SMTP_PASS'
     'serper-api-key'      = G 'SERPER_API_KEY'
@@ -176,11 +178,19 @@ $apiEnvMap = [ordered]@{
     'MODEL_PROVIDER'             = G 'MODEL_PROVIDER'
     'NVIDIA_MODEL'               = G 'NVIDIA_MODEL'
     'NVIDIA_API_KEY'             = SR 'nvidia-api-key'
+    'OPENAI_API_KEY'             = SR 'openai-api-key'
     'GOOGLE_API_KEY'             = SR 'google-api-key'
     'OLLAMA_API_KEY'             = SR 'ollama-api-key'
+    'KILO_API_KEY'               = SR 'kilo-api-key'
     'OLLAMA_BASE_URL'            = G 'OLLAMA_BASE_URL'
     'OLLAMA_MODEL'               = G 'OLLAMA_MODEL'
     'OLLAMA_MODELS'              = G 'OLLAMA_MODELS'
+    # Embedding provider: "openai" works in ACA without Ollama sidecar.
+    # Switch to "ollama" only if an Ollama service is deployed in the same env.
+    # After switching provider, set RECREATE_VECTOR_TABLES=1 for ONE restart,
+    # then remove it — the tables will be rebuilt with the correct dimensions.
+    'EMBEDDING_PROVIDER'         = if (G 'EMBEDDING_PROVIDER') { G 'EMBEDDING_PROVIDER' } else { 'openai' }
+    'RECREATE_VECTOR_TABLES'     = G 'RECREATE_VECTOR_TABLES'
     'GITHUB_TOKEN'               = SR 'github-token'
     'SLACK_BOT_TOKEN'            = SR 'slack-bot-token'
     'SLACK_CHANNEL_ID'           = G 'SLACK_CHANNEL_ID'
