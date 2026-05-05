@@ -1,0 +1,301 @@
+# =============================================================================
+# Quality Autopilot — Azure Pipelines CI/CD
+# =============================================================================
+#
+# Stages:
+#   validate   — Python lint + TypeScript type-check (every push / PR)
+#   build      — Build & push Docker images to ACR (main branch only)
+#   deploy     — Update Azure Container Apps with new images (main branch only)
+#
+# Required setup (one-time, in ADO Project Settings):
+#   1. Variable group "qap-deploy-secrets" with the secrets listed below
+#   2. Azure service connection named "qap-azure-sc" (ARM, subscription scope)
+#      → Project Settings → Service connections → New → Azure Resource Manager
+#         → Workload Identity Federation (recommended) or Service Principal
+#         → Subscription: c3efdcab-3249-4063-8e26-a69191a3a268
+#         → Name: qap-azure-sc
+#
+# Variable group "qap-deploy-secrets" must contain:
+#   ACR_PASSWORD        (secret) — ACR admin password from qapdevacr
+#   DB_PASS             (secret) — PostgreSQL password
+#   SESSION_SECRET      (secret) — JWT session secret
+#   NVIDIA_API_KEY      (secret) — NVIDIA NIM API key (or whichever LLM)
+#   GOOGLE_API_KEY      (secret) — optional
+#   GITHUB_TOKEN        (secret) — optional, for GitHub MCP
+# =============================================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - feat/azure-deploy
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+# ---------------------------------------------------------------------------
+# Shared pipeline variables (non-secret)
+# ---------------------------------------------------------------------------
+variables:
+  - group: qap-deploy-secrets
+
+  # Azure / ACA config
+  - name: RESOURCE_GROUP
+    value: rg-quality-autopilot
+  - name: SUBSCRIPTION_ID
+    value: c3efdcab-3249-4063-8e26-a69191a3a268
+  - name: AZURE_SERVICE_CONNECTION
+    value: qap-azure-sc
+
+  # Container Registry
+  - name: ACR_SERVER
+    value: qapdevacr.azurecr.io
+  - name: ACR_NAME
+    value: qapdevacr
+  - name: ACR_USER
+    value: qapdevacr
+
+  # Container App names
+  - name: API_APP_NAME
+    value: qap-dev-api
+  - name: UI_APP_NAME
+    value: qap-dev-ui
+
+  # Live FQDNs (from last full deploy)
+  - name: API_FQDN
+    value: qap-dev-api.nicesand-63588b93.uksouth.azurecontainerapps.io
+  - name: UI_FQDN
+    value: qap-dev-ui.nicesand-63588b93.uksouth.azurecontainerapps.io
+
+  # Image tag — use the short git SHA so every build is traceable
+  - name: IMAGE_TAG
+    value: $(Build.SourceVersion)
+
+# ---------------------------------------------------------------------------
+# Stage 1: Validate — runs on every push and PR
+# ---------------------------------------------------------------------------
+stages:
+  - stage: Validate
+    displayName: Validate (Lint + Type-check)
+    jobs:
+      - job: PythonLint
+        displayName: Python — black + flake8
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: "3.11"
+
+          - script: |
+              python -m pip install --upgrade pip
+              pip install black flake8
+            displayName: Install linting tools
+
+          - script: black --check --diff .
+            displayName: black — format check
+
+          - script: |
+              flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics \
+                --exclude=.venv,node_modules,control-plane,.git,quality_autopilot.egg-info
+            displayName: flake8 — critical errors only
+
+      - job: TypeScriptCheck
+        displayName: TypeScript — type-check control-plane
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: "20.x"
+
+          - script: |
+              cd control-plane
+              npm ci
+            displayName: npm ci
+
+          - script: |
+              cd control-plane
+              npx tsc --noEmit
+            displayName: tsc — type-check (no emit)
+
+  # ---------------------------------------------------------------------------
+  # Stage 2: Build — runs on main / feat/azure-deploy only
+  # ---------------------------------------------------------------------------
+  - stage: Build
+    displayName: Build & Push Docker Images
+    dependsOn: Validate
+    condition: >
+      and(
+        succeeded(),
+        or(
+          eq(variables['Build.SourceBranch'], 'refs/heads/main'),
+          eq(variables['Build.SourceBranch'], 'refs/heads/feat/azure-deploy')
+        )
+      )
+    jobs:
+      - job: BuildAPI
+        displayName: Build qap-api
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: Docker@2
+            displayName: Login to ACR
+            inputs:
+              command: login
+              containerRegistry: qap-acr-connection
+
+          - task: Docker@2
+            displayName: Build qap-api image
+            inputs:
+              command: build
+              repository: qap-api
+              dockerfile: Dockerfile
+              containerRegistry: qap-acr-connection
+              tags: |
+                $(IMAGE_TAG)
+                latest
+
+          - task: Docker@2
+            displayName: Push qap-api image
+            inputs:
+              command: push
+              repository: qap-api
+              containerRegistry: qap-acr-connection
+              tags: |
+                $(IMAGE_TAG)
+                latest
+
+      - job: BuildUI
+        displayName: Build qap-ui
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - checkout: self
+
+          - task: Docker@2
+            displayName: Login to ACR
+            inputs:
+              command: login
+              containerRegistry: qap-acr-connection
+
+          - task: Docker@2
+            displayName: Build qap-ui image (with baked API URL)
+            inputs:
+              command: build
+              repository: qap-ui
+              dockerfile: control-plane/Dockerfile
+              buildContext: control-plane
+              containerRegistry: qap-acr-connection
+              arguments: --build-arg NEXT_PUBLIC_AGENTOS_URL=https://$(API_FQDN)
+              tags: |
+                $(IMAGE_TAG)
+                latest
+
+          - task: Docker@2
+            displayName: Push qap-ui image
+            inputs:
+              command: push
+              repository: qap-ui
+              containerRegistry: qap-acr-connection
+              tags: |
+                $(IMAGE_TAG)
+                latest
+
+  # ---------------------------------------------------------------------------
+  # Stage 3: Deploy — runs after Build, on main / feat/azure-deploy
+  # ---------------------------------------------------------------------------
+  - stage: Deploy
+    displayName: Deploy to Azure Container Apps
+    dependsOn: Build
+    condition: >
+      and(
+        succeeded(),
+        or(
+          eq(variables['Build.SourceBranch'], 'refs/heads/main'),
+          eq(variables['Build.SourceBranch'], 'refs/heads/feat/azure-deploy')
+        )
+      )
+    jobs:
+      - deployment: DeployAPI
+        displayName: Update qap-dev-api
+        pool:
+          vmImage: ubuntu-latest
+        environment: qap-dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: Update qap-api Container App
+                  inputs:
+                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      echo "Deploying qap-api image tag: $(IMAGE_TAG)"
+                      az containerapp update \
+                        --name $(API_APP_NAME) \
+                        --resource-group $(RESOURCE_GROUP) \
+                        --image $(ACR_SERVER)/qap-api:$(IMAGE_TAG)
+                      echo "✅ qap-api updated"
+
+                - task: AzureCLI@2
+                  displayName: Health check — wait for API
+                  inputs:
+                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      echo "Waiting for API to become healthy..."
+                      for i in {1..12}; do
+                        STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://$(API_FQDN)/health)
+                        if [ "$STATUS" = "200" ]; then
+                          echo "✅ API healthy (HTTP $STATUS)"
+                          exit 0
+                        fi
+                        echo "  Attempt $i — HTTP $STATUS, retrying in 10s..."
+                        sleep 10
+                      done
+                      echo "❌ API did not become healthy in time"
+                      exit 1
+
+      - deployment: DeployUI
+        displayName: Update qap-dev-ui
+        pool:
+          vmImage: ubuntu-latest
+        environment: qap-dev
+        dependsOn: DeployAPI
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: Update qap-ui Container App
+                  inputs:
+                    azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      echo "Deploying qap-ui image tag: $(IMAGE_TAG)"
+                      az containerapp update \
+                        --name $(UI_APP_NAME) \
+                        --resource-group $(RESOURCE_GROUP) \
+                        --image $(ACR_SERVER)/qap-ui:$(IMAGE_TAG)
+
+                      # Ensure CORS is always in sync
+                      az containerapp update \
+                        --name $(API_APP_NAME) \
+                        --resource-group $(RESOURCE_GROUP) \
+                        --set-env-vars "EXTRA_CORS_ORIGINS=https://$(UI_FQDN)"
+
+                      echo "✅ qap-ui updated and CORS patched"
