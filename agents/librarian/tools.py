@@ -292,8 +292,19 @@ def index_automation_codebase(watch_path: str = "automation") -> str:
         Status message
     """
     watcher = AutomationFileWatcher(watch_path=watch_path)
-    watcher.full_re_index()
-    return f"Successfully indexed automation codebase from {watch_path}"
+    files = watcher.scan_directory()
+    failed: list[str] = []
+    for f in files:
+        try:
+            watcher.re_index_file(f)
+            watcher.last_modified[f] = watcher.get_file_modification_time(f)
+        except Exception as e:  # noqa: BLE001
+            failed.append(f"{Path(f).name}: {type(e).__name__}: {e}")
+
+    summary = f"Indexed {len(files) - len(failed)}/{len(files)} files from {watch_path}."
+    if failed:
+        summary += "\nFailed:\n" + "\n".join(f"  • {d}" for d in failed)
+    return summary
 
 
 @tool(
@@ -477,6 +488,7 @@ def link_pom_to_manifesto(watch_path: str = "automation") -> str:
     linked = 0
     skipped = 0
     errors = 0
+    error_details: list[str] = []
 
     for pom_path in pages_dir.rglob("*.ts"):
         try:
@@ -525,12 +537,19 @@ def link_pom_to_manifesto(watch_path: str = "automation") -> str:
             logger.info(f"Linked {pom_path.name} → manifesto page: {manifesto_page_url}")
 
         except Exception as e:
+            err_msg = f"{pom_path.name}: {type(e).__name__}: {e}"
             logger.error(f"Failed to link {pom_path}: {e}")
+            error_details.append(err_msg)
             errors += 1
+
+    error_section = ""
+    if error_details:
+        error_section = "\nErrors:\n" + "\n".join(f"  • {d}" for d in error_details)
 
     return (
         f"Site Manifesto ↔ Automation KB link complete: "
         f"{linked} POMs linked, {skipped} skipped (no manifesto match), {errors} errors."
+        + error_section
     )
 
 

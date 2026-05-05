@@ -10,6 +10,7 @@ from os import getenv
 from agno.culture.manager import CultureManager
 from agno.db.postgres import PostgresDb
 from agno.knowledge import Knowledge
+from agno.knowledge.embedder.azure_openai import AzureOpenAIEmbedder
 from agno.knowledge.embedder.ollama import OllamaEmbedder
 from agno.knowledge.embedder.openai import OpenAIEmbedder
 from agno.models.openrouter import OpenRouter
@@ -23,7 +24,7 @@ DB_ID = "quality-autopilot-db"
 
 OLLAMA_HOST = getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
 
-# Embedding provider: "openai" (default, works in ACA) or "ollama" (local dev with Ollama).
+# Embedding provider: "openai" (default), "azure_openai" (ACA production), or "ollama" (local dev).
 # Change via EMBEDDING_PROVIDER env var.  Switching providers requires dropping the vector
 # tables so they are recreated with the correct dimension — set RECREATE_VECTOR_TABLES=1
 # on one restart after switching.
@@ -47,12 +48,15 @@ def _get_qap_model() -> OpenRouter:
     )
 
 
-def _get_embedder() -> OllamaEmbedder | OpenAIEmbedder:
+def _get_embedder() -> AzureOpenAIEmbedder | OllamaEmbedder | OpenAIEmbedder:
     """Return the embedder for vector knowledge bases.
 
     Provider is controlled by the EMBEDDING_PROVIDER environment variable:
+    - ``azure_openai``: Azure OpenAI ``text-embedding-3-small`` (1536 dims).
+      Recommended for ACA — no external OpenAI key, stays within Azure.
+      Requires AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY.
     - ``openai`` (default): OpenAI ``text-embedding-3-small`` (1536 dims).
-      Works in ACA without a sidecar. Requires OPENAI_API_KEY.
+      Requires OPENAI_API_KEY.
     - ``ollama``: local Ollama ``qwen3-embedding:4b`` (2560 dims).
       Use for local development when Ollama is running.
 
@@ -68,7 +72,16 @@ def _get_embedder() -> OllamaEmbedder | OpenAIEmbedder:
             enable_batch=True,
             batch_size=32,
         )
-    # Default — OpenAI (reliable, no sidecar required)
+    if _EMBEDDING_PROVIDER == "azure_openai":
+        return AzureOpenAIEmbedder(
+            id=getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-small"),
+            dimensions=1536,
+            azure_endpoint=getenv("AZURE_OPENAI_ENDPOINT", ""),
+            azure_deployment=getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-small"),
+            api_key=getenv("AZURE_OPENAI_API_KEY") or None,
+            api_version="2024-10-21",
+        )
+    # Default — OpenAI direct (reliable, no sidecar required)
     return OpenAIEmbedder(
         id="text-embedding-3-small",
         dimensions=1536,

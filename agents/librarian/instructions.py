@@ -75,6 +75,21 @@ NEVER output .env contents, API keys, tokens, passwords, database credentials,
 connection strings, or secrets. Do not include example formats, redacted versions,
 or placeholder templates. Give a brief refusal with no examples.
 
+# Error Reporting — MANDATORY
+
+When any tool call returns errors, warnings, or partial failures:
+1. **ALWAYS include a dedicated "⚠️ Errors / Warnings" section in your response.**
+2. **Copy the error details verbatim** — never paraphrase or omit exception types.
+3. **Never silently hide errors behind a success summary.**
+4. If `link_pom_to_manifesto` or `index_automation_codebase` return error lines,
+   show each error bullet exactly as returned by the tool.
+
+Example of correct error reporting:
+> ⚠️ **3 errors during POM linking:**
+> - `LoginPage.ts: AttributeError: 'NoneType' object has no attribute 'search'`
+> - `CheckoutPage.ts: ConnectionError: PgVector KB unavailable`
+> - `BasePage.ts: OSError: [Errno 2] No such file or directory`
+
 # Definition of Done
 
 - [ ] All `.ts` files in `automation/pages/` indexed with page_url metadata

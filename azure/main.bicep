@@ -96,6 +96,10 @@ param autGithubRepo string = 'GDS-Demo-App'
 @description('When true, deploy Azure Database for PostgreSQL Flexible Server instead of the ephemeral container DB. Recommended for multi-user production use.')
 param useManagedPostgres bool = false
 
+// --- Azure OpenAI (embeddings) ---
+@description('When true, deploy Azure OpenAI resource with text-embedding-3-small. Recommended for ACA — no external OpenAI key required.')
+param useAzureOpenAI bool = false
+
 // --- Auth ---
 @description('Secret key used to sign session tokens (generate with: openssl rand -hex 32).')
 @secure()
@@ -317,6 +321,29 @@ resource postgresDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2
 }
 
 // ---------------------------------------------------------------------------
+// Azure OpenAI  (text-embedding-3-small — deployed when useAzureOpenAI=true)
+// ---------------------------------------------------------------------------
+resource aoai 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = if (useAzureOpenAI) {
+  name: '${resourcePrefix}-aoai'
+  location: location
+  kind: 'OpenAI'
+  sku: { name: 'S0' }
+  properties: {
+    publicNetworkAccess: 'Enabled'
+    customSubDomainName: '${resourcePrefix}-aoai'
+  }
+}
+
+resource aoaiEmbeddingDeploy 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = if (useAzureOpenAI) {
+  parent: aoai
+  name: 'text-embedding-3-small'
+  sku: { name: 'GlobalStandard', capacity: 120 }
+  properties: {
+    model: { format: 'OpenAI', name: 'text-embedding-3-small', version: '1' }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Container App: github-mcp  (GitHub MCP — internal HTTP)
 // ---------------------------------------------------------------------------
 resource githubMcp 'Microsoft.App/containerApps@2023-05-01' = {
@@ -461,6 +488,12 @@ output qapDbHost string = pgHostName
 
 @description('Whether Azure Database for PostgreSQL Flexible Server is being used')
 output useManagedPostgres bool = useManagedPostgres
+
+@description('Azure OpenAI endpoint (empty string when useAzureOpenAI=false)')
+output azureOpenAiEndpoint string = useAzureOpenAI ? aoai.properties.endpoint : ''
+
+@description('Whether Azure OpenAI is deployed for embeddings')
+output useAzureOpenAI bool = useAzureOpenAI
 
 @description('Resource prefix used to derive Container App names in deploy.ps1')
 output resourcePrefix string = resourcePrefix

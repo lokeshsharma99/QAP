@@ -213,6 +213,12 @@ STLC_COMPRESSION_PROMPT = _dedent("""\
     AI system. Your goal: preserve every critical STLC fact while eliminating all noise.
 
     ALWAYS PRESERVE:
+    • Tool call errors — keep full error type + message verbatim (first 300 chars per error).
+      NEVER summarise, discard, or mark errors as "non-critical". Include the exact exception
+      class (e.g., ConnectionError, AttributeError) and the file name if present.
+    • Partial failure counts WITH details: e.g. "3 errors: foo.ts: AttributeError: ..." —
+      never compress to just "3 errors" if detail lines are present.
+    • Warnings from tool outputs: keep the warning text verbatim (first 200 chars).
     • Test artefact identifiers: feature file paths, step names, POM class/method names,
       locators (data-testid, role, text selectors), Cucumber step text
     • Defect and ticket IDs: Jira/ADO ticket numbers, PR numbers, commit SHAs

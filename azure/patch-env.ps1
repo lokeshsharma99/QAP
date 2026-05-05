@@ -154,6 +154,7 @@ $secretMap = [ordered]@{
     'superuser-password'  = G 'SUPERUSER_INITIAL_PASSWORD'
     'seed-admin-password' = G 'SEED_ADMIN_PASSWORD'
     'seed-member-password'= G 'SEED_MEMBER_PASSWORD'
+    'azure-openai-key'    = G 'AZURE_OPENAI_API_KEY'
     # NOTE: POWER_AUTOMATE_TEAMS_URL intentionally excluded.
     # Its query-string & characters cause cmd.exe to split the argument when
     # passed through az.cmd on Windows. Set it manually in the Azure portal or
@@ -185,12 +186,16 @@ $apiEnvMap = [ordered]@{
     'OLLAMA_BASE_URL'            = G 'OLLAMA_BASE_URL'
     'OLLAMA_MODEL'               = G 'OLLAMA_MODEL'
     'OLLAMA_MODELS'              = G 'OLLAMA_MODELS'
-    # Embedding provider: "openai" works in ACA without Ollama sidecar.
-    # Switch to "ollama" only if an Ollama service is deployed in the same env.
+    # Embedding provider: "azure_openai" recommended for ACA (no external OPENAI_API_KEY needed).
+    # "openai" also works if OPENAI_API_KEY is set. "ollama" for local dev only.
     # After switching provider, set RECREATE_VECTOR_TABLES=1 for ONE restart,
     # then remove it — the tables will be rebuilt with the correct dimensions.
-    'EMBEDDING_PROVIDER'         = if (G 'EMBEDDING_PROVIDER') { G 'EMBEDDING_PROVIDER' } else { 'openai' }
-    'RECREATE_VECTOR_TABLES'     = G 'RECREATE_VECTOR_TABLES'
+    'EMBEDDING_PROVIDER'                = if (G 'EMBEDDING_PROVIDER') { G 'EMBEDDING_PROVIDER' } else { 'openai' }
+    'AZURE_OPENAI_ENDPOINT'             = G 'AZURE_OPENAI_ENDPOINT'
+    'AZURE_OPENAI_EMBEDDING_DEPLOYMENT' = if (G 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT') { G 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT' } else { 'text-embedding-3-small' }
+    'AZURE_OPENAI_API_KEY'              = SR 'azure-openai-key'
+    # RECREATE_VECTOR_TABLES — only set when switching embedding providers; remove after one restart
+    # 'RECREATE_VECTOR_TABLES'          = '1'
     'GITHUB_TOKEN'               = SR 'github-token'
     'SLACK_BOT_TOKEN'            = SR 'slack-bot-token'
     'SLACK_CHANNEL_ID'           = G 'SLACK_CHANNEL_ID'
