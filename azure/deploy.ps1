@@ -132,6 +132,7 @@ if (-not $AppsOnly) {
         modelProvider     = $params.parameters.modelProvider.value
         appBaseUrl        = $params.parameters.appBaseUrl.value
     }
+    # nvidiaApiKey is not a Bicep parameter (used only in Container App env) — skip Bicep passthrough
     foreach ($k in $optionals.Keys) {
         if ($optionals[$k]) { $bicepParams += "${k}=$($optionals[$k])" }
     }
@@ -228,6 +229,10 @@ $apiEnv = @(
     "ADO_MCP_URL=http://${RESOURCE_PREFIX}-ado-mcp/mcp"
     "ATLASSIAN_MCP_URL=http://${RESOURCE_PREFIX}-atlassian-mcp/mcp"
     "SESSION_TTL_DAYS=30"
+    "AZURE_DEVOPS_URL=$($params.parameters.azureDevOpsUrl.value)"
+    "AZURE_DEVOPS_EMAIL=$($params.parameters.azureDevOpsEmail.value)"
+    "ATLASSIAN_URL=$($params.parameters.atlassianUrl.value)"
+    "ATLASSIAN_EMAIL=$($params.parameters.atlassianEmail.value)"
 )
 
 # Secrets for qap-api (passed as --secrets and referenced in --env-vars)
@@ -242,6 +247,7 @@ $apiEnv += "DB_PASS=secretref:db-pass"
 $optSecrets = @{
     'openrouter-api-key'  = $params.parameters.openrouterApiKey.value
     'kilo-api-key'        = $params.parameters.kiloApiKey.value
+    'nvidia-api-key'      = $params.parameters.nvidiaApiKey.value
     'openai-api-key'      = $params.parameters.openaiApiKey.value
     'google-api-key'      = $params.parameters.googleApiKey.value
     'anthropic-api-key'   = $params.parameters.anthropicApiKey.value
@@ -252,6 +258,7 @@ $optSecrets = @{
 $optEnvMap = @{
     'openrouter-api-key'  = 'OPENROUTER_API_KEY'
     'kilo-api-key'        = 'KILO_API_KEY'
+    'nvidia-api-key'      = 'NVIDIA_API_KEY'
     'openai-api-key'      = 'OPENAI_API_KEY'
     'google-api-key'      = 'GOOGLE_API_KEY'
     'anthropic-api-key'   = 'ANTHROPIC_API_KEY'
@@ -266,6 +273,8 @@ foreach ($sk in $optSecrets.Keys) {
     }
 }
 
+# NOTE: Each secret and env-var must be a separate array element.
+# DO NOT use -join ' ' — on Windows az CLI receives it as one argument.
 $createOrUpdateArgs = @(
     '--resource-group', $RESOURCE_GROUP
     '--name',           $qapApiName
@@ -283,18 +292,17 @@ $createOrUpdateArgs = @(
     '--max-replicas',   '2'
     '--command',        'uvicorn'
     '--args',           'app.main:app,--host,0.0.0.0,--port,8000,--workers,2'
-    '--secrets',        ($apiSecrets -join ' ')
-    '--env-vars',       ($apiEnv -join ' ')
-)
+    '--secrets'
+) + $apiSecrets + @('--env-vars') + $apiEnv
 
 if (ContainerAppExists $qapApiName $RESOURCE_GROUP) {
     Write-Warn "qap-api already exists — updating image"
-    az containerapp update `
-        --resource-group $RESOURCE_GROUP `
-        --name $qapApiName `
-        --image $API_IMAGE `
-        --secrets ($apiSecrets -join ' ') `
-        --set-env-vars ($apiEnv -join ' ') | Out-Null
+    $updateArgs = @('containerapp', 'update',
+        '--resource-group', $RESOURCE_GROUP,
+        '--name', $qapApiName,
+        '--image', $API_IMAGE,
+        '--secrets') + $apiSecrets + @('--set-env-vars') + $apiEnv
+    az @updateArgs | Out-Null
 } else {
     az containerapp create @createOrUpdateArgs | Out-Null
 }
@@ -343,28 +351,30 @@ $uiEnv = @(
 )
 
 if (ContainerAppExists $qapUiName $RESOURCE_GROUP) {
-    az containerapp update `
-        --resource-group $RESOURCE_GROUP `
-        --name $qapUiName `
-        --image $UI_IMAGE `
-        --set-env-vars ($uiEnv -join ' ') | Out-Null
+    $uiUpdateArgs = @('containerapp', 'update',
+        '--resource-group', $RESOURCE_GROUP,
+        '--name', $qapUiName,
+        '--image', $UI_IMAGE,
+        '--set-env-vars') + $uiEnv
+    az @uiUpdateArgs | Out-Null
 } else {
-    az containerapp create `
-        --resource-group $RESOURCE_GROUP `
-        --name $qapUiName `
-        --environment "${RESOURCE_PREFIX}-env" `
-        --image $UI_IMAGE `
-        --registry-server $ACR_SERVER `
-        --registry-username $ACR_USER `
-        --registry-password $ACR_PASS `
-        --target-port 3000 `
-        --ingress external `
-        --transport http `
-        --cpu 0.5 `
-        --memory '1Gi' `
-        --min-replicas 1 `
-        --max-replicas 2 `
-        --env-vars ($uiEnv -join ' ') | Out-Null
+    $uiCreateArgs = @('containerapp', 'create',
+        '--resource-group', $RESOURCE_GROUP,
+        '--name', $qapUiName,
+        '--environment', "${RESOURCE_PREFIX}-env",
+        '--image', $UI_IMAGE,
+        '--registry-server', $ACR_SERVER,
+        '--registry-username', $ACR_USER,
+        '--registry-password', $ACR_PASS,
+        '--target-port', '3000',
+        '--ingress', 'external',
+        '--transport', 'http',
+        '--cpu', '0.5',
+        '--memory', '1Gi',
+        '--min-replicas', '1',
+        '--max-replicas', '2',
+        '--env-vars') + $uiEnv
+    az @uiCreateArgs | Out-Null
 }
 if ($LASTEXITCODE -ne 0) { Write-Fail "qap-ui deployment failed" }
 

@@ -188,20 +188,9 @@ resource acaEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
   }
 }
 
-// Mount the Azure Files share into the ACA environment so qap-db can use it.
-resource acaEnvStorage 'Microsoft.App/managedEnvironments/storages@2023-05-01' = {
-  parent: acaEnv
-  name: 'pgdata'
-  properties: {
-    azureFile: {
-      accountName: storageAccount.name
-      accountKey: storageAccount.listKeys().keys[0].value
-      shareName: 'pgdata'
-      accessMode: 'ReadWrite'
-    }
-  }
-  dependsOn: [pgdataShare]
-}
+// NOTE: Azure Files SMB does not support chmod — PostgreSQL initdb fails.
+// The DB uses EmptyDir (ephemeral per-replica) storage instead.
+// The storageAccount and pgdataShare resources are kept for reference but unused.
 
 // ---------------------------------------------------------------------------
 // Container App: qap-db  (PostgreSQL + pgvector — internal, TCP)
@@ -226,8 +215,7 @@ resource qapDb 'Microsoft.App/containerApps@2023-05-01' = {
       volumes: [
         {
           name: 'pgdata'
-          storageType: 'AzureFile'
-          storageName: 'pgdata'
+          storageType: 'EmptyDir'   // SMB lacks chmod support; use ephemeral storage
         }
       ]
       containers: [
@@ -251,7 +239,6 @@ resource qapDb 'Microsoft.App/containerApps@2023-05-01' = {
       scale: { minReplicas: 1, maxReplicas: 1 }
     }
   }
-  dependsOn: [acaEnvStorage]
 }
 
 // ---------------------------------------------------------------------------
@@ -318,7 +305,8 @@ resource adoMcp 'Microsoft.App/containerApps@2023-05-01' = {
           command: ['/bin/sh', '-c']
           args: [
             // Replicates the ado-mcp compose entrypoint exactly
-            'export PERSONAL_ACCESS_TOKEN=$(printf \'%s:%s\' "$AZURE_DEVOPS_EMAIL" "$AZURE_DEVOPS_EXT_PAT" | base64 | tr -d \'\\n\') && ORG=$(echo "$AZURE_DEVOPS_URL" | sed \'s|.*dev.azure.com/||\' | cut -d/ -f1) && ORG=${ORG:-QEA} && exec npx -y supergateway --stdio "npx -y @azure-devops/mcp $ORG --authentication pat -d core pipelines repositories work-items" --outputTransport streamableHttp --streamableHttpPath /mcp --port 8932'
+            // Note: avoid ${VAR:-default} bash syntax — Bicep treats ${ as interpolation
+            'export PERSONAL_ACCESS_TOKEN=$(printf \'%s:%s\' "$AZURE_DEVOPS_EMAIL" "$AZURE_DEVOPS_EXT_PAT" | base64 | tr -d \'\\n\'); ORG=$(echo "$AZURE_DEVOPS_URL" | sed \'s|.*dev.azure.com/||\' | cut -d/ -f1); [ -n "$ORG" ] || ORG=QEA; exec npx -y supergateway --stdio "npx -y @azure-devops/mcp $ORG --authentication pat -d core pipelines repositories work-items" --outputTransport streamableHttp --streamableHttpPath /mcp --port 8932'
           ]
           resources: {
             cpu: json('0.25')
