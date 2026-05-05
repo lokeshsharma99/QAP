@@ -11,6 +11,7 @@ from agno.culture.manager import CultureManager
 from agno.db.postgres import PostgresDb
 from agno.knowledge import Knowledge
 from agno.knowledge.embedder.ollama import OllamaEmbedder
+from agno.models.openrouter import OpenRouter
 from agno.vectordb.pgvector import HNSW, PgVector, SearchType
 
 from db.url import db_url
@@ -18,7 +19,24 @@ from db.url import db_url
 DB_ID = "quality-autopilot-db"
 
 # Ollama host — inside Docker use host.docker.internal to reach the host machine
+
 OLLAMA_HOST = getenv("OLLAMA_HOST", "http://host.docker.internal:11434")
+
+
+def _get_qap_model() -> OpenRouter:
+    """Return the same OpenRouter model used by app.settings.MODEL.
+
+    Defined here to avoid a circular import (db → app.settings → db).
+    CultureManager and other DB-layer managers use this so they never fall
+    back to the gpt-4o default (which requires OPENAI_API_KEY).
+    """
+    _kilo_key = getenv("KILO_API_KEY", "anonymous")
+    _model_id = "kilo-auto/free" if _kilo_key == "anonymous" else "kilo-auto/balanced"
+    return OpenRouter(
+        id=_model_id,
+        base_url="https://api.kilo.ai/api/openrouter/v1",
+        api_key=_kilo_key,
+    )
 
 
 def get_postgres_db(knowledge_table: str | None = None) -> PostgresDb:
@@ -332,6 +350,7 @@ def get_culture_manager(org_id: str = "system") -> CultureManager:
     if safe == "system":
         if _culture_manager is None:
             _culture_manager = CultureManager(
+                model=_get_qap_model(),
                 db=get_postgres_db(),
                 culture_capture_instructions=_CULTURE_CAPTURE_INSTRUCTIONS,
             )
@@ -339,6 +358,7 @@ def get_culture_manager(org_id: str = "system") -> CultureManager:
 
     if safe not in _culture_managers:
         _culture_managers[safe] = CultureManager(
+            model=_get_qap_model(),
             db=PostgresDb(
                 id=f"{DB_ID}-culture-{safe}",
                 db_url=db_url,

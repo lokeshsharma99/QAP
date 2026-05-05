@@ -53,6 +53,7 @@ rca_kb = get_rca_kb()
 # Memory Manager
 # ---------------------------------------------------------------------------
 memory_manager = MemoryManager(
+    model=MODEL,
     db=agent_db,
     memory_capture_instructions=(
         "Only record quality gate decisions. For each verdict store: "

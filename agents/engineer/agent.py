@@ -40,6 +40,7 @@ site_manifesto_kb = get_site_manifesto_kb()
 # Memory Manager
 # ---------------------------------------------------------------------------
 memory_manager = MemoryManager(
+    model=MODEL,
     db=agent_db,
     memory_capture_instructions=(
         "Only store automation coding patterns: successful locator strategies "

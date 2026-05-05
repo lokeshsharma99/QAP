@@ -56,6 +56,7 @@ rca_kb = get_rca_kb()
 # Memory Manager
 # ---------------------------------------------------------------------------
 memory_manager = MemoryManager(
+    model=MODEL,
     db=agent_db,
     memory_capture_instructions=(
         "Only store failure analysis patterns. For each failure record: "
