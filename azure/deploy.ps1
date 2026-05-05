@@ -383,6 +383,14 @@ $UI_FQDN = Invoke-Az containerapp show `
     --query 'properties.configuration.ingress.fqdn' -o tsv
 Write-Ok "qap-ui live   : https://$UI_FQDN"
 
+# Patch API CORS to allow the UI origin (EXTRA_CORS_ORIGINS picked up at runtime)
+Write-Step "Patching API CORS for UI origin"
+az containerapp update `
+    --name $qapApiName `
+    --resource-group $RESOURCE_GROUP `
+    --set-env-vars "EXTRA_CORS_ORIGINS=https://$UI_FQDN" | Out-Null
+Write-Ok "EXTRA_CORS_ORIGINS set to https://$UI_FQDN"
+
 Write-Step "Phase 5 — Deploying playwright-mcp Container App"
 
 $playwrightName = "${RESOURCE_PREFIX}-playwright-mcp"

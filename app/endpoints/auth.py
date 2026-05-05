@@ -117,6 +117,25 @@ _ensure_tables()
 
 
 # ---------------------------------------------------------------------------
+# Password helpers (must be defined before _ensure_superuser uses them)
+# ---------------------------------------------------------------------------
+
+def _hash_password(password: str) -> str:
+    """SHA-256 hash with per-user random salt (stored as 'salt$hash')."""
+    salt = secrets.token_hex(16)
+    h = hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
+    return f"{salt}${h}"
+
+
+def _verify_password(password: str, stored: str) -> bool:
+    try:
+        salt, h = stored.split("$", 1)
+        return hashlib.sha256(f"{salt}{password}".encode()).hexdigest() == h
+    except Exception:
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Superuser seed
 # ---------------------------------------------------------------------------
 
@@ -142,7 +161,7 @@ def _ensure_superuser() -> None:
                         INSERT INTO qap_users (email, name, password_hash, org_id, role)
                         VALUES (%s, 'Super Admin', %s, %s, 'superuser')
                     """, (_SUPERUSER_EMAIL, pw_hash, _SUPERUSER_ORG_ID))
-                    logger.info("Superuser account seeded: %s", _SUPERUSER_EMAIL)
+                logger.info("Superuser account seeded: %s", _SUPERUSER_EMAIL)
             conn.commit()
     except Exception as e:
         logger.warning("Could not seed superuser: %s", e)
@@ -150,19 +169,6 @@ def _ensure_superuser() -> None:
 
 _ensure_superuser()
 
-def _hash_password(password: str) -> str:
-    """SHA-256 hash with per-user random salt (stored as 'salt$hash')."""
-    salt = secrets.token_hex(16)
-    h = hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
-    return f"{salt}${h}"
-
-
-def _verify_password(password: str, stored: str) -> bool:
-    try:
-        salt, h = stored.split("$", 1)
-        return hashlib.sha256(f"{salt}{password}".encode()).hexdigest() == h
-    except Exception:
-        return False
 
 
 def _create_session(user_id: str, org_id: str) -> str:
