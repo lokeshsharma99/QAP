@@ -149,23 +149,38 @@ if (-not $AppsOnly) {
 
     if (-not $infraResult) { Write-Fail "Bicep deployment failed" }
 
-    $ACR_SERVER = $infraResult.acrLoginServer.value
-    $ACR_NAME   = $infraResult.acrName.value
-    $DB_HOST    = $infraResult.qapDbHost.value
+    $ACR_SERVER          = $infraResult.acrLoginServer.value
+    $ACR_NAME            = $infraResult.acrName.value
+    $DB_HOST             = $infraResult.qapDbHost.value
+    $USE_MANAGED_PG      = [bool]($infraResult.useManagedPostgres.value)
+    $MAX_API_REPLICAS    = [int]($infraResult.maxApiReplicas.value)
+    $MAX_PW_REPLICAS     = [int]($infraResult.maxPlaywrightReplicas.value)
 
-    Write-Ok "ACR          : $ACR_SERVER"
-    Write-Ok "DB host      : $DB_HOST"
+    Write-Ok "ACR              : $ACR_SERVER"
+    Write-Ok "DB host          : $DB_HOST"
+    Write-Ok "Managed Postgres : $USE_MANAGED_PG"
+    Write-Ok "Max API replicas : $MAX_API_REPLICAS"
+    Write-Ok "Max PW replicas  : $MAX_PW_REPLICAS"
 
     # Persist outputs for AppsOnly re-runs
-    @{ acrServer = $ACR_SERVER; acrName = $ACR_NAME; dbHost = $DB_HOST } |
-        ConvertTo-Json | Set-Content "$PSScriptRoot\.deploy-state.json"
+    @{
+        acrServer        = $ACR_SERVER
+        acrName          = $ACR_NAME
+        dbHost           = $DB_HOST
+        useManagedPg     = $USE_MANAGED_PG
+        maxApiReplicas   = $MAX_API_REPLICAS
+        maxPwReplicas    = $MAX_PW_REPLICAS
+    } | ConvertTo-Json | Set-Content "$PSScriptRoot\.deploy-state.json"
 } else {
     # AppsOnly: load state from previous infra deploy
     $state = Get-Content "$PSScriptRoot\.deploy-state.json" | ConvertFrom-Json
-    $ACR_SERVER = $state.acrServer
-    $ACR_NAME   = $state.acrName
-    $DB_HOST    = $state.dbHost
-    Write-Ok "Using saved state — ACR: $ACR_SERVER  DB host: $DB_HOST"
+    $ACR_SERVER       = $state.acrServer
+    $ACR_NAME         = $state.acrName
+    $DB_HOST          = $state.dbHost
+    $USE_MANAGED_PG   = [bool]$state.useManagedPg
+    $MAX_API_REPLICAS = if ($state.maxApiReplicas) { [int]$state.maxApiReplicas } else { 3 }
+    $MAX_PW_REPLICAS  = if ($state.maxPwReplicas)  { [int]$state.maxPwReplicas  } else { 3 }
+    Write-Ok "Using saved state — ACR: $ACR_SERVER  DB: $DB_HOST  ManagedPG: $USE_MANAGED_PG"
 }
 
 if ($InfraOnly) {
@@ -220,6 +235,8 @@ $apiEnv = @(
     "DB_USER=ai"
     "DB_DATABASE=ai"
     "WAIT_FOR_DB=True"
+    # When using Azure Database for PostgreSQL Flexible Server, require SSL
+    "DB_SSL_REQUIRED=$(if ($USE_MANAGED_PG) { 'true' } else { 'false' })"
     "MODEL_PROVIDER=$($params.parameters.modelProvider.value ?? 'kilo')"
     "OPENROUTER_BASE_URL=$($params.parameters.openrouterBaseUrl.value ?? 'https://api.kilo.ai/api/openrouter/v1')"
     "KILO_API_URL=$($params.parameters.kiloApiUrl.value ?? 'https://api.kilo.ai')"
@@ -292,7 +309,11 @@ $createOrUpdateArgs = @(
     '--cpu',            '1'
     '--memory',         '2Gi'
     '--min-replicas',   '1'
-    '--max-replicas',   '2'
+    '--max-replicas',   "$MAX_API_REPLICAS"
+    # Scale out when concurrent HTTP requests per replica exceeds 10
+    '--scale-rule-name',            'http-concurrency'
+    '--scale-rule-type',            'http'
+    '--scale-rule-http-concurrency','10'
     '--secrets'
 ) + $apiSecrets + @('--env-vars') + $apiEnv
 
@@ -397,11 +418,19 @@ Write-Step "Phase 5 — Deploying playwright-mcp Container App"
 
 $playwrightName = "${RESOURCE_PREFIX}-playwright-mcp"
 
+# playwright-mcp runs stateful browser sessions — sticky sessions ensure a user's
+# browser context always lands on the same replica, avoiding cross-replica state loss.
+# Scale rule: 1 replica per concurrent session (max $MAX_PW_REPLICAS).
 if (ContainerAppExists $playwrightName $RESOURCE_GROUP) {
     az containerapp update `
         --resource-group $RESOURCE_GROUP `
         --name $playwrightName `
-        --image $PLAYWRIGHT_IMAGE | Out-Null
+        --image $PLAYWRIGHT_IMAGE `
+        --min-replicas 1 `
+        --max-replicas $MAX_PW_REPLICAS `
+        --scale-rule-name 'http-sessions' `
+        --scale-rule-type 'http' `
+        --scale-rule-http-concurrency 1 | Out-Null
 } else {
     az containerapp create `
         --resource-group $RESOURCE_GROUP `
@@ -417,10 +446,19 @@ if (ContainerAppExists $playwrightName $RESOURCE_GROUP) {
         --cpu 1 `
         --memory '2Gi' `
         --min-replicas 1 `
-        --max-replicas 1 | Out-Null
+        --max-replicas $MAX_PW_REPLICAS `
+        --scale-rule-name 'http-sessions' `
+        --scale-rule-type 'http' `
+        --scale-rule-http-concurrency 1 | Out-Null
 }
 if ($LASTEXITCODE -ne 0) { Write-Fail "playwright-mcp deployment failed" }
-Write-Ok "playwright-mcp deployed (internal)"
+
+# Enable sticky sessions on playwright-mcp so browser context is pinned per-client
+az containerapp ingress sticky-sessions set `
+    --name $playwrightName `
+    --resource-group $RESOURCE_GROUP `
+    --affinity sticky 2>&1 | Out-Null
+Write-Ok "playwright-mcp deployed (internal, sticky sessions, max $MAX_PW_REPLICAS replicas)"
 
 # ---------------------------------------------------------------------------
 # Summary

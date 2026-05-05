@@ -14,6 +14,10 @@
     "dbPass":        { "value": "CHANGE_ME_strong_password" },
     "sessionSecret": { "value": "CHANGE_ME_run_openssl_rand_-hex_32" },
 
+    "useManagedPostgres":   { "value": false },
+    "maxApiReplicas":       { "value": 3 },
+    "maxPlaywrightReplicas":{ "value": 3 },
+
     "modelProvider":      { "value": "kilo" },
     "openrouterApiKey":   { "value": "" },
     "openrouterBaseUrl":  { "value": "https://api.kilo.ai/api/openrouter/v1" },

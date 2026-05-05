@@ -92,6 +92,10 @@ param autGithubOwner string = 'lokeshsharma99'
 @description('AUT GitHub repository name.')
 param autGithubRepo string = 'GDS-Demo-App'
 
+// --- Scaling ---\n@description('Maximum number of qap-api replicas. Increase for higher concurrency.')\n@minValue(1)\n@maxValue(10)\nparam maxApiReplicas int = 3\n\n@description('Maximum number of playwright-mcp replicas. Each replica can serve one browser session at a time.')\n@minValue(1)\n@maxValue(5)\nparam maxPlaywrightReplicas int = 3\n\n// --- Postgres mode ---
+@description('When true, deploy Azure Database for PostgreSQL Flexible Server instead of the ephemeral container DB. Recommended for multi-user production use.')
+param useManagedPostgres bool = false
+
 // --- Auth ---
 @description('Secret key used to sign session tokens (generate with: openssl rand -hex 32).')
 @secure()
@@ -111,6 +115,13 @@ param modelProvider string = 'kilo'
 var resourcePrefix = '${prefix}-${env}'
 var dbUser = 'ai'
 var dbName = 'ai'
+
+// Derived: internal hostname used as DB_HOST for the API container
+// • Managed PostgreSQL: <server>.postgres.database.azure.com
+// • Container DB:       <resourcePrefix>-db  (ACA internal DNS)
+var pgHostName = useManagedPostgres
+  ? '${resourcePrefix}-postgres.postgres.database.azure.com'
+  : '${resourcePrefix}-db'
 
 // ---------------------------------------------------------------------------
 // Log Analytics Workspace
@@ -188,14 +199,13 @@ resource acaEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
   }
 }
 
-// NOTE: Azure Files SMB does not support chmod — PostgreSQL initdb fails.
-// The DB uses EmptyDir (ephemeral per-replica) storage instead.
-// The storageAccount and pgdataShare resources are kept for reference but unused.
-
 // ---------------------------------------------------------------------------
-// Container App: qap-db  (PostgreSQL + pgvector — internal, TCP)
+// Container App: qap-db  (ephemeral PostgreSQL — used when useManagedPostgres=false)
 // ---------------------------------------------------------------------------
-resource qapDb 'Microsoft.App/containerApps@2023-05-01' = {
+// NOTE: EmptyDir is ephemeral — data is lost on container restart.
+// For multi-user production, set useManagedPostgres=true in parameters.json
+// to use Azure Database for PostgreSQL Flexible Server instead.
+resource qapDb 'Microsoft.App/containerApps@2023-05-01' = if (!useManagedPostgres) {
   name: '${resourcePrefix}-db'
   location: location
   properties: {
@@ -238,6 +248,71 @@ resource qapDb 'Microsoft.App/containerApps@2023-05-01' = {
       ]
       scale: { minReplicas: 1, maxReplicas: 1 }
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Azure Database for PostgreSQL Flexible Server
+// Deployed only when useManagedPostgres=true.
+// SKU: Burstable B1ms (~$12.50/month) — upgrade to GeneralPurpose for high load.
+// pgvector extension is enabled via the configurations resource below.
+// ---------------------------------------------------------------------------
+resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-06-01-preview' = if (useManagedPostgres) {
+  name: '${resourcePrefix}-postgres'
+  location: location
+  sku: {
+    name: 'Standard_B1ms'
+    tier: 'Burstable'
+  }
+  properties: {
+    version: '16'
+    administratorLogin: dbUser
+    administratorLoginPassword: dbPass
+    storage: {
+      storageSizeGB: 32
+      autoGrow: 'Enabled'
+    }
+    backup: {
+      backupRetentionDays: 7
+      geoRedundantBackup: 'Disabled'
+    }
+    highAvailability: {
+      mode: 'Disabled'   // Enable 'ZoneRedundant' for production HA
+    }
+    authConfig: {
+      activeDirectoryAuth: 'Disabled'
+      passwordAuth: 'Enabled'
+    }
+  }
+}
+
+// Allow all Azure services to connect (required for ACA → Flexible Server)
+resource postgresFirewallAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-06-01-preview' = if (useManagedPostgres) {
+  parent: postgresServer
+  name: 'AllowAllAzureServices'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
+  }
+}
+
+// Enable pgvector extension
+resource postgresConfigPgVector 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-06-01-preview' = if (useManagedPostgres) {
+  parent: postgresServer
+  name: 'azure.extensions'
+  properties: {
+    value: 'VECTOR,PG_TRGM'
+    source: 'user-override'
+  }
+}
+
+// Create the target database
+resource postgresDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-06-01-preview' = if (useManagedPostgres) {
+  parent: postgresServer
+  name: dbName
+  properties: {
+    charset: 'UTF8'
+    collation: 'en_US.utf8'
   }
 }
 
@@ -380,11 +455,20 @@ output acrName string = acr.name
 @description('Container Apps Environment resource ID')
 output acaEnvId string = acaEnv.id
 
-@description('Internal hostname for qap-db  (used as DB_HOST in qap-api)')
-output qapDbHost string = '${resourcePrefix}-db'
+@description('PostgreSQL hostname (used as DB_HOST in qap-api). Points to Flexible Server when useManagedPostgres=true, container DB otherwise.')
+output qapDbHost string = pgHostName
+
+@description('Whether Azure Database for PostgreSQL Flexible Server is being used')
+output useManagedPostgres bool = useManagedPostgres
 
 @description('Resource prefix used to derive Container App names in deploy.ps1')
 output resourcePrefix string = resourcePrefix
+
+@description('Max API replicas — passed to deploy.ps1 for qap-api scaling rule')
+output maxApiReplicas int = maxApiReplicas
+
+@description('Max playwright-mcp replicas — passed to deploy.ps1')
+output maxPlaywrightReplicas int = maxPlaywrightReplicas
 
 @description('Resource group location')
 output location string = location
