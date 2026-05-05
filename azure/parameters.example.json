@@ -37,6 +37,8 @@
     "autGithubOwner":     { "value": "lokeshsharma99" },
     "autGithubRepo":      { "value": "GDS-Demo-App" },
 
-    "appBaseUrl":         { "value": "" }
+    "appBaseUrl":         { "value": "" },
+
+    "parallelApiKey":     { "value": "" }
   }
 }

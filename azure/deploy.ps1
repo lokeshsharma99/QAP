@@ -233,6 +233,7 @@ $apiEnv = @(
     "AZURE_DEVOPS_EMAIL=$($params.parameters.azureDevOpsEmail.value)"
     "ATLASSIAN_URL=$($params.parameters.atlassianUrl.value)"
     "ATLASSIAN_EMAIL=$($params.parameters.atlassianEmail.value)"
+    "PARALLEL_API_KEY=$($params.parameters.parallelApiKey.value)"
 )
 
 # Secrets for qap-api (passed as --secrets and referenced in --env-vars)

@@ -293,7 +293,7 @@ ATLASSIAN_CONFLUENCE_SPACE = getenv("ATLASSIAN_CONFLUENCE_SPACE", "")
 # ---------------------------------------------------------------------------
 # Optional tools
 # ---------------------------------------------------------------------------
-PARALLEL_API_KEY = getenv("PARALLEL_API_KEY", "cV5e6HkHA61snK9NIHqBybVfgGnVKSyODOP-yjqB")
+PARALLEL_API_KEY = getenv("PARALLEL_API_KEY", "")
 
 # ---------------------------------------------------------------------------
 # Agentic Judge Quality Gate
