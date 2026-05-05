@@ -44,3 +44,10 @@ chat:
       - "Review this Gherkin spec against the DoD checklist"
       - "Evaluate the quality of this Page Object"
       - "Is this healing patch safe to auto-approve?"
+
+    observability:
+      - "Check system health — is the API up and DB connected?"
+      - "Show me recent errors in the ACA logs"
+      - "Why is the container crashing? Analyze the logs"
+      - "Are all required env vars set on qap-dev-api?"
+      - "Check DB connectivity — is DB_HOST configured correctly?"

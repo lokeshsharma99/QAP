@@ -26,6 +26,7 @@ from agents.impact_analyst import impact_analyst
 from agents.judge import judge
 from agents.librarian import librarian
 from agents.medic import medic
+from agents.observability import observability
 from agents.pipeline_analyst import pipeline_analyst
 from agents.scribe import scribe
 from app.endpoints.agent_config import router as agent_config_router
@@ -103,6 +104,7 @@ agent_os = AgentOS(
         curator,
         ci_log_analyzer,
         impact_analyst,
+        observability,
         pipeline_analyst,
         healing_judge,
         scout,
