@@ -6,6 +6,36 @@
 
 ---
 
+## Azure DevOps Pipeline
+
+**Repo**: [vibecode/QAP](https://dev.azure.com/vibecode/QAP/_git/QAP)  
+**Pipeline**: [QAP-CICD](https://dev.azure.com/vibecode/QAP/_build?definitionId=14) (defined in `azure-pipelines.yml`)
+
+| Stage | Trigger | Status |
+|-------|---------|--------|
+| **Validate** — Python lint + TypeScript type-check | every push / PR | ✅ ready |
+| **Build** — build & push `qap-api` + `qap-ui` to ACR | push to `main` or `feat/azure-deploy` | ✅ ready |
+| **Deploy** — `az containerapp update` for API + UI | after Build | ⚠️ needs 1 manual step (see below) |
+
+### One-time setup: ARM service connection
+
+The Deploy stage uses an `AzureCLI@2` task that needs an Azure Resource Manager service connection named **`qap-azure-sc`**. Creating this requires Entra app registration — which is currently blocked by the Cognizant Conditional Access policy from the local CLI. Create it manually from a browser session:
+
+1. Open [vibecode/QAP → Project Settings → Service connections](https://dev.azure.com/vibecode/QAP/_settings/adminservices)
+2. Click **New service connection → Azure Resource Manager**
+3. Choose **Workload Identity Federation (automatic)** ← recommended, no SP password to rotate
+4. Select subscription `c3efdcab-3249-4063-8e26-a69191a3a268`
+5. Leave resource group blank (subscription scope)
+6. Name it exactly **`qap-azure-sc`**
+7. Check **Grant access permission to all pipelines**
+8. Save
+
+Once saved the Deploy stage will activate automatically on the next push to `main`.
+
+The Docker registry service connection (`qap-acr-connection`) and variable group (`qap-deploy-secrets`) are already configured.
+
+---
+
 ## Live URLs
 
 | Service | URL |
