@@ -37,6 +37,29 @@
     "atlassianEmail":     { "value": "" },
     "atlassianApiToken":  { "value": "" },
 
+    "nvidiaApiKey":       { "value": "" },
+    "nvidiaModel":        { "value": "qwen/qwen3-coder-480b-a35b-instruct" },
+
+    "ollamaApiKey":       { "value": "" },
+    "ollamaBaseUrl":      { "value": "http://host.docker.internal:11434" },
+    "ollamaModel":        { "value": "minimax-m2.7:cloud" },
+
+    "slackBotToken":      { "value": "" },
+    "slackChannelId":     { "value": "" },
+    "serperApiKey":       { "value": "" },
+    "powerAutomateTeamsUrl": { "value": "" },
+
+    "smtpHost":           { "value": "smtp-relay.brevo.com" },
+    "smtpPort":           { "value": "587" },
+    "smtpUser":           { "value": "" },
+    "smtpPass":           { "value": "" },
+    "fromEmail":          { "value": "" },
+
+    "superuserEmail":            { "value": "superadmin@quality-autopilot.dev" },
+    "superuserInitialPassword":  { "value": "" },
+    "seedAdminPassword":         { "value": "" },
+    "seedMemberPassword":        { "value": "" },
+
     "autBaseUrl":         { "value": "https://lokeshsharma99.github.io/GDS-Demo-App/" },
     "autGithubOwner":     { "value": "lokeshsharma99" },
     "autGithubRepo":      { "value": "GDS-Demo-App" },

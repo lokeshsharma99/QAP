@@ -252,6 +252,21 @@ $apiEnv = @(
     "AZURE_DEVOPS_EMAIL=$($params.parameters.azureDevOpsEmail.value)"
     "ATLASSIAN_URL=$($params.parameters.atlassianUrl.value)"
     "ATLASSIAN_EMAIL=$($params.parameters.atlassianEmail.value)"
+    "JIRA_URL=$($params.parameters.atlassianUrl.value)"
+    "JIRA_USERNAME=$($params.parameters.atlassianEmail.value)"
+    "CONFLUENCE_URL=$($params.parameters.atlassianUrl.value)/wiki"
+    "CONFLUENCE_EMAIL=$($params.parameters.atlassianEmail.value)"
+    "NVIDIA_MODEL=$($params.parameters.nvidiaModel.value ?? 'qwen/qwen3-coder-480b-a35b-instruct')"
+    "OLLAMA_BASE_URL=$($params.parameters.ollamaBaseUrl.value ?? 'http://host.docker.internal:11434')"
+    "OLLAMA_MODEL=$($params.parameters.ollamaModel.value ?? 'minimax-m2.7:cloud')"
+    "SLACK_CHANNEL_ID=$($params.parameters.slackChannelId.value)"
+    "SMTP_HOST=$($params.parameters.smtpHost.value ?? 'smtp-relay.brevo.com')"
+    "SMTP_PORT=$($params.parameters.smtpPort.value ?? '587')"
+    "SMTP_USER=$($params.parameters.smtpUser.value)"
+    "FROM_EMAIL=$($params.parameters.fromEmail.value)"
+    "SUPERUSER_EMAIL=$($params.parameters.superuserEmail.value ?? 'superadmin@quality-autopilot.dev')"
+    "SERPER_API_KEY=$($params.parameters.serperApiKey.value)"
+    "POWER_AUTOMATE_TEAMS_URL=$($params.parameters.powerAutomateTeamsUrl.value)"
     "PARALLEL_API_KEY=$($params.parameters.parallelApiKey.value)"
 )
 
@@ -274,6 +289,12 @@ $optSecrets = @{
     'github-token'        = $params.parameters.githubToken.value
     'ado-pat'             = $params.parameters.azureDevOpsPat.value
     'atlassian-token'     = $params.parameters.atlassianApiToken.value
+    'ollama-api-key'      = $params.parameters.ollamaApiKey.value
+    'slack-bot-token'     = $params.parameters.slackBotToken.value
+    'smtp-pass'           = $params.parameters.smtpPass.value
+    'superuser-password'  = $params.parameters.superuserInitialPassword.value
+    'seed-admin-password' = $params.parameters.seedAdminPassword.value
+    'seed-member-password'= $params.parameters.seedMemberPassword.value
 }
 $optEnvMap = @{
     'openrouter-api-key'  = 'OPENROUTER_API_KEY'
@@ -285,6 +306,12 @@ $optEnvMap = @{
     'github-token'        = 'GITHUB_TOKEN'
     'ado-pat'             = 'AZURE_DEVOPS_EXT_PAT'
     'atlassian-token'     = 'ATLASSIAN_API_TOKEN'
+    'ollama-api-key'      = 'OLLAMA_API_KEY'
+    'slack-bot-token'     = 'SLACK_BOT_TOKEN'
+    'smtp-pass'           = 'SMTP_PASS'
+    'superuser-password'  = 'SUPERUSER_INITIAL_PASSWORD'
+    'seed-admin-password' = 'SEED_ADMIN_PASSWORD'
+    'seed-member-password'= 'SEED_MEMBER_PASSWORD'
 }
 foreach ($sk in $optSecrets.Keys) {
     if ($optSecrets[$sk]) {

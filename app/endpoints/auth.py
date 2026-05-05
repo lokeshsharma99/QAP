@@ -57,6 +57,20 @@ _FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@quality-autopilot.local")
 _SUPERUSER_EMAIL = os.getenv("SUPERUSER_EMAIL", "admin@quality-autopilot.dev")
 _SUPERUSER_INITIAL_PASSWORD = os.getenv("SUPERUSER_INITIAL_PASSWORD", "Admin@QAP123!")
 _SUPERUSER_ORG_ID = "system"
+_SEED_ADMIN_PASSWORD = os.getenv("SEED_ADMIN_PASSWORD", "Admin@QAP2026!")
+_SEED_MEMBER_PASSWORD = os.getenv("SEED_MEMBER_PASSWORD", "Member@QAP2026!")
+
+# Default seeded users — 2 admins + 3 members, all in the shared 'system' org.
+# Override passwords via SEED_ADMIN_PASSWORD / SEED_MEMBER_PASSWORD env vars.
+# Knowledge bases, traces, and metrics are SHARED across all users.
+# Each user's chat sessions are isolated by session_id; agent learnings are global.
+_DEFAULT_SEED_USERS: list[dict] = [
+    {"email": "admin.one@quality-autopilot.dev",    "name": "Admin One",    "role": "admin"},
+    {"email": "admin.two@quality-autopilot.dev",    "name": "Admin Two",    "role": "admin"},
+    {"email": "member.one@quality-autopilot.dev",   "name": "Member One",   "role": "member"},
+    {"email": "member.two@quality-autopilot.dev",   "name": "Member Two",   "role": "member"},
+    {"email": "member.three@quality-autopilot.dev", "name": "Member Three", "role": "member"},
+]
 
 
 # ---------------------------------------------------------------------------
@@ -170,8 +184,40 @@ def _ensure_superuser() -> None:
 _ensure_superuser()
 
 
+# ---------------------------------------------------------------------------
+# Default user seed (2 admins + 3 members)
+# ---------------------------------------------------------------------------
 
-def _create_session(user_id: str, org_id: str) -> str:
+def _seed_default_users() -> None:
+    """Seed 5 default team users (admin.one, admin.two, member.one/two/three).
+
+    All seeded users belong to the shared 'system' org so they immediately
+    have access to the same knowledge bases, traces, and metrics as the
+    superuser.  Chat sessions remain per-user (session_id isolated).
+    Passwords are controlled by SEED_ADMIN_PASSWORD / SEED_MEMBER_PASSWORD.
+    Idempotent — safe to call on every API restart.
+    """
+    try:
+        import psycopg
+        with psycopg.connect(_psycopg_url) as conn:
+            with conn.cursor() as cur:
+                for user in _DEFAULT_SEED_USERS:
+                    cur.execute("SELECT id FROM qap_users WHERE email = %s", (user["email"],))
+                    if not cur.fetchone():
+                        pw = _SEED_ADMIN_PASSWORD if user["role"] == "admin" else _SEED_MEMBER_PASSWORD
+                        pw_hash = _hash_password(pw)
+                        cur.execute(
+                            "INSERT INTO qap_users (email, name, password_hash, org_id, role) "
+                            "VALUES (%s, %s, %s, %s, %s)",
+                            (user["email"], user["name"], pw_hash, _SUPERUSER_ORG_ID, user["role"]),
+                        )
+                        logger.info("Seeded user: %s (role=%s)", user["email"], user["role"])
+            conn.commit()
+    except Exception as e:
+        logger.warning("Could not seed default users: %s", e)
+
+
+_seed_default_users()
     """Insert a new session row and return the token."""
     import psycopg
     token = secrets.token_urlsafe(32)

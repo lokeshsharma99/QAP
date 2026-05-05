@@ -431,7 +431,8 @@ resource atlassianMcp 'Microsoft.App/containerApps@2023-05-01' = {
             { name: 'JIRA_URL',                value: atlassianUrl }
             { name: 'JIRA_USERNAME',           value: atlassianEmail }
             { name: 'JIRA_API_TOKEN',          secretRef: 'atlassian-token' }
-            { name: 'CONFLUENCE_URL',          value: atlassianUrl }
+            // Confluence URL always needs the /wiki path suffix
+            { name: 'CONFLUENCE_URL',          value: '${atlassianUrl}/wiki' }
             { name: 'CONFLUENCE_USERNAME',     value: atlassianEmail }
             { name: 'CONFLUENCE_API_TOKEN',    secretRef: 'atlassian-token' }
           ]
