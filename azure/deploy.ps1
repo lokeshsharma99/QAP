@@ -42,9 +42,11 @@ function Write-Warn { param([string]$Msg) Write-Host "   ⚠  $Msg" -ForegroundC
 function Write-Fail { param([string]$Msg) Write-Host "   ✗  $Msg" -ForegroundColor Red; exit 1 }
 
 function Invoke-Az {
-    $result = az @args 2>&1
-    if ($LASTEXITCODE -ne 0) { Write-Fail "az $($args[0]) failed: $result" }
-    return $result
+    $raw = az @args 2>&1
+    if ($LASTEXITCODE -ne 0) { Write-Fail "az $($args[0]) failed: $raw" }
+    # Strip Azure CLI extension WARNING/INFO lines so callers get clean values
+    $result = ($raw | Where-Object { $_ -notmatch '^(WARNING|INFO|ERROR):' }) -join "`n"
+    return $result.Trim()
 }
 
 function ContainerAppExists {
