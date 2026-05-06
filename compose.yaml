@@ -54,8 +54,10 @@ services:
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://api.kilo.ai/api/openrouter/v1}
       - KILO_API_KEY=${KILO_API_KEY:-anonymous}
       - KILO_API_URL=${KILO_API_URL:-https://api.kilo.ai}
-      # Model provider switcher — set MODEL_PROVIDER to: kilo | kilo_paid | gemini | gpt4o_mini | haiku
-      - MODEL_PROVIDER=${MODEL_PROVIDER:-kilo}
+      # Model provider switcher — set MODEL_PROVIDER to: nvidia | kilo | kilo_paid | gemini | gpt4o_mini | haiku
+      - MODEL_PROVIDER=${MODEL_PROVIDER:-nvidia}
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - NVIDIA_MODEL=${NVIDIA_MODEL:-qwen/qwen3-coder-480b-a35b-instruct}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -228,6 +230,10 @@ services:
     build:
       context: ./control-plane
       dockerfile: Dockerfile
+      args:
+        # Baked into client-side JS at build time — used by the store to call the API.
+        # Points to the permanent ngrok API tunnel URL.
+        NEXT_PUBLIC_AGENTOS_URL: http://192.168.1.243:8000
     container_name: qap-ui
     restart: unless-stopped
     ports:

@@ -214,7 +214,7 @@ const useAIChatStreamHandler = () => {
                   return [sessionData, ...(prevSessionsData ?? [])]
                 })
               }
-              addChatEvent({ type: 'run_start', label: `${chunk.event}`, ts: Date.now(), detail: chunk.session_id as string | undefined })
+              addChatEvent({ type: 'run_start', label: 'Waiting for model response…', ts: Date.now(), detail: chunk.session_id as string | undefined })
             } else if (
               chunk.event === RunEvent.ToolCallStarted ||
               chunk.event === RunEvent.TeamToolCallStarted ||
@@ -390,6 +390,7 @@ const useAIChatStreamHandler = () => {
             ) {
               addChatEvent({ type: 'run_done', label: 'Run completed', ts: Date.now() })
               const followupsToApply = pendingFollowups
+              flushSync(() => {
               setMessages((prevMessages) => {
                 const newMessages = prevMessages.map((message, index) => {
                   if (index === prevMessages.length - 1 && message.role === 'agent') {
@@ -429,6 +430,7 @@ const useAIChatStreamHandler = () => {
                   return message
                 })
                 return newMessages
+              })
               })
             } else if (
               chunk.event === RunEvent.StepStarted

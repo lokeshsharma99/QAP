@@ -4,7 +4,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { AgentDetails, SessionEntry, TeamDetails, WorkflowDetails, type ChatMessage } from '@/types/os'
 
 export interface ChatEvent {
-  type: 'tool_start' | 'tool_done' | 'reasoning' | 'content' | 'run_start' | 'run_done' | 'error' | 'memory'
+  type: 'tool_start' | 'tool_done' | 'reasoning' | 'content' | 'run_start' | 'run_done' | 'error' | 'memory' | 'debug'
   label: string
   ts: number
   detail?: string

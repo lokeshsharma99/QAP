@@ -16,7 +16,10 @@ import { toast } from 'sonner'
 // Types
 // ---------------------------------------------------------------------------
 interface RTMRow {
-  ticket_ids: string[]
+  test_id: string
+  ticket_ids: string[]      // real Jira/ADO keys e.g. GDS-42
+  ac_ids: string[]          // acceptance criteria e.g. AC-001
+  parent_ticket: string     // primary Jira key
   feature_title: string
   feature_file: string
   scenario_name: string
@@ -81,7 +84,10 @@ export default function RTMPage() {
       const data = await res.json()
       // Convert KB rows to display format
       setRows(data.map((r: Record<string, unknown>) => ({
+        test_id: '',
         ticket_ids: r.ticket_id ? [r.ticket_id as string] : [],
+        ac_ids: r.ac_id ? [r.ac_id as string] : [],
+        parent_ticket: (r.ticket_id as string) || '',
         feature_title: (r.feature_title as string) || '',
         feature_file: (r.feature_file as string) || '',
         scenario_name: (r.scenario_name as string) || '',
@@ -126,6 +132,7 @@ export default function RTMPage() {
   }
 
   const allTickets = Array.from(new Set(rows.flatMap(r => r.ticket_ids))).sort()
+  const allAcIds   = Array.from(new Set(rows.flatMap(r => r.ac_ids))).sort()
 
   return (
     <motion.div
@@ -139,7 +146,9 @@ export default function RTMPage() {
           <div>
             <h1 className="text-xl font-semibold">Requirements Traceability Matrix</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {rows.length} scenario{rows.length !== 1 ? 's' : ''} · {allTickets.length} ticket{allTickets.length !== 1 ? 's' : ''} covered
+              {rows.length} scenario{rows.length !== 1 ? 's' : ''}
+              {allTickets.length > 0 && <> · {allTickets.length} ticket{allTickets.length !== 1 ? 's' : ''}</>}
+              {allAcIds.length > 0 && <> · {allAcIds.length} AC{allAcIds.length !== 1 ? 's' : ''} covered</>}
             </p>
           </div>
         </div>
@@ -260,8 +269,9 @@ export default function RTMPage() {
       ) : (
         <div className="rounded-xl border border-border overflow-hidden">
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_1.5fr_2fr_auto] gap-4 px-4 py-2.5 bg-accent/30 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            <span>Ticket(s)</span>
+          <div className="grid grid-cols-[80px_1.4fr_1.5fr_2fr_auto] gap-4 px-4 py-2.5 bg-accent/30 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <span>Test ID</span>
+            <span>Ticket</span>
             <span>Feature</span>
             <span>Scenario</span>
             <span>Actions</span>
@@ -272,16 +282,40 @@ export default function RTMPage() {
             const isExpanded = expanded.has(key)
             return (
               <div key={key} className={cn('border-b border-border last:border-0', isExpanded && 'bg-accent/10')}>
-                <div className="grid grid-cols-[1fr_1.5fr_2fr_auto] gap-4 px-4 py-3 items-start">
-                  {/* Tickets */}
-                  <div className="flex flex-wrap gap-1">
-                    {row.ticket_ids.length > 0
-                      ? row.ticket_ids.map(t => (
-                        <span key={t} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5 font-mono">
-                          <Ticket className="w-3 h-3" />{t}
-                        </span>
-                      ))
-                      : <span className="text-xs text-muted-foreground">—</span>}
+                <div className="grid grid-cols-[80px_1.4fr_1.5fr_2fr_auto] gap-4 px-4 py-3 items-start">
+                  {/* Test ID */}
+                  <div>
+                    {row.test_id ? (
+                      <span className="inline-flex items-center text-[10px] font-mono bg-muted/60 text-muted-foreground border border-border rounded px-1.5 py-0.5 select-all" title="Stable unique test ID">
+                        {row.test_id}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </div>
+                  {/* Ticket hierarchy: parent Jira key → ACs */}
+                  <div className="space-y-1">
+                    {row.ticket_ids.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {row.ticket_ids.map(t => (
+                          <span key={t} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary rounded px-1.5 py-0.5 font-mono font-semibold">
+                            <Ticket className="w-3 h-3" />{t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {row.ac_ids.length > 0 && (
+                      <div className={cn('flex flex-wrap gap-1', row.ticket_ids.length > 0 && 'pl-3 border-l-2 border-primary/20')}>
+                        {row.ac_ids.map(ac => (
+                          <span key={ac} className="inline-flex items-center text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded px-1.5 py-0.5 font-mono">
+                            {ac}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {row.ticket_ids.length === 0 && row.ac_ids.length === 0 && (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </div>
                   {/* Feature */}
                   <div className="space-y-0.5">

@@ -17,6 +17,7 @@ Routes:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -38,12 +39,31 @@ _FEATURES_DIR = _AUTOMATION_DIR / "features"
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _is_ac_tag(tag: str) -> bool:
+    """Return True if the tag is an acceptance-criterion ID (AC-NNN), not a Jira ticket key."""
+    return bool(re.match(r'^AC-\d+$', tag, re.IGNORECASE))
+
+
+def _stable_test_id(feature_file: str, scenario_name: str) -> str:
+    """Generate a stable, unique test ID from the feature file path + scenario name.
+
+    Uses the first 8 hex chars of SHA-256 so the ID never changes as long as
+    the file path and scenario title remain the same.
+    Example: TC-A3B4C5D6
+    """
+    digest = hashlib.sha256(f"{feature_file}:{scenario_name}".encode()).hexdigest()
+    return f"TC-{digest[:8].upper()}"
+
+
 def _parse_feature_files() -> list[dict]:
     """Scan automation/features/ and parse every .feature file into RTM rows.
 
     Returns one row per Scenario:
     {
-        "ticket_ids": [...],
+        "test_id": "TC-A3B4C5D6",
+        "ticket_ids": [...],        # real Jira/ADO keys (e.g. GDS-42, PROJ-123)
+        "ac_ids": [...],            # acceptance-criterion IDs (e.g. AC-001)
+        "parent_ticket": "GDS-42", # first Jira key, or "" if none
         "feature_title": "...",
         "feature_file": "automation/features/foo.feature",
         "scenario_name": "...",
@@ -53,11 +73,11 @@ def _parse_feature_files() -> list[dict]:
     }
     """
     rows: list[dict] = []
-    ticket_re = re.compile(r"@([A-Z][A-Z0-9]+-\d+)", re.IGNORECASE)
-    tag_re    = re.compile(r"@(\w[\w-]*)")
+    jira_re    = re.compile(r"@([A-Z][A-Z0-9]+-\d+)", re.IGNORECASE)
+    tag_re     = re.compile(r"@(\w[\w-]*)")
     feature_re = re.compile(r"^\s*Feature\s*:\s*(.+)", re.MULTILINE)
     scenario_re = re.compile(r"^\s*(Scenario(?:\s+Outline)?)\s*:\s*(.+)", re.MULTILINE)
-    step_re = re.compile(r"^\s*(Given|When|Then|And|But)\s+(.+)", re.MULTILINE)
+    step_re    = re.compile(r"^\s*(Given|When|Then|And|But)\s+(.+)", re.MULTILINE)
 
     if not _FEATURES_DIR.exists():
         return rows
@@ -72,8 +92,8 @@ def _parse_feature_files() -> list[dict]:
         feature_title = feature_m.group(1).strip() if feature_m else feature_path.stem
 
         # Collect all @-tags that appear before any Scenario
-        feature_level_tags = tag_re.findall(content.split("Scenario")[0]) if "Scenario" in content else []
-        ticket_ids = list(dict.fromkeys(ticket_re.findall(content)))
+        feature_header = content.split("Scenario")[0] if "Scenario" in content else content
+        feature_level_tags = tag_re.findall(feature_header)
 
         # Split on Scenario boundaries to get per-scenario text
         parts = re.split(r"(?=\s*Scenario(?:\s+Outline)?:)", content)
@@ -84,16 +104,33 @@ def _parse_feature_files() -> list[dict]:
                 continue
             scenario_type = sm.group(1).strip()
             scenario_name = sm.group(2).strip()
-            scenario_tags = list(dict.fromkeys(tag_re.findall(part.split(sm.group(0))[0])))
+
+            # Text before the Scenario: line (contains its own tags)
+            pre_scenario = part.split(sm.group(0))[0]
+            scenario_tags = list(dict.fromkeys(tag_re.findall(pre_scenario)))
             all_tags = list(dict.fromkeys(feature_level_tags + scenario_tags))
-            scenario_ticket_ids = list(dict.fromkeys(
-                ticket_re.findall(part.split(sm.group(0))[0]) + ticket_ids
+
+            # All Jira-pattern tags (from scenario block + feature header)
+            raw_jira = list(dict.fromkeys(
+                jira_re.findall(pre_scenario) + jira_re.findall(feature_header)
             ))
+
+            # Split into real Jira keys vs AC-xxx acceptance criteria
+            ticket_ids = list(dict.fromkeys(
+                t.upper() for t in raw_jira if not _is_ac_tag(t)
+            ))
+            ac_ids = list(dict.fromkeys(
+                t.upper() for t in raw_jira if _is_ac_tag(t)
+            ))
+
             steps = [f"{s.group(1)} {s.group(2).strip()}" for s in step_re.finditer(part)]
 
             rel_path = str(feature_path.relative_to(_PROJECT_ROOT)).replace("\\", "/")
             rows.append({
-                "ticket_ids": scenario_ticket_ids,
+                "test_id": _stable_test_id(rel_path, scenario_name),
+                "ticket_ids": ticket_ids,
+                "ac_ids": ac_ids,
+                "parent_ticket": ticket_ids[0] if ticket_ids else "",
                 "feature_title": feature_title,
                 "feature_file": rel_path,
                 "scenario_name": scenario_name,
@@ -134,7 +171,10 @@ def _query_rtm_kb(query: str, num_results: int = 20) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 class RTMRow(BaseModel):
-    ticket_ids: list[str] = []
+    test_id: str = ""
+    ticket_ids: list[str] = []   # real Jira/ADO keys e.g. GDS-42
+    ac_ids: list[str] = []       # acceptance-criterion tags e.g. AC-001
+    parent_ticket: str = ""      # first Jira key, empty if none
     feature_title: str = ""
     feature_file: str = ""
     scenario_name: str = ""

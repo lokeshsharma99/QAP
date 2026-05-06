@@ -10,6 +10,9 @@ Primary strategy: Crawl4AI (AsyncWebCrawler) — multi-level BFS deep crawl with
 
 Secondary: `fetch_page` — single-page render via plain arun() (no deep crawl overhead).
 
+Enhanced: `get_dom_snapshot` — focused DOM element map (data-testid, roles, inputs, buttons).
+          `get_accessibility_snapshot` — full structured a11y tree via Playwright Python.
+
 KB persistence: `DiscoveryToolkit.save_learning` — unchanged.
 """
 
@@ -226,7 +229,169 @@ async def _crawl4ai_single(url: str) -> dict:
         "links_internal": [
             lnk.get("href", "") for lnk in result.links.get("internal", [])
         ],
+        "html": result.html or "",
     }
+
+
+# ---------------------------------------------------------------------------
+# DOM snapshot helper — extracts testable elements from raw HTML
+# ---------------------------------------------------------------------------
+
+def _extract_testable_elements(html: str) -> list[dict]:
+    """
+    Parse HTML with BeautifulSoup and return only elements relevant to test
+    automation: elements with data-testid / data-test-id / id attributes,
+    interactive tags (input, button, select, textarea, a), and ARIA landmarks.
+    Keeps the output compact — no boilerplate HTML.
+    """
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return [{"error": "beautifulsoup4 not installed"}]
+
+    soup = BeautifulSoup(html, "html.parser")
+    elements: list[dict] = []
+
+    INTERACTIVE_TAGS = {"input", "button", "select", "textarea", "a", "form", "label"}
+    ARIA_LANDMARKS = {"main", "nav", "header", "footer", "section", "article", "aside", "dialog"}
+
+    seen_ids: set[str] = set()
+
+    for tag in soup.find_all(True):
+        el: dict = {}
+
+        # Capture data-testid / data-test-id / data-cy / data-qa variants
+        for attr in ("data-testid", "data-test-id", "data-cy", "data-qa", "data-automation-id"):
+            val = tag.get(attr)
+            if val:
+                el[attr] = val
+
+        tag_name = tag.name.lower() if tag.name else ""
+
+        # Always capture interactive elements and ARIA landmarks
+        is_interactive = tag_name in INTERACTIVE_TAGS
+        is_landmark = tag_name in ARIA_LANDMARKS
+        has_testid = any(k.startswith("data-") for k in el)
+
+        if not (is_interactive or is_landmark or has_testid):
+            continue
+
+        el["tag"] = tag_name
+
+        # id — deduplicate
+        tag_id = tag.get("id")
+        if tag_id:
+            if tag_id in seen_ids:
+                continue
+            seen_ids.add(tag_id)
+            el["id"] = tag_id
+
+        # ARIA attributes
+        for attr in ("role", "aria-label", "aria-labelledby", "aria-describedby", "aria-placeholder"):
+            val = tag.get(attr)
+            if val:
+                el[attr] = val
+
+        # Input-specific
+        if tag_name == "input":
+            for attr in ("type", "name", "placeholder", "required"):
+                val = tag.get(attr)
+                if val:
+                    el[attr] = val
+
+        # Button / link text
+        if tag_name in ("button", "a"):
+            text = tag.get_text(strip=True)[:80]
+            if text:
+                el["text"] = text
+            if tag_name == "a":
+                el["href"] = tag.get("href", "")
+
+        # Form action
+        if tag_name == "form":
+            el["action"] = tag.get("action", "")
+            el["method"] = tag.get("method", "get")
+
+        elements.append(el)
+
+    return elements
+
+
+async def _crawl4ai_dom_snapshot(url: str) -> dict:
+    """Fetch a page with Crawl4AI (no CSS/light mode) and extract the raw HTML
+    plus a focused element map of testable components."""
+    try:
+        from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, BrowserConfig
+        from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
+    except ImportError:
+        return {"url": url, "error": "crawl4ai not installed"}
+
+    browser_config = BrowserConfig(
+        headless=True,
+        user_agent=_USER_AGENT,
+        light_mode=False,  # keep CSS — needed for accurate DOM rendering
+        avoid_ads=True,
+        verbose=False,
+    )
+    config = CrawlerRunConfig(
+        scraping_strategy=LXMLWebScrapingStrategy(),
+        wait_until="networkidle",   # wait fully — we need the live DOM
+        verbose=False,
+    )
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        result = await crawler.arun(url, config=config)
+
+    if not result.success:
+        return {"url": url, "error": result.error_message or "crawl failed"}
+
+    html = result.html or ""
+    return {
+        "url": result.url,
+        "title": _extract_title_from_html(html),
+        "status_code": result.status_code,
+        "html_size_bytes": len(html.encode()),
+        "html_preview": html[:8000],          # first 8 KB of raw HTML
+        "testable_elements": _extract_testable_elements(html),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Playwright Python accessibility tree helper
+# ---------------------------------------------------------------------------
+
+async def _playwright_a11y_snapshot(url: str) -> dict:
+    """
+    Launch a headless Chromium browser via Playwright Python and return the full
+    accessibility tree as a structured JSON dict.
+
+    Uses playwright.async_api (ships with crawl4ai / agno[os]).
+    No Playwright MCP container required.
+    """
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        return {
+            "url": url,
+            "error": (
+                "playwright Python package not installed. "
+                "Run: pip install playwright && playwright install chromium"
+            ),
+        }
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox"],
+            )
+            page = await browser.new_page()
+            await page.goto(url, wait_until="networkidle", timeout=30000)
+            snapshot = await page.accessibility.snapshot(interesting_only=False)
+            await browser.close()
+        return {"url": url, "accessibility_tree": snapshot}
+    except Exception as exc:
+        return {"url": url, "error": str(exc)}
 
 
 # ---------------------------------------------------------------------------
@@ -238,14 +403,18 @@ class Crawl4AIToolkit(Toolkit):
     Toolkit powered by Crawl4AI.
 
     Tools exposed to the agent:
-        ui_crawler      — primary skill: multi-level BFS crawl → Site Manifesto skeleton
-        fetch_page      — single-page crawl → markdown + links (replaces fetch_html + parse_dom_tree)
+        ui_crawler              — primary skill: multi-level BFS crawl → Site Manifesto skeleton
+        fetch_page              — single-page crawl → markdown + links
+        get_dom_snapshot        — raw HTML + focused testable element map (data-testid, roles, inputs)
+        get_accessibility_snapshot — full structured a11y tree via Playwright Python
     """
 
     def __init__(self):
         super().__init__(name="crawl4ai_toolkit")
         self.register(self.ui_crawler)
         self.register(self.fetch_page)
+        self.register(self.get_dom_snapshot)
+        self.register(self.get_accessibility_snapshot)
 
     def ui_crawler(
         self,
@@ -333,6 +502,44 @@ class Crawl4AIToolkit(Toolkit):
             "links_internal": p.get("links_internal", []),
             "error": p.get("error"),
         }, indent=2)
+
+    def get_dom_snapshot(self, url: str) -> str:
+        """Fetch the live DOM of a page and return raw HTML + a focused map of
+        all testable elements: data-testid attributes, inputs, buttons, links,
+        forms, and ARIA landmarks.
+
+        Use this AFTER ui_crawler to inspect a specific page for locator discovery.
+        Complements get_accessibility_snapshot — DOM gives structure/IDs,
+        a11y tree gives semantic roles/names.
+
+        Args:
+            url: Full URL of the page to snapshot (must be reachable).
+
+        Returns:
+            JSON with url, title, html_preview (8 KB), testable_elements list,
+            html_size_bytes, and status_code.
+        """
+        result = _run_async(_crawl4ai_dom_snapshot(url))
+        return json.dumps(result, indent=2)
+
+    def get_accessibility_snapshot(self, url: str) -> str:
+        """Capture the full Accessibility Tree of a page using Playwright Python.
+
+        Navigates to the URL in a headless Chromium browser and returns the
+        complete ARIA accessibility tree as structured JSON (roles, names, values,
+        states, children). Works without the Playwright MCP container.
+
+        Use this per-page after ui_crawler to capture the semantic structure of
+        each page — essential for writing robust, role/label-based Playwright locators.
+
+        Args:
+            url: Full URL of the page to snapshot.
+
+        Returns:
+            JSON with url and accessibility_tree (nested dict of ARIA nodes).
+        """
+        result = _run_async(_playwright_a11y_snapshot(url))
+        return json.dumps(result, indent=2)
 
 
 # ---------------------------------------------------------------------------

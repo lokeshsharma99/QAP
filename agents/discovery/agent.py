@@ -12,6 +12,8 @@ from agno.learn import EntityMemoryConfig, LearningMachine, LearningMode
 from agno.run import RunContext
 from app.guardrails import prompt_injection_guardrail
 
+import os
+
 from agents.discovery.instructions import INSTRUCTIONS, INSTRUCTIONS_HTTP_ONLY
 from agents.discovery.tools import Crawl4AIToolkit, DiscoveryToolkit
 from app.settings import MODEL, agent_db, FOLLOWUP_MODEL

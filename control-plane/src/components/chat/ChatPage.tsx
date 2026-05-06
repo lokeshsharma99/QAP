@@ -515,16 +515,102 @@ const FollowupSuggestions = ({ suggestions, onSelect }: { suggestions: string[];
 )
 
 // ---------------------------------------------------------------------------
+// ApprovalBlock — inline HITL approval widget shown when run is paused
+// ---------------------------------------------------------------------------
+const ApprovalBlock = ({ runId }: { runId: string | null }) => {
+  const { selectedEndpoint, authToken } = useStore()
+  const [approvals, setApprovals] = useState<{ id: string; tool_name?: string | null; approval_type?: string | null; requirements?: { name?: string; description?: string }[] | null; tool_args?: Record<string, unknown> | null }[]>([])
+  const [resolving, setResolving] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!runId || !selectedEndpoint) return
+    const url = `${selectedEndpoint}/approvals?run_id=${runId}&status=pending&limit=10`
+    const headers: HeadersInit = authToken ? { Authorization: `Bearer ${authToken}` } : {}
+    fetch(url, { headers })
+      .then((r) => r.json())
+      .then((d) => {
+        const list = Array.isArray(d) ? d : d?.approvals ?? d?.data ?? []
+        setApprovals(list.filter((a: { status: string }) => a.status === 'pending'))
+      })
+      .catch(() => {})
+  }, [runId, selectedEndpoint, authToken])
+
+  if (!approvals.length) return null
+
+  const resolve = async (id: string, approved: boolean) => {
+    if (!selectedEndpoint) return
+    setResolving(id)
+    const headers: HeadersInit = { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) }
+    try {
+      await fetch(`${selectedEndpoint}/approvals/${id}/resolve`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ approved }),
+      })
+      setApprovals((prev) => prev.filter((a) => a.id !== id))
+    } finally {
+      setResolving(null)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {approvals.map((a) => (
+        <div key={a.id} className="rounded-xl border border-warning/40 bg-primaryAccent p-3 shadow-sm shadow-warning/10">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-primary">
+                {a.tool_name
+                  ? <code className="font-mono text-xs bg-accent px-1.5 py-0.5 rounded">{a.tool_name}</code>
+                  : <span>{a.approval_type ?? 'Human Review Required'}</span>}
+              </div>
+              {a.requirements && a.requirements.length > 0 && (
+                <div className="mt-1 space-y-0.5">
+                  {a.requirements.map((r, i) => (
+                    <div key={i} className="text-xs text-muted/70">{r.name}{r.description ? ` — ${r.description}` : ''}</div>
+                  ))}
+                </div>
+              )}
+              {a.tool_args && Object.keys(a.tool_args).length > 0 && (
+                <pre className="mt-1 text-xs text-muted/50 truncate max-w-xs">{JSON.stringify(a.tool_args).slice(0, 80)}…</pre>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button size="sm" disabled={resolving === a.id}
+                className="h-7 gap-1 bg-positive text-background hover:bg-positive/90 text-xs px-2.5"
+                onClick={() => resolve(a.id, true)}>
+                ✓ Approve
+              </Button>
+              <Button size="sm" variant="outline" disabled={resolving === a.id}
+                className="h-7 gap-1 border-destructive/40 text-destructive hover:bg-destructive/10 text-xs px-2.5"
+                onClick={() => resolve(a.id, false)}>
+                ✕ Reject
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // ThinkingBubble — animated dots + current Agno streaming event label
 // Shown while the agent is working but hasn't produced any content yet
 // ---------------------------------------------------------------------------
 const ThinkingBubble = ({ latestEvent }: { latestEvent: import('@/store').ChatEvent | null }) => {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+
   const label =
     latestEvent?.type === 'tool_start' ? latestEvent.label
     : latestEvent?.type === 'reasoning' ? latestEvent.label
     : latestEvent?.type === 'memory' ? latestEvent.label
-    : latestEvent?.type === 'run_start' ? latestEvent.label
-    : 'Thinking…'
+    : latestEvent?.type === 'run_start' ? `Waiting for model response… (${elapsed}s)`
+    : `Thinking… (${elapsed}s)`
 
   return (
     <div className="flex items-center gap-3 max-w-2xl rounded-xl bg-primaryAccent px-4 py-3">
