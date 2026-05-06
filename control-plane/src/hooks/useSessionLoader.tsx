@@ -63,10 +63,32 @@ const useSessionLoader = () => {
             ? response
             : response.memory?.runs || response.memory?.chats || []
 
+          // Collect all user-role message contents from run.messages arrays.
+          // These are internal messages (e.g. team leader→member delegations) that Agno
+          // stores as `role: 'user'` entries within a run's messages list.
+          // Any run_input that also appears here is a synthetic delegation, not a human turn.
+          const internalUserContents = new Set<string>()
+          for (const run of runs) {
+            for (const msg of run.messages ?? []) {
+              if (msg.role === 'user' && msg.content) {
+                internalUserContents.add(String(msg.content).trim())
+              }
+            }
+          }
+
           const messages: ChatMessage[] = runs.flatMap((run: ChatEntry) => {
             const result: ChatMessage[] = []
 
-            if (run.run_input) {
+            // Skip run_inputs that are internal team-leader→member delegation messages.
+            // These are identified by:
+            //   1. The <member_interaction_context> tag Agno injects for context-aware delegations
+            //   2. Appearing as a role:'user' message inside another run's messages array
+            const inputTrimmed = run.run_input?.trim() ?? ''
+            const isMemberDelegationInput =
+              inputTrimmed.includes('<member_interaction_context>') ||
+              (inputTrimmed.length > 0 && internalUserContents.has(inputTrimmed))
+
+            if (run.run_input && !isMemberDelegationInput) {
               result.push({
                 role: 'user',
                 content: run.run_input,
@@ -112,6 +134,10 @@ const useSessionLoader = () => {
 
             return result
           })
+
+          // Sort by created_at so messages always appear in chronological order
+          // regardless of how the API returns the runs.
+          messages.sort((a, b) => (a.created_at ?? 0) - (b.created_at ?? 0))
 
           setMessages(messages)
         }

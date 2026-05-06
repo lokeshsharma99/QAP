@@ -2040,7 +2040,7 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showActivity, setShowActivity] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
-  const { messages, isStreaming, isEndpointActive, rightPanelOpen, setRightPanelOpen, chatEvents, setMode, setMessages } = useStore()
+  const { messages, isStreaming, isPaused, isEndpointActive, rightPanelOpen, setRightPanelOpen, chatEvents, setMode, setMessages, activeRunId } = useStore()
   const { handleStreamResponse, cancelRun } = useAIChatStreamHandler()
   const { clearChat } = useChatActions()
   const { getSessions, getSession } = useSessionLoader()
@@ -2313,6 +2313,18 @@ export default function ChatPage() {
 
         {/* Inline activity log */}
         {showActivity && <ActivityLog events={chatEvents} isStreaming={isStreaming} />}
+
+        {/* Inline approval block — shown when a run is paused waiting for human input */}
+        <AnimatePresence>
+          {(isPaused || !isStreaming) && messages.length > 0 && (
+            <div className="px-4 pt-1 pb-0">
+              <div className="mx-auto w-full max-w-3xl">
+                <ApprovalBlock runId={activeRunId} />
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
+
 
         {/* Input — agno.com card style */}
         <div className="px-4 pb-4 pt-2">

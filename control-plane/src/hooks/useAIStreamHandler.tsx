@@ -23,6 +23,7 @@ const useAIChatStreamHandler = () => {
   const mode = useStore((state) => state.mode)
   const setStreamingErrorMessage = useStore((state) => state.setStreamingErrorMessage)
   const setIsStreaming = useStore((state) => state.setIsStreaming)
+  const setIsPaused = useStore((state) => state.setIsPaused)
   const setSessionsData = useStore((state) => state.setSessionsData)
   const addChatEvent = useStore((state) => state.addChatEvent)
   const clearChatEvents = useStore((state) => state.clearChatEvents)
@@ -521,6 +522,33 @@ const useAIChatStreamHandler = () => {
                   return newMessages
                 })
               }
+            } else if (
+              chunk.event === RunEvent.RunOutput
+            ) {
+              // RunOutput carries structured output — surface it as a debug event
+              addChatEvent({ type: 'debug', label: `◦ RunOutput`, ts: Date.now(), detail: typeof chunk.content === 'string' ? chunk.content.slice(0, 120) : undefined })
+            } else if (
+              chunk.event === RunEvent.RunCancelled
+            ) {
+              addChatEvent({ type: 'debug', label: '◦ Run cancelled', ts: Date.now() })
+            } else if (
+              chunk.event === RunEvent.RunPaused
+            ) {
+              addChatEvent({ type: 'debug', label: '⏸ Run paused', ts: Date.now() })
+              setIsPaused(true)
+            } else if (
+              chunk.event === RunEvent.RunContinued
+            ) {
+              addChatEvent({ type: 'debug', label: '▶ Run continued', ts: Date.now() })
+              setIsPaused(false)
+            } else if (
+              chunk.event === RunEvent.FollowupsStarted ||
+              chunk.event === RunEvent.TeamFollowupsStarted
+            ) {
+              addChatEvent({ type: 'debug', label: '◦ Generating follow-ups…', ts: Date.now() })
+            } else if (chunk.event) {
+              // Catch-all: surface any other event type as a debug entry so nothing is invisible
+              addChatEvent({ type: 'debug', label: `◦ ${chunk.event}`, ts: Date.now() })
             }
           },
           onError: (error) => {
@@ -565,6 +593,7 @@ const useAIChatStreamHandler = () => {
       } finally {
         focusChatInput()
         setIsStreaming(false)
+        setIsPaused(false)
         setActiveRunId(null)
       }
     },
@@ -580,6 +609,7 @@ const useAIChatStreamHandler = () => {
       mode,
       setStreamingErrorMessage,
       setIsStreaming,
+      setIsPaused,
       focusChatInput,
       setSessionsData,
       sessionId,
@@ -595,6 +625,7 @@ const useAIChatStreamHandler = () => {
     // 1. Abort the SSE fetch immediately — flips button state right away
     abortControllerRef.current?.abort()
     setIsStreaming(false)
+    setIsPaused(false)
     setActiveRunId(null)
 
     // 2. Best-effort cancel on the backend
@@ -615,7 +646,7 @@ const useAIChatStreamHandler = () => {
     try {
       await fetch(cancelUrl, { method: 'POST', headers })
     } catch { /* ignore */ }
-  }, [selectedEndpoint, authToken, mode, agentId, teamId, workflowId, setIsStreaming, setActiveRunId])
+  }, [selectedEndpoint, authToken, mode, agentId, teamId, workflowId, setIsStreaming, setIsPaused, setActiveRunId])
 
   return { handleStreamResponse, cancelRun }
 }
