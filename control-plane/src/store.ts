@@ -99,6 +99,9 @@ interface Store {
   agentOverrides: Record<string, AgentConfigOverride>
   setAgentOverride: (id: string, override: AgentConfigOverride) => void
   clearAgentOverride: (id: string) => void
+  // Approval pause state — true while the run is paused waiting for human input
+  isPaused: boolean
+  setIsPaused: (isPaused: boolean) => void
   // Sidebar pending-request badge counts
   pendingCounts: { approvals: number; specReview: number; healing: number }
   setPendingCounts: (patch: Partial<{ approvals: number; specReview: number; healing: number }>) => void
@@ -179,6 +182,8 @@ export const useStore = create<Store>()(
         delete next[id]
         return { agentOverrides: next }
       }),
+      isPaused: false,
+      setIsPaused: (isPaused) => set(() => ({ isPaused })),
       pendingCounts: { approvals: 0, specReview: 0, healing: 0 },
       setPendingCounts: (patch) => set((s) => ({ pendingCounts: { ...s.pendingCounts, ...patch } })),
     }),

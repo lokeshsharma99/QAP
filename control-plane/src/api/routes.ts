@@ -138,8 +138,9 @@ export const APIRoutes = {
   UpdateProfile:   (base: string) => `${base}/profile`,
 
   // ── Automation Health ─────────────────────────────────────────────────────
-  AutomationHealth:  (base: string) => `${base}/automation/health`,
-  AutomationReport:  (base: string, raw?: boolean) => `${base}/automation/report${raw ? '?raw=true' : ''}`,
+  AutomationHealth:      (base: string) => `${base}/automation/health`,
+  AutomationReport:      (base: string, raw?: boolean) => `${base}/automation/report${raw ? '?raw=true' : ''}`,
+  AutomationReportHtml:  (base: string) => `${base}/automation/report/html`,
   AutomationRun:     (base: string) => `${base}/automation/run`,
   AutomationTraces:  (base: string) => `${base}/automation/traces`,
   AutomationSync:    (base: string) => `${base}/automation/sync`,
