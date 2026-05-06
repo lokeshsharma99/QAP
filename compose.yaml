@@ -232,8 +232,9 @@ services:
       dockerfile: Dockerfile
       args:
         # Baked into client-side JS at build time — used by the store to call the API.
-        # Points to the permanent ngrok API tunnel URL.
-        NEXT_PUBLIC_AGENTOS_URL: http://192.168.1.243:8000
+        # Override via NEXT_PUBLIC_AGENTOS_URL in .env (e.g. http://192.168.1.243:8000).
+        # Falls back to http://window.location.hostname:8000 when not set.
+        NEXT_PUBLIC_AGENTOS_URL: ${NEXT_PUBLIC_AGENTOS_URL:-}
     container_name: qap-ui
     restart: unless-stopped
     ports:

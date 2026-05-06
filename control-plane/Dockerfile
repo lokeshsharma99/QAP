@@ -12,6 +12,11 @@ RUN pnpm install --frozen-lockfile || pnpm install
 # Copy source
 COPY . .
 
+# Accept the API URL as a build arg so Next.js can bake it into the client bundle.
+# compose.yaml passes: NEXT_PUBLIC_AGENTOS_URL: http://192.168.1.243:8000
+ARG NEXT_PUBLIC_AGENTOS_URL
+ENV NEXT_PUBLIC_AGENTOS_URL=${NEXT_PUBLIC_AGENTOS_URL}
+
 # Build
 RUN pnpm build
 
